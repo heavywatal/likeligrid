@@ -10,6 +10,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/math/distributions/normal.hpp>
 
+#define EIGEN_NO_DEBUG
 #include "Eigen/Core"
 
 #include <cxxwtils/iostr.hpp>
@@ -17,6 +18,7 @@
 #include <cxxwtils/prandom.hpp>
 #include <cxxwtils/os.hpp>
 #include <cxxwtils/gz.hpp>
+#include <cxxwtils/eigen.hpp>
 
 namespace lmpp {
 
@@ -102,6 +104,18 @@ Model::Model(const std::vector<std::string>& arguments) {HERE;
     OUT_DIR = fs::system_complete(OUT_DIR).string();
 }
 
+inline double normal_cdf(const double x, const double mean, const double sd, const bool complement=false) {
+    if (complement) {
+        return bmath::cdf(bmath::complement(bmath::normal(mean, sd), x));
+    } else {
+        return bmath::cdf(bmath::normal(mean, sd), x);
+    }
+}
+
+inline double Model::normal_ccdf(double score, const double sd) {
+    return normal_cdf(threshold_, score += epsilon_, sd, true);
+}
+
 void Model::genotype2score() {
     size_t dimensions = 2;
     size_t num_samples = 4;
@@ -113,33 +127,21 @@ void Model::genotype2score() {
         0, 1,
         1, 1;
     std::cout << genotype * parameter << std::endl;
-}
-
-double Model::normal_lccdf(double score, const double sd) {
-    bmath::normal bm_normal(score += epsilon_, sd);
-    return std::log(1.0 - bmath::cdf(bm_normal, threshold_));
-}
-
-Eigen::MatrixXd read_matrix(const std::string& path) {
-    std::ifstream ifs(path.c_str());
-    std::string buffer;
-    std::vector<std::string> lines;
-    while (std::getline(ifs, buffer, '\t')) {
-        lines.push_back(buffer);
-    }
+    std::cout << normal_ccdf(0.1, 0.5) << std::endl;
+    std::cout << normal_ccdf(0.3, 0.5) << std::endl;
+    std::cout << normal_ccdf(0.4, 0.5) << std::endl;
+    std::cout << normal_ccdf(0.5, 0.5) << std::endl;
+    std::cout << normal_ccdf(0.7, 0.5) << std::endl;
 }
 
 void Model::run() {HERE;
-    std::cout << "lmpp" << std::endl;
     genotype2score();
-    std::cout << normal_lccdf(0.1, 0.5) << std::endl;
-    std::cout << normal_lccdf(0.3, 0.5) << std::endl;
-    std::cout << normal_lccdf(0.4, 0.5) << std::endl;
-    std::cout << normal_lccdf(0.5, 0.5) << std::endl;
-    std::cout << normal_lccdf(0.7, 0.5) << std::endl;
 }
 
 void Model::write() const {HERE;
+    auto mat = Eigen::Matrix3d::Random();
+    std::ofstream("test.tsv") << mat.format(wtl::eigen::tsv());
+    std::cout << wtl::eigen::read_matrix<double>("test.tsv").format(wtl::eigen::tsv()) << std::endl;
     if (WRITE_TO_FILES) {
         derr("mkdir && cd to " << OUT_DIR << std::endl);
         fs::create_directory(OUT_DIR);

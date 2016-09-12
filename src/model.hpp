@@ -41,7 +41,7 @@ class Model {
     boost::program_options::options_description positional_desc();
     void help_and_exit();
 
-    double normal_lccdf(double mean, const double sd);
+    double normal_ccdf(double score, const double sd);
     void genotype2score();
 
     double epsilon_ = 0.1;
