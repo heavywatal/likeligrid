@@ -9,6 +9,7 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/math/distributions/normal.hpp>
+#include <boost/coroutine2/coroutine.hpp>
 
 #define EIGEN_NO_DEBUG
 #include "Eigen/Core"
@@ -116,7 +117,130 @@ inline double Model::normal_ccdf(double score, const double sd) {
     return normal_cdf(threshold_, score += epsilon_, sd, true);
 }
 
-void Model::genotype2score() {
+inline bool equals_one(double x) {
+    return std::fabs(x - 1.0) < std::numeric_limits<double>::epsilon();
+}
+
+class SimplexIterator;
+
+class Simplex {
+  public:
+    typedef Eigen::VectorXd value_type;
+    typedef SimplexIterator iterator;
+    Simplex() = delete;
+    Simplex(const size_t n):
+      dimensions_(n),
+      axis_(Eigen::VectorXd::LinSpaced(steps_, 0.0, 1.0)),
+      ptrs_(dimensions_, axis_.data()) {}
+    // const value_type& value() const {return {3};}
+    value_type value() const {return value_type(3);}
+    iterator begin();
+    iterator end();
+    Simplex& operator++() {
+        // auto end = axis_.data() + steps_;
+        value_type value(dimensions_);
+        for (size_t i=0; i<dimensions_; ++i) {
+            // for (; ptrs_[i] < end; ++ptrs_[i]) {
+            // 
+            // }
+            value[i] = *ptrs_[i];
+        }
+        return *this;
+    }
+    // bool sum1() const {
+    //     return equals_one(value_.sum());
+    //     // return value_.minCoeff() > 0.0;
+    // }
+  private:
+    double dimensions_ = 0;
+    size_t steps_ = 4;
+    Eigen::VectorXd axis_;
+    std::vector<double*> ptrs_;
+};
+
+class SimplexIterator: public std::iterator<std::forward_iterator_tag, double> {
+  public:
+    SimplexIterator(Simplex* x): ptr_(x) {}
+    Simplex& operator*() const {
+        return *ptr_;
+    }
+    Simplex* operator->() const {
+        return ptr_;
+    }
+    SimplexIterator& operator++() {
+        ptr_->operator++();
+        return *this;
+    }
+    bool operator!= (const SimplexIterator& it) const {
+        return (ptr_ != it.ptr_);
+    }
+  private:
+    Simplex* ptr_;
+};
+
+SimplexIterator Simplex::begin() {return SimplexIterator(this);}
+SimplexIterator Simplex::end() {return SimplexIterator(this);}
+
+template <class T>
+inline void nested_loop(const T& range, size_t nest=3, T current={}) {
+    if (current.empty()) current.assign(nest, 0);
+    if (--nest > 0) {
+        for (const auto& x: range) {
+            current[nest] = x;
+            nested_loop(range, nest, current);
+        }
+    } else {
+        for (const auto& x: range) {
+            current[nest] = x;
+            std::cout << current << std::endl;
+        }
+    }
+}
+
+template <>
+inline void nested_loop<Eigen::VectorXd>(const Eigen::VectorXd& range, size_t nest, Eigen::VectorXd current) {
+    if (current.size() == 0) current.resize(nest);
+    auto end = range.data() + range.size();
+    if (--nest > 0) {
+        for (auto p=range.data(); p<end; ++p) {
+            current[nest] = *p;
+            nested_loop(range, nest, current);
+        }
+    } else {
+        for (auto p=range.data(); p<end; ++p) {
+            current[nest] = *p;
+            std::cout << wtl::eigen::as_vector(current) << std::endl;
+        }
+    }
+}
+
+template <class T> inline
+typename boost::coroutines2::coroutine<T>::pull_type
+generate(const T& range, size_t nest=3, T current={}) {
+    if (current.empty()) current.assign(nest, 0);
+    typedef boost::coroutines2::coroutine<T> coro_t;
+    return typename coro_t::pull_type([&](typename coro_t::push_type& yield){
+        if (--nest > 0) {
+            for (const auto& x: range) {
+                current[nest] = x;
+                nested_loop(range, nest, current);
+            }
+        } else {
+            for (const auto& x: range) {
+                current[nest] = x;
+                yield(current);
+            }
+        }
+    });
+}
+
+void Model::genotype2score() {HERE;
+    Simplex v(3);
+    auto it = v.begin();
+    std::cout << it->value() << std::endl;
+    ++it;
+    std::cout << it->value() << std::endl;
+    
     size_t dimensions = 2;
     size_t num_samples = 4;
     Eigen::VectorXd parameter(dimensions);
@@ -136,6 +260,12 @@ void Model::genotype2score() {
 
 void Model::run() {HERE;
     genotype2score();
+    Eigen::VectorXd vxd = Eigen::VectorXd::LinSpaced(3, 0.0, 1.0);
+    // nested_loop(vxd, 3);
+    auto gen = generate(wtl::eigen::as_vector(vxd), 3);
+    for (auto x: gen) {
+        std::cout << x << std::endl;
+    }
 }
 
 void Model::write() const {HERE;
