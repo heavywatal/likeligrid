@@ -140,14 +140,16 @@ class ExpandGrid {
   private:
     void source(typename coro_t::push_type& yield) {
         if (--level_ > 0) {
-            for (const auto x: columns_[level_]) {
-                current_[level_] = x;
+            const auto n = columns_[level_].size();
+            for (typename std::remove_const<decltype(n)>::type i=0; i<n; ++i) {
+                current_[level_] = columns_[level_][i];
                 source(yield);
             }
             ++level_;
         } else {
-            for (const auto x: columns_[level_]) {
-                current_[level_] = x;
+            const auto n = columns_[level_].size();
+            for (typename std::remove_const<decltype(n)>::type i=0; i<n; ++i) {
+                current_[level_] = columns_[level_][i];
                 yield(value_type(current_));
             }
             ++level_;
@@ -273,16 +275,17 @@ void Model::run() {HERE;
     // genotype2score();
     Eigen::VectorXd vxd = Eigen::VectorXd::LinSpaced(3, 0.0, 1.0);
     auto vd = wtl::eigen::as_vector(vxd);
+    // std::vector<Eigen::VectorXd> columns{vxd, vxd, vxd};
     std::vector<std::vector<double>> columns{vd, vd, vd};
     auto bf = expand_grid(columns);
     for (const auto& x: bf.generate()) {
         std::cout << x << std::endl;
     }
 
-    Simplex sim(columns);
-    for (const auto& x: sim.generate()) {
-        std::cout << x << std::endl;
-    }
+    // Simplex sim(columns);
+    // for (const auto& x: sim.generate()) {
+    //     std::cout << x << std::endl;
+    // }
 }
 
 void Model::write() const {HERE;
