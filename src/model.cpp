@@ -123,15 +123,15 @@ inline bool equals_one(double x) {
 }
 
 template <class value_type>
-class BruteForce {
+class ExpandGrid {
   public:
     typedef boost::coroutines2::coroutine<value_type> coro_t;
-    BruteForce() = delete;
-    BruteForce(const value_type& axis, const size_t dimensions):
-        dimensions_(dimensions),
-        level_(dimensions),
-        current_(dimensions),
-        axis_(axis) {}
+    ExpandGrid() = delete;
+    ExpandGrid(const std::vector<value_type>& columns):
+        columns_(columns),
+        dimensions_(columns_.size()),
+        level_(dimensions_),
+        current_(dimensions_) {}
 
     typename coro_t::pull_type generate() {
         return typename coro_t::pull_type([this](typename coro_t::push_type& yield){source(yield);});
@@ -140,13 +140,13 @@ class BruteForce {
   private:
     void source(typename coro_t::push_type& yield) {
         if (--level_ > 0) {
-            for (const auto x: axis_) {
+            for (const auto x: columns_[level_]) {
                 current_[level_] = x;
                 source(yield);
             }
             ++level_;
         } else {
-            for (const auto x: axis_) {
+            for (const auto x: columns_[level_]) {
                 current_[level_] = x;
                 yield(value_type(current_));
             }
@@ -154,16 +154,17 @@ class BruteForce {
         }
     }
 
+    const std::vector<value_type> columns_;
     const double dimensions_;
     size_t level_;
     value_type current_;
-    value_type axis_;
 };
 
 template <class T>
-BruteForce<T> brute_force(const T& axis, const size_t dimensions) {
-    return BruteForce<T>(axis, dimensions);
+ExpandGrid<T> expand_grid(const std::vector<T>& columns) {
+    return ExpandGrid<T>(columns);
 }
+
 
 class SimplexIterator;
 
@@ -173,7 +174,7 @@ class Simplex {
     typedef SimplexIterator iterator;
     typedef boost::coroutines2::coroutine<value_type> coro_t;
     Simplex() = delete;
-    Simplex(const value_type& axis, const size_t dimensions): bf_(axis, dimensions) {}
+    Simplex(const std::vector<value_type>& columns): grid_(columns) {}
 
     iterator begin();
     iterator end();
@@ -187,14 +188,14 @@ class Simplex {
   private:
     void source(typename coro_t::push_type& yield) {
         const double e = std::numeric_limits<double>::epsilon();
-        for (const auto& v: bf_.generate()) {
+        for (const auto& v: grid_.generate()) {
             if (std::fabs(wtl::sum(v) - 1.0) < e) {yield(v);}
         }
     }
-    BruteForce<value_type> bf_;
+    ExpandGrid<value_type> grid_;
 };
 
-class SimplexIterator: public std::iterator<std::forward_iterator_tag, double> {
+class SimplexIterator {
   public:
     SimplexIterator(Simplex* x): ptr_(x) {}
     Simplex& operator*() const {
@@ -272,12 +273,13 @@ void Model::run() {HERE;
     // genotype2score();
     Eigen::VectorXd vxd = Eigen::VectorXd::LinSpaced(3, 0.0, 1.0);
     auto vd = wtl::eigen::as_vector(vxd);
-    auto bf = brute_force(vd, 3);
+    std::vector<std::vector<double>> columns{vd, vd, vd};
+    auto bf = expand_grid(columns);
     for (const auto& x: bf.generate()) {
         std::cout << x << std::endl;
     }
 
-    Simplex sim(vd, 3);
+    Simplex sim(columns);
     for (const auto& x: sim.generate()) {
         std::cout << x << std::endl;
     }
