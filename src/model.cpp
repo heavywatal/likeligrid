@@ -17,6 +17,7 @@
 #include <cxxwtils/iostr.hpp>
 #include <cxxwtils/getopt.hpp>
 #include <cxxwtils/prandom.hpp>
+#include <cxxwtils/algorithm.hpp>
 #include <cxxwtils/os.hpp>
 #include <cxxwtils/gz.hpp>
 #include <cxxwtils/eigen.hpp>
@@ -179,8 +180,17 @@ class Simplex {
     Simplex& operator++() {
         return *this;
     }
+    typename coro_t::pull_type generate() {
+        return typename coro_t::pull_type([this](typename coro_t::push_type& yield){source(yield);});
+    }
 
   private:
+    void source(typename coro_t::push_type& yield) {
+        const double e = std::numeric_limits<double>::epsilon();
+        for (const auto& v: bf_.generate()) {
+            if (std::fabs(wtl::sum(v) - 1.0) < e) {yield(v);}
+        }
+    }
     BruteForce<value_type> bf_;
 };
 
@@ -267,9 +277,10 @@ void Model::run() {HERE;
         std::cout << x << std::endl;
     }
 
-    Simplex v(vd, 3);
-    auto it = v.begin();
-    ++it;
+    Simplex sim(vd, 3);
+    for (const auto& x: sim.generate()) {
+        std::cout << x << std::endl;
+    }
 }
 
 void Model::write() const {HERE;
