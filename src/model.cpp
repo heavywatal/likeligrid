@@ -121,41 +121,67 @@ inline bool equals_one(double x) {
     return std::fabs(x - 1.0) < std::numeric_limits<double>::epsilon();
 }
 
+template <class value_type>
+class BruteForce {
+  public:
+    typedef boost::coroutines2::coroutine<value_type> coro_t;
+    BruteForce() = delete;
+    BruteForce(const value_type& axis, const size_t dimensions):
+        dimensions_(dimensions),
+        level_(dimensions),
+        current_(dimensions),
+        axis_(axis) {}
+
+    typename coro_t::pull_type generate() {
+        return typename coro_t::pull_type([this](typename coro_t::push_type& yield){source(yield);});
+    }
+
+  private:
+    void source(typename coro_t::push_type& yield) {
+        if (--level_ > 0) {
+            for (const auto x: axis_) {
+                current_[level_] = x;
+                source(yield);
+            }
+            ++level_;
+        } else {
+            for (const auto x: axis_) {
+                current_[level_] = x;
+                yield(value_type(current_));
+            }
+            ++level_;
+        }
+    }
+
+    const double dimensions_;
+    size_t level_;
+    value_type current_;
+    value_type axis_;
+};
+
+template <class T>
+BruteForce<T> brute_force(const T& axis, const size_t dimensions) {
+    return BruteForce<T>(axis, dimensions);
+}
+
 class SimplexIterator;
 
 class Simplex {
   public:
-    typedef Eigen::VectorXd value_type;
+    typedef std::vector<double> value_type;
     typedef SimplexIterator iterator;
+    typedef boost::coroutines2::coroutine<value_type> coro_t;
     Simplex() = delete;
-    Simplex(const size_t n):
-      dimensions_(n),
-      axis_(Eigen::VectorXd::LinSpaced(steps_, 0.0, 1.0)),
-      ptrs_(dimensions_, axis_.data()) {}
-    // const value_type& value() const {return {3};}
-    value_type value() const {return value_type(3);}
+    Simplex(const value_type& axis, const size_t dimensions): bf_(axis, dimensions) {}
+
     iterator begin();
     iterator end();
     Simplex& operator++() {
-        // auto end = axis_.data() + steps_;
-        value_type value(dimensions_);
-        for (size_t i=0; i<dimensions_; ++i) {
-            // for (; ptrs_[i] < end; ++ptrs_[i]) {
-            // 
-            // }
-            value[i] = *ptrs_[i];
-        }
         return *this;
     }
-    // bool sum1() const {
-    //     return equals_one(value_.sum());
-    //     // return value_.minCoeff() > 0.0;
-    // }
+
   private:
-    double dimensions_ = 0;
-    size_t steps_ = 4;
-    Eigen::VectorXd axis_;
-    std::vector<double*> ptrs_;
+    BruteForce<value_type> bf_;
 };
 
 class SimplexIterator: public std::iterator<std::forward_iterator_tag, double> {
@@ -214,33 +240,7 @@ inline void nested_loop<Eigen::VectorXd>(const Eigen::VectorXd& range, size_t ne
     }
 }
 
-template <class T> inline
-typename boost::coroutines2::coroutine<T>::pull_type
-generate(const T& range, size_t nest=3, T current={}) {
-    if (current.empty()) current.assign(nest, 0);
-    typedef boost::coroutines2::coroutine<T> coro_t;
-    return typename coro_t::pull_type([&](typename coro_t::push_type& yield){
-        if (--nest > 0) {
-            for (const auto& x: range) {
-                current[nest] = x;
-                nested_loop(range, nest, current);
-            }
-        } else {
-            for (const auto& x: range) {
-                current[nest] = x;
-                yield(current);
-            }
-        }
-    });
-}
-
 void Model::genotype2score() {HERE;
-    Simplex v(3);
-    auto it = v.begin();
-    std::cout << it->value() << std::endl;
-    ++it;
-    std::cout << it->value() << std::endl;
-    
     size_t dimensions = 2;
     size_t num_samples = 4;
     Eigen::VectorXd parameter(dimensions);
@@ -259,13 +259,17 @@ void Model::genotype2score() {HERE;
 }
 
 void Model::run() {HERE;
-    genotype2score();
+    // genotype2score();
     Eigen::VectorXd vxd = Eigen::VectorXd::LinSpaced(3, 0.0, 1.0);
-    // nested_loop(vxd, 3);
-    auto gen = generate(wtl::eigen::as_vector(vxd), 3);
-    for (auto x: gen) {
+    auto vd = wtl::eigen::as_vector(vxd);
+    auto bf = brute_force(vd, 3);
+    for (const auto& x: bf.generate()) {
         std::cout << x << std::endl;
     }
+
+    Simplex v(vd, 3);
+    auto it = v.begin();
+    ++it;
 }
 
 void Model::write() const {HERE;
