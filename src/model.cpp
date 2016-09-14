@@ -21,6 +21,7 @@
 #include <cxxwtils/os.hpp>
 #include <cxxwtils/gz.hpp>
 #include <cxxwtils/eigen.hpp>
+#include <cxxwtils/itertools.hpp>
 
 namespace lmpp {
 
@@ -118,141 +119,6 @@ inline double Model::normal_ccdf(double score, const double sd) {
     return normal_cdf(threshold_, score += epsilon_, sd, true);
 }
 
-inline bool equals_one(double x) {
-    return std::fabs(x - 1.0) < std::numeric_limits<double>::epsilon();
-}
-
-template <class value_type>
-class ExpandGrid {
-  public:
-    typedef boost::coroutines2::coroutine<value_type> coro_t;
-    ExpandGrid() = delete;
-    ExpandGrid(const std::vector<value_type>& columns):
-        columns_(columns),
-        dimensions_(columns_.size()),
-        level_(dimensions_),
-        current_(dimensions_) {}
-
-    typename coro_t::pull_type generate() {
-        return typename coro_t::pull_type([this](typename coro_t::push_type& yield){source(yield);});
-    }
-
-  private:
-    void source(typename coro_t::push_type& yield) {
-        if (--level_ > 0) {
-            const auto n = columns_[level_].size();
-            for (typename std::remove_const<decltype(n)>::type i=0; i<n; ++i) {
-                current_[level_] = columns_[level_][i];
-                source(yield);
-            }
-            ++level_;
-        } else {
-            const auto n = columns_[level_].size();
-            for (typename std::remove_const<decltype(n)>::type i=0; i<n; ++i) {
-                current_[level_] = columns_[level_][i];
-                yield(value_type(current_));
-            }
-            ++level_;
-        }
-    }
-
-    const std::vector<value_type> columns_;
-    const double dimensions_;
-    size_t level_;
-    value_type current_;
-};
-
-template <class T>
-ExpandGrid<T> expand_grid(const std::vector<T>& columns) {
-    return ExpandGrid<T>(columns);
-}
-
-
-class SimplexIterator;
-
-class Simplex {
-  public:
-    typedef std::vector<double> value_type;
-    typedef SimplexIterator iterator;
-    typedef boost::coroutines2::coroutine<value_type> coro_t;
-    Simplex() = delete;
-    Simplex(const std::vector<value_type>& columns): grid_(columns) {}
-
-    iterator begin();
-    iterator end();
-    Simplex& operator++() {
-        return *this;
-    }
-    typename coro_t::pull_type generate() {
-        return typename coro_t::pull_type([this](typename coro_t::push_type& yield){source(yield);});
-    }
-
-  private:
-    void source(typename coro_t::push_type& yield) {
-        const double e = std::numeric_limits<double>::epsilon();
-        for (const auto& v: grid_.generate()) {
-            if (std::fabs(wtl::sum(v) - 1.0) < e) {yield(v);}
-        }
-    }
-    ExpandGrid<value_type> grid_;
-};
-
-class SimplexIterator {
-  public:
-    SimplexIterator(Simplex* x): ptr_(x) {}
-    Simplex& operator*() const {
-        return *ptr_;
-    }
-    Simplex* operator->() const {
-        return ptr_;
-    }
-    SimplexIterator& operator++() {
-        ptr_->operator++();
-        return *this;
-    }
-    bool operator!= (const SimplexIterator& it) const {
-        return (ptr_ != it.ptr_);
-    }
-  private:
-    Simplex* ptr_;
-};
-
-SimplexIterator Simplex::begin() {return SimplexIterator(this);}
-SimplexIterator Simplex::end() {return SimplexIterator(this);}
-
-template <class T>
-inline void nested_loop(const T& range, size_t nest=3, T current={}) {
-    if (current.empty()) current.assign(nest, 0);
-    if (--nest > 0) {
-        for (const auto& x: range) {
-            current[nest] = x;
-            nested_loop(range, nest, current);
-        }
-    } else {
-        for (const auto& x: range) {
-            current[nest] = x;
-            std::cout << current << std::endl;
-        }
-    }
-}
-
-template <>
-inline void nested_loop<Eigen::VectorXd>(const Eigen::VectorXd& range, size_t nest, Eigen::VectorXd current) {
-    if (current.size() == 0) current.resize(nest);
-    auto end = range.data() + range.size();
-    if (--nest > 0) {
-        for (auto p=range.data(); p<end; ++p) {
-            current[nest] = *p;
-            nested_loop(range, nest, current);
-        }
-    } else {
-        for (auto p=range.data(); p<end; ++p) {
-            current[nest] = *p;
-            std::cout << wtl::eigen::as_vector(current) << std::endl;
-        }
-    }
-}
-
 void Model::genotype2score() {HERE;
     size_t dimensions = 2;
     size_t num_samples = 4;
@@ -273,19 +139,14 @@ void Model::genotype2score() {HERE;
 
 void Model::run() {HERE;
     // genotype2score();
-    Eigen::VectorXd vxd = Eigen::VectorXd::LinSpaced(3, 0.0, 1.0);
-    auto vd = wtl::eigen::as_vector(vxd);
-    // std::vector<Eigen::VectorXd> columns{vxd, vxd, vxd};
-    std::vector<std::vector<double>> columns{vd, vd, vd};
-    auto bf = expand_grid(columns);
-    for (const auto& x: bf.generate()) {
+    Eigen::VectorXd vxd = Eigen::VectorXd::LinSpaced(5, 0.0, 1.0);
+    auto va = wtl::eigen::as_valarray(vxd);
+    // std::vector<Eigen::VectorXd> columns(3, vxd);
+    std::vector<std::valarray<double>> columns(3, va);
+    auto sim = wtl::itertools::simplex(columns);
+    for (const auto& x: sim()) {
         std::cout << x << std::endl;
     }
-
-    // Simplex sim(columns);
-    // for (const auto& x: sim.generate()) {
-    //     std::cout << x << std::endl;
-    // }
 }
 
 void Model::write() const {HERE;
