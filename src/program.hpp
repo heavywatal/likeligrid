@@ -42,7 +42,8 @@ class Program {
     void help_and_exit();
 
     std::string GENOTYPE_FILE;
-    bool WRITE_TO_FILES = false;
+    size_t GRID_DENSITY = 11;
+    size_t MAX_RESULTS = 16;
 
     //! Seed for random number generator
     unsigned int SEED = std::random_device{}();

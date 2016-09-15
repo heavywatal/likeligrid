@@ -32,9 +32,10 @@ inline po::options_description general_desc() {HERE;
 }
 
 po::options_description Program::options_desc() {HERE;
-    po::options_description description("Simulation");
+    po::options_description description("Program");
     description.add_options()
-        ("write,w", po::value<bool>(&WRITE_TO_FILES)->default_value(WRITE_TO_FILES)->implicit_value(true))
+        ("grid,g", po::value<size_t>(&GRID_DENSITY)->default_value(GRID_DENSITY))
+        ("max,n", po::value<size_t>(&MAX_RESULTS)->default_value(MAX_RESULTS))
         ("out_dir,o", po::value<std::string>(&OUT_DIR)->default_value(OUT_DIR))
         ("seed", po::value<unsigned int>(&SEED)->default_value(SEED));
     return description;
@@ -81,8 +82,7 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
     description.add(options_desc());
     description.add(positional_desc());
     po::positional_options_description positional;
-    positional.add("epsilon", 1)
-              .add("threshold", 1);
+    positional.add("genotype", 1);
     po::variables_map vm;
     po::store(po::command_line_parser(arguments).
               options(description).
@@ -101,12 +101,14 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 }
 
 void Program::run() {HERE;
-    Model model(0.5, 0.1);
-    model.run();
+    wtl::Fin fin(GENOTYPE_FILE);
+    Model model(fin, GRID_DENSITY, MAX_RESULTS);
+    auto results = model.run(0.5, 0.0);
+    std::cout << results << std::endl;
 }
 
 void Program::write() const {HERE;
-    if (WRITE_TO_FILES) {
+    if (false) {
         derr("mkdir && cd to " << OUT_DIR << std::endl);
         fs::create_directory(OUT_DIR);
         wtl::cd(OUT_DIR);

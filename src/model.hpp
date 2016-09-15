@@ -7,9 +7,11 @@
 #define LMPP_MODEL_HPP_
 
 #include <iostream>
-#include <sstream>
 #include <vector>
-#include <random>
+#include <valarray>
+#include <map>
+
+#include <Eigen/Core>
 
 namespace lmpp {
 
@@ -17,21 +19,20 @@ namespace lmpp {
 */
 class Model {
   public:
-    Model(const double t, const double e):
-        threshold_(t), epsilon_(e) {}
+    Model(std::istream& infile, const size_t g, const size_t n=65535);
 
-    //! Top level function that should be called once from main()
-    void run();
+    std::multimap<double, std::valarray<double>> run(const double threshold, const double epsilon);
+
+    const Eigen::MatrixXd& genotypes() const {return genotypes_;}
 
     static void unit_test();
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
-    double likelihood(double score);
-    void genotype2score();
-
-    double threshold_ = 0.5;
-    double epsilon_ = 0.1;
+    const Eigen::MatrixXd genotypes_;
+    const size_t grid_density_;
+    const size_t max_results_;
+    std::vector<Eigen::VectorXd> columns_;
 };
 
 } // namespace lmpp
