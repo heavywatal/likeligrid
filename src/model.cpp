@@ -59,7 +59,7 @@ void Model::help_and_exit() {HERE;
     auto description = general_desc();
     description.add(options_desc());
     // do not print positional arguments as options
-    std::cout << "Usage: tumopp [options] nsam howmany\n" << std::endl;
+    std::cout << "Usage: tumopp [options] epsilon threshold\n" << std::endl;
     description.print(std::cout);
     throw wtl::ExitSuccess();
 }
@@ -88,8 +88,8 @@ Model::Model(const std::vector<std::string>& arguments) {HERE;
     description.add(options_desc());
     description.add(positional_desc());
     po::positional_options_description positional;
-    positional.add("nsam", 1)
-              .add("howmany", 1);
+    positional.add("epsilon", 1)
+              .add("threshold", 1);
     po::variables_map vm;
     po::store(po::command_line_parser(arguments).
               options(description).
@@ -120,16 +120,6 @@ inline double Model::normal_ccdf(double score, const double sd) {
 }
 
 void Model::genotype2score() {HERE;
-    size_t dimensions = 2;
-    size_t num_samples = 4;
-    Eigen::VectorXd parameter(dimensions);
-    Eigen::MatrixXd genotype(num_samples, dimensions);
-    parameter << 0.3, 0.4;
-    genotype << 0, 0,
-        1, 0,
-        0, 1,
-        1, 1;
-    std::cout << genotype * parameter << std::endl;
     std::cout << normal_ccdf(0.1, 0.5) << std::endl;
     std::cout << normal_ccdf(0.3, 0.5) << std::endl;
     std::cout << normal_ccdf(0.4, 0.5) << std::endl;
@@ -138,21 +128,30 @@ void Model::genotype2score() {HERE;
 }
 
 void Model::run() {HERE;
-    // genotype2score();
+    wtl::Fin fin("dummy_genotype_cancer.tsv");
+    auto genotype = wtl::eigen::read_matrix<double>(fin);
+    std::cout << genotype.format(wtl::eigen::tsv()) << std::endl;
+    const size_t ncol = genotype.cols();
+
     Eigen::VectorXd vxd = Eigen::VectorXd::LinSpaced(5, 0.0, 1.0);
-    auto va = wtl::eigen::as_valarray(vxd);
-    // std::vector<Eigen::VectorXd> columns(3, vxd);
-    std::vector<std::valarray<double>> columns(3, va);
+    std::vector<Eigen::VectorXd> columns(ncol, vxd);
+    // auto va = wtl::eigen::as_valarray(vxd);
+    // std::vector<std::valarray<double>> columns(ncol, va);
     auto sim = wtl::itertools::simplex(columns);
-    for (const auto& x: sim()) {
-        std::cout << x << std::endl;
+
+    for (const auto& coefs: sim()) {
+        auto scores = (genotype * coefs).array();
+        auto loglik = scores.unaryExpr([this](double x) {
+            return normal_ccdf(x, 0.4);
+        }).log().sum();
+        std::cout << loglik << std::endl;
     }
+    genotype2score();
 }
 
 void Model::write() const {HERE;
     auto mat = Eigen::Matrix3d::Random();
     std::ofstream("test.tsv") << mat.format(wtl::eigen::tsv());
-    std::cout << wtl::eigen::read_matrix<double>("test.tsv").format(wtl::eigen::tsv()) << std::endl;
     if (WRITE_TO_FILES) {
         derr("mkdir && cd to " << OUT_DIR << std::endl);
         fs::create_directory(OUT_DIR);
