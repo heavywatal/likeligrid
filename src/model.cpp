@@ -56,13 +56,13 @@ Model::Model(std::istream& infile, const size_t g, const size_t n):
     genotypes_(wtl::eigen::read_matrix<double>(infile)),
     grid_density_(g), max_results_(n) {}
 
-std::multimap<double, std::valarray<double>>
+std::multimap<double, std::vector<double>>
 Model::run(const double threshold, const double epsilon) {HERE;
     Eigen::VectorXd axis = Eigen::VectorXd::LinSpaced(grid_density_, 0.0, 1.0 - epsilon);
     columns_ = std::vector<Eigen::VectorXd>(genotypes_.cols(), axis);
 
     auto sim = wtl::itertools::simplex(columns_, 1.0 - epsilon);
-    std::multimap<double, std::valarray<double>> leaders;
+    std::multimap<double, std::vector<double>> leaders;
     std::function<double(double)> calc_lik;
     if (true) {
         calc_lik = IsoSigma(threshold, epsilon);
@@ -71,7 +71,7 @@ Model::run(const double threshold, const double epsilon) {HERE;
     }
     for (const auto& coefs: sim()) {
         const double loglik = (genotypes_ * coefs).array().unaryExpr(calc_lik).log().sum();
-        leaders.emplace(loglik, wtl::eigen::as_valarray(coefs));
+        leaders.emplace(loglik, wtl::eigen::as_vector(coefs));
         while (leaders.size() > max_results_) {
             leaders.erase(leaders.begin());
         }
@@ -79,10 +79,17 @@ Model::run(const double threshold, const double epsilon) {HERE;
     return leaders;
 }
 
+std::ostream& operator<<(std::ostream& ost, const std::multimap<double, std::vector<double>>&m) {
+    for (const auto& p: m) {
+        ost << p.first << "\t" << wtl::join(p.second, "\t") << "\n";
+    }
+    return ost;
+}
+
 void Model::unit_test() {HERE;
     std::string geno = "0\t0\n0\t1\n1\t0\n1\t1\n";
     std::istringstream iss(geno);
-    Model model(iss, 10, 100);
+    Model model(iss, 10);
     std::cout << model.genotypes() << std::endl;
     std::cout << model.run(0.5, 0.1) << std::endl;
 

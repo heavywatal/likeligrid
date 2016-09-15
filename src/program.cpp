@@ -103,8 +103,13 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 void Program::run() {HERE;
     wtl::Fin fin(GENOTYPE_FILE);
     Model model(fin, GRID_DENSITY, MAX_RESULTS);
-    auto results = model.run(0.5, 0.0);
-    std::cout << results << std::endl;
+    std::vector<double> v_thr{0.5};
+    std::vector<double> v_eps{0.0, 0.1};
+    for (const auto threshold: v_thr) {
+        for (const auto epsilon: v_eps) {
+            std::cout << model.run(threshold, epsilon) << std::endl;
+        }
+    }
 }
 
 void Program::write() const {HERE;

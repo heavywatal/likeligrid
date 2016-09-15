@@ -8,7 +8,6 @@
 
 #include <iostream>
 #include <vector>
-#include <valarray>
 #include <map>
 
 #include <Eigen/Core>
@@ -21,7 +20,7 @@ class Model {
   public:
     Model(std::istream& infile, const size_t g, const size_t n=65535);
 
-    std::multimap<double, std::valarray<double>> run(const double threshold, const double epsilon);
+    std::multimap<double, std::vector<double>> run(const double threshold, const double epsilon);
 
     const Eigen::MatrixXd& genotypes() const {return genotypes_;}
 
@@ -34,6 +33,9 @@ class Model {
     const size_t max_results_;
     std::vector<Eigen::VectorXd> columns_;
 };
+
+extern std::ostream&
+operator<<(std::ostream&, const std::multimap<double, std::vector<double>>&);
 
 } // namespace lmpp
 
