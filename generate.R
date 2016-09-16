@@ -64,11 +64,12 @@ calc_loglik = function(genotype_mat, params, cancer=TRUE) {
 
 calc_loglik(.genotype_cancer, .params)
 
-.grid %>>%
+.results = .grid %>>%
 #    head() %>>%
     purrr::by_row(~calc_loglik(.genotype_cancer, flatten_dbl(.x)), .to='loglik') %>>%
     tidyr::unnest() %>>%
-    dplyr::arrange(desc(loglik))
+    dplyr::arrange(desc(loglik)) %>>%
+    (?.)
 
 #########1#########2#########3#########4
 # Use non-cancer too
@@ -82,3 +83,38 @@ calc_loglik(.genotype_cancer, .params)
     }, .to='loglik') %>>%
     tidyr::unnest() %>>%
     dplyr::arrange(desc(loglik))
+
+#########1#########2#########3#########4#########5#########6#########7#########
+# Visualize
+
+rescale = function(x, from=0, to=1) {
+    .range = range(x)
+    (x - .range[1]) / (.range[2] - .range[1])
+}
+
+.forplot = .results %>>%
+    dplyr::filter(loglik > 1.1 * max(loglik)) %>>%
+    dplyr::mutate(
+        x= rescale(loglik),
+        color= rgb(x, 1 - x, 1 - x)) %>>% (?.)
+
+#########1#########2#########3#########4
+
+library(rgl)
+
+if (rgl.cur()) {rgl.close()}
+rgl::open3d(windowRect=c(0, 0, 600, 600))
+.forplot %>>%
+    {rgl::spheres3d(x=.$TGF, y=.$Damage, z=.$Cycle,
+       color=.$color, radius=0.03)}
+rgl::axes3d(box=TRUE, xat=seq(0, 10, 0.05))
+rgl::box3d(xat=seq(0, 100, 0.1), yat=c(0, 2), zat=c(0, 1))
+#rgl::title3d('', '', 'x', 'y', 'z')
+rgl::writeWebGL('.', 'loglik_landscape.html', snapshot=FALSE, width=600, height=600)
+
+#########1#########2#########3#########4
+
+library(plotly)
+
+.forplot %>>%
+    plot_ly(x=~TGF, y=~Damage, z=~Cycle, type='scatter3d', mode='markers', marker=list(color=~color, size=24))
