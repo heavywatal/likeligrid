@@ -10,12 +10,12 @@ stopifnot(sum(true_coefs, true_epsilon) == 1.0)
 genotypes = rbernoulli(n_obs * length(true_coefs), 0.5) %>>%
     as.integer() %>>%
     matrix(nrow=n_obs) %>>%
+    {colnames(.) = names(true_coefs); .} %>>%
     (? head(.))
 
 .data = genotypes %>>% {
         .mu = . %*% true_coefs + true_epsilon
         tibble::as_tibble(.) %>>%
-        setNames(names(true_coefs)) %>>%
         dplyr::mutate(true_mu=.mu, true_sigma=sqrt(true_mu))
     } %>>%
     dplyr::mutate(
@@ -31,7 +31,54 @@ genotypes = rbernoulli(n_obs * length(true_coefs), 0.5) %>>%
 .genotype_cancer = dplyr::filter(.geno_matrices, cancer)$data[[1]] %>>%
     (?as_tibble(.))
 
-.genotype_cancer %>>% wtl::write_df('genotype_isovar_cancer.tsv')
+.genotype_cancer %>>% wtl::write_df('genotype1.tsv')
+
+#########1#########2#########3#########4#########5#########6#########7#########
+# interaction terms
+
+add_interaction_term = function(.data, .indices) {
+    .names = names(.data)[.indices]
+    .eq = paste(.names, collapse='*')
+    names(.eq) = paste(.names, collapse=':')
+    dplyr::mutate_(.data, .dots=.eq)
+}
+as_tibble(genotypes) %>>% add_interaction_term(c(1, 2))
+as_tibble(genotypes) %>>% add_interaction_term(c(1, 2, 3))
+
+.dimensions = ncol(genotypes)
+.combn = combn(.dimensions, 2)
+.genotypes2 = as_tibble(genotypes)
+for (i in seq_len(ncol(.combn))) {
+    .genotypes2 = add_interaction_term(.genotypes2, .combn[,i])
+}
+.genotypes2
+t
+rue_coefs2 = .genotypes2 %>>%
+    {setNames(runif(ncol(.)), names(.))} %>>%
+    (. * (1.0 - true_epsilon) / sum(.)) %>>%
+    (?.) %>>% (?sum(.))
+stopifnot(sum(true_coefs2, true_epsilon) == 1.0)
+
+.data2 = as.matrix(.genotypes2) %>>% {
+        .mu = . %*% true_coefs2 + true_epsilon
+        tibble::as_tibble(.) %>>%
+        dplyr::mutate(true_mu=.mu, true_sigma=sqrt(true_mu))
+    } %>>%
+    dplyr::mutate(
+        true_score= rnorm(nrow(.), true_mu, true_sigma),
+        cancer= true_score >= true_threshold) %>>%
+    (?.) %>>% (? dplyr::count(., cancer))
+
+.genotype_cancer2 = .data2 %>>%
+    dplyr::filter(cancer) %>>%
+    dplyr::select(-matches('^true_|^cancer$|:')) %>>% (?.)
+
+for (i in seq_len(ncol(.combn))) {
+    .df = add_interaction_term(.genotype_cancer2, .combn[,i])
+    .term = tail(names(.df), 1)
+    message(.term)
+    wtl::write_df(.df, sprintf('genotype2_%s.tsv', .term))
+}
 
 #########1#########2#########3#########4#########5#########6#########7#########
 # Use only cancer data
