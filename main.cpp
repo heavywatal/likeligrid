@@ -10,7 +10,6 @@ int main(int argc, char* argv[]) {
     try {
         lmpp::Program program(arguments);
         program.run();
-        program.write();
     } catch (wtl::ExitSuccess) {}
     return 0;
 }

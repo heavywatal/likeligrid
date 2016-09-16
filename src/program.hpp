@@ -9,7 +9,6 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
-#include <random>
 
 #include <cxxwtils/exception.hpp>
 
@@ -31,8 +30,6 @@ class Program {
     //! Top level function that should be called once from main()
     void run();
 
-    void write() const;
-
     std::string conf() const {return CONFIG_STRING;}
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
@@ -44,12 +41,9 @@ class Program {
     std::string GENOTYPE_FILE;
     size_t GRID_DENSITY = 11;
     size_t MAX_RESULTS = 16;
-
-    //! Seed for random number generator
-    unsigned int SEED = std::random_device{}();
-
-    //! Target directory to which the contents in WORK_DIR are moved
-    std::string OUT_DIR;
+    double EPSILON = 0.1;
+    double THRESHOLD = 0.5;
+    std::string OUTFILE = "-";
 
     std::string COMMAND_ARGS;
     std::string CONFIG_STRING;

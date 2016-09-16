@@ -35,7 +35,12 @@ class Model {
 };
 
 extern std::ostream&
-operator<<(std::ostream&, const std::multimap<double, std::vector<double>>&);
+print(std::ostream&, const std::multimap<double, std::vector<double>>&);
+
+inline std::ostream&
+print(std::ostream&& ost, const std::multimap<double, std::vector<double>>& m) {
+    return print(ost, m);
+}
 
 } // namespace lmpp
 

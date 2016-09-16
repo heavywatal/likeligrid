@@ -24,22 +24,22 @@ inline double normal_ccdf(const double x, const double mean, const double sd) {
     return bmath::cdf(bmath::complement(bmath::normal(mean, sd), x));
 }
 
-class IsoSigma {
+class IsoVar {
 public:
-    IsoSigma(const double t, const double e):
+    IsoVar(const double t, const double e):
         threshold_(t), epsilon_(e) {}
     double operator()(double x) const {
         x += epsilon_;
-        return normal_ccdf(threshold_, x, x);
+        return normal_ccdf(threshold_, x, std::sqrt(x));
     }
 private:
     const double threshold_;
     const double epsilon_;
 };
 
-class ConstSigma {
+class ConstVar {
 public:
-    ConstSigma(const double t, const double e, const double s):
+    ConstVar(const double t, const double e, const double s):
         threshold_(t), epsilon_(e), sd_(s) {}
     double operator()(double x) const {
         return normal_ccdf(threshold_, x += epsilon_, sd_);
@@ -65,9 +65,9 @@ Model::run(const double threshold, const double epsilon) {HERE;
     std::multimap<double, std::vector<double>> leaders;
     std::function<double(double)> calc_lik;
     if (true) {
-        calc_lik = IsoSigma(threshold, epsilon);
+        calc_lik = IsoVar(threshold, epsilon);
     } else {
-        calc_lik = ConstSigma(threshold, epsilon, 0.1);
+        calc_lik = ConstVar(threshold, epsilon, 0.1);
     }
     for (const auto& coefs: sim()) {
         const double loglik = (genotypes_ * coefs).array().unaryExpr(calc_lik).log().sum();
@@ -79,7 +79,7 @@ Model::run(const double threshold, const double epsilon) {HERE;
     return leaders;
 }
 
-std::ostream& operator<<(std::ostream& ost, const std::multimap<double, std::vector<double>>&m) {
+std::ostream& print(std::ostream& ost, const std::multimap<double, std::vector<double>>&m) {
     for (const auto& p: m) {
         ost << p.first << "\t" << wtl::join(p.second, "\t") << "\n";
     }
@@ -93,7 +93,7 @@ void Model::unit_test() {HERE;
     std::cout << model.genotypes() << std::endl;
     std::cout << model.run(0.5, 0.1) << std::endl;
 
-    auto calc_lik = IsoSigma(0.5, 0.1);
+    auto calc_lik = IsoVar(0.5, 0.1);
     const std::vector<double> scores{0.1, 0.2, 0.4, 0.5, 0.9};
     for (const auto x: scores) {
         std::cout << calc_lik(x) << std::endl;
