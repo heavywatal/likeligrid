@@ -20,27 +20,24 @@ class Model {
   public:
     Model(std::istream& infile, const size_t g, const size_t n=65535);
 
-    std::multimap<double, std::vector<double>> run(const double threshold, const double epsilon);
+    void run(const double threshold, const double epsilon);
 
+    const std::vector<std::string>& names() const {return names_;}
     const Eigen::MatrixXd& genotypes() const {return genotypes_;}
+    std::ostream& write_genotypes(std::ostream&, const bool header=true) const;
+    std::ostream& write_results(std::ostream&, const bool header=true) const;
 
     static void unit_test();
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
+    const std::vector<std::string> names_;
     const Eigen::MatrixXd genotypes_;
     const size_t grid_density_;
     const size_t max_results_;
     std::vector<Eigen::VectorXd> columns_;
+    std::multimap<double, std::vector<double>> results_;
 };
-
-extern std::ostream&
-print(std::ostream&, const std::multimap<double, std::vector<double>>&);
-
-inline std::ostream&
-print(std::ostream&& ost, const std::multimap<double, std::vector<double>>& m) {
-    return print(ost, m);
-}
 
 } // namespace lmpp
 

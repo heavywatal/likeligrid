@@ -44,7 +44,7 @@ po::options_description Program::options_desc() {HERE;
 po::options_description Program::positional_desc() {HERE;
     po::options_description description("Positional");
     description.add_options()
-        ("genotype", po::value(&GENOTYPE_FILE)->default_value(GENOTYPE_FILE));
+        ("infile", po::value(&INFILE)->default_value(INFILE));
     return description;
 }
 
@@ -52,7 +52,7 @@ void Program::help_and_exit() {HERE;
     auto description = general_desc();
     description.add(options_desc());
     // do not print positional arguments as options
-    std::cout << "Usage: lmpp [options] genotype\n" << std::endl;
+    std::cout << "Usage: lmpp [options] infile\n" << std::endl;
     description.print(std::cout);
     throw wtl::ExitSuccess();
 }
@@ -81,7 +81,7 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
     description.add(options_desc());
     description.add(positional_desc());
     po::positional_options_description positional;
-    positional.add("genotype", 1);
+    positional.add("infile", 1);
     po::variables_map vm;
     po::store(po::command_line_parser(arguments).
               options(description).
@@ -95,17 +95,20 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
         std::cerr << CONFIG_STRING << std::endl;
     }
     test(vm["test"].as<int>());
+    if (INFILE == "-") {
+        INFILE = "/dev/stdin";
+    }
+    if (OUTFILE == "-") {
+        OUTFILE = "/dev/stdout";
+    }
 }
 
 void Program::run() {HERE;
-    wtl::Fin fin(GENOTYPE_FILE);
+    wtl::Fin fin(INFILE);
     Model model(fin, GRID_DENSITY, MAX_RESULTS);
-    const auto result = model.run(THRESHOLD, EPSILON);
-    if (OUTFILE == "-") {
-        print(std::cout, result);
-    } else {
-        print(wtl::Fout(OUTFILE), result);
-    }
+    model.run(THRESHOLD, EPSILON);
+    wtl::Fout fout(OUTFILE);
+    model.write_results(fout);
 }
 
 } // namespace lmpp

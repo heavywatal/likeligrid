@@ -53,16 +53,16 @@ private:
 /////////1/////////2/////////3/////////4
 
 Model::Model(std::istream& infile, const size_t g, const size_t n):
-    genotypes_(wtl::eigen::read_matrix<double>(infile)),
+    names_(wtl::read_header(infile)),
+    genotypes_(wtl::eigen::read_matrix<double>(infile, names_.size())),
     grid_density_(g), max_results_(n) {}
 
-std::multimap<double, std::vector<double>>
-Model::run(const double threshold, const double epsilon) {HERE;
+void Model::run(const double threshold, const double epsilon) {HERE;
+    results_.clear();
     Eigen::VectorXd axis = Eigen::VectorXd::LinSpaced(grid_density_, 0.0, 1.0 - epsilon);
     columns_ = std::vector<Eigen::VectorXd>(genotypes_.cols(), axis);
 
     auto sim = wtl::itertools::simplex(columns_, 1.0 - epsilon);
-    std::multimap<double, std::vector<double>> leaders;
     std::function<double(double)> calc_lik;
     if (true) {
         calc_lik = IsoVar(threshold, epsilon);
@@ -71,27 +71,33 @@ Model::run(const double threshold, const double epsilon) {HERE;
     }
     for (const auto& coefs: sim()) {
         const double loglik = (genotypes_ * coefs).array().unaryExpr(calc_lik).log().sum();
-        leaders.emplace(loglik, wtl::eigen::as_vector(coefs));
-        while (leaders.size() > max_results_) {
-            leaders.erase(leaders.begin());
+        results_.emplace(loglik, wtl::eigen::as_vector(coefs));
+        while (results_.size() > max_results_) {
+            results_.erase(results_.begin());
         }
     }
-    return leaders;
 }
 
-std::ostream& print(std::ostream& ost, const std::multimap<double, std::vector<double>>&m) {
-    for (const auto& p: m) {
+std::ostream& Model::write_genotypes(std::ostream& ost, const bool header) const {
+    if (header) {ost << wtl::join(names_, "\t") << "\n";}
+    return ost << genotypes_.format(wtl::eigen::tsv());
+}
+
+std::ostream& Model::write_results(std::ostream& ost, const bool header) const {
+    if (header) {ost << "loglik\t" << wtl::join(names_, "\t") << "\n";}
+    for (const auto& p: results_) {
         ost << p.first << "\t" << wtl::join(p.second, "\t") << "\n";
     }
     return ost;
 }
 
 void Model::unit_test() {HERE;
-    std::string geno = "0\t0\n0\t1\n1\t0\n1\t1\n";
+    std::string geno = "a\tb\n0\t0\n0\t1\n1\t0\n1\t1\n";
     std::istringstream iss(geno);
     Model model(iss, 10);
-    std::cout << model.genotypes() << std::endl;
-    std::cout << model.run(0.5, 0.1) << std::endl;
+    model.write_genotypes(std::cout);
+    model.run(0.5, 0.1);
+    model.write_results(std::cout);
 
     auto calc_lik = IsoVar(0.5, 0.1);
     const std::vector<double> scores{0.1, 0.2, 0.4, 0.5, 0.9};

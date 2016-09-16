@@ -38,11 +38,11 @@ class Program {
     boost::program_options::options_description positional_desc();
     void help_and_exit();
 
-    std::string GENOTYPE_FILE;
     size_t GRID_DENSITY = 11;
     size_t MAX_RESULTS = 16;
     double EPSILON = 0.1;
     double THRESHOLD = 0.5;
+    std::string INFILE = "-";
     std::string OUTFILE = "-";
 
     std::string COMMAND_ARGS;
