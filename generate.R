@@ -52,8 +52,7 @@ for (i in seq_len(ncol(.combn))) {
     .genotypes2 = add_interaction_term(.genotypes2, .combn[,i])
 }
 .genotypes2
-t
-rue_coefs2 = .genotypes2 %>>%
+true_coefs2 = .genotypes2 %>>%
     {setNames(runif(ncol(.)), names(.))} %>>%
     (. * (1.0 - true_epsilon) / sum(.)) %>>%
     (?.) %>>% (?sum(.))
