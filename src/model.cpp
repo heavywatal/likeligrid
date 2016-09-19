@@ -4,25 +4,13 @@
 */
 #include "model.hpp"
 
-#include <boost/math/distributions/normal.hpp>
-
 #include <cxxwtils/debug.hpp>
 #include <cxxwtils/iostr.hpp>
+#include <cxxwtils/math.hpp>
 #include <cxxwtils/eigen.hpp>
 #include <cxxwtils/itertools.hpp>
 
 namespace lmpp {
-
-namespace bmath = boost::math;
-
-inline double normal_cdf(const double x, const double mean, const double sd) {
-    return bmath::cdf(bmath::normal(mean, sd), x);
-}
-
-inline double normal_ccdf(const double x, const double mean, const double sd) {
-    if (sd == 0.0) {return 0.0;}
-    return bmath::cdf(bmath::complement(bmath::normal(mean, sd), x));
-}
 
 class IsoVar {
 public:
@@ -30,7 +18,7 @@ public:
         threshold_(t), epsilon_(e) {}
     double operator()(double x) const {
         x += epsilon_;
-        return normal_ccdf(threshold_, x, std::sqrt(x));
+        return wtl::normal_ccdf(threshold_, x, std::sqrt(x));
     }
 private:
     const double threshold_;
@@ -42,7 +30,7 @@ public:
     ConstVar(const double t, const double e, const double s):
         threshold_(t), epsilon_(e), sd_(s) {}
     double operator()(double x) const {
-        return normal_ccdf(threshold_, x += epsilon_, sd_);
+        return wtl::normal_ccdf(threshold_, x += epsilon_, sd_);
     }
 private:
     const double threshold_;
