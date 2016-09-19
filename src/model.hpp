@@ -14,8 +14,6 @@
 
 namespace lmpp {
 
-/*! @brief Represents single run
-*/
 class Model {
   public:
     Model(std::istream& infile, const size_t g, const size_t n=65535);

@@ -4,7 +4,7 @@
 */
 #include <lmpp/program.hpp>
 
-//! Just instantiate and run Simulation
+//! Just instantiate and run Program
 int main(int argc, char* argv[]) {
     std::vector<std::string> arguments(argv + 1, argv + argc);
     try {
