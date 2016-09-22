@@ -116,6 +116,14 @@ genotype_pereira %>>%
     dplyr::mutate(rm=rowMeans(.)) %>>%
     ggplot(aes(rm))+geom_histogram()+wtl::theme_wtl()
 
+shuffle_genotypes = function(.data) {
+    .names = names(.data)
+    purrr::by_row(.data, .labels=FALSE,
+        ~{sample(.x) %>>% setNames(.names)}) %>>%
+    tidyr::unnest()
+}
+genotype_pereira %>>% shuffle_genotypes()
+
 #########1#########2#########3#########4#########5#########6#########7#########
 # Use only cancer data
 
