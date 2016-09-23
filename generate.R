@@ -105,9 +105,11 @@ for (i in seq_len(ncol(.combn))) {
 }
 
 #########1#########2#########3#########4#########5#########6#########7#########
-#
+# Shuffle genotypes
 
-genotype_pereira = readr::read_tsv('~/Dropbox/working/tumor/genotype_pereira+er.tsv')
+working_dir = '~/Dropbox/working/tumor'
+.infile = file.path(working_dir, 'genotype_pereira+er.tsv')
+genotype_pereira = readr::read_tsv(.infile)
 genotype_pereira %>>% dplyr::summarise_all(mean)
 genotype_pereira %>>% as.matrix() %>>% table()
 genotype_pereira %>>% dplyr::select(-Other) %>>% as.matrix() %>>% table()
@@ -122,7 +124,47 @@ shuffle_genotypes = function(.data) {
         ~{sample(.x) %>>% setNames(.names)}) %>>%
     tidyr::unnest()
 }
-genotype_pereira %>>% shuffle_genotypes()
+
+.shuffled = genotype_pereira %>>% shuffle_genotypes() %>>% (?.)
+.outfile = file.path(working_dir, sprintf('genotype_pereira+er_%s.tsv', wtl::now()))
+wtl::write_df(.shuffled, .outfile)
+
+.dimensions = ncol(genotype_pereira)
+.combn = combn(.dimensions, 2)
+for (i in seq_len(ncol(.combn))) {
+    .df = add_interaction_term(genotype_pereira, .combn[,i])
+    .term = tail(names(.df), 1)
+    message(.term)
+    wtl::write_df(.df, sprintf('pereira+er_%s.tsv', .term))
+}
+
+for (i in seq_len(ncol(.combn))) {
+    .df = add_interaction_term(.shuffled, .combn[,i])
+    .term = tail(names(.df), 1)
+    message(.term)
+    wtl::write_df(.df, sprintf('shuffled+er_%s.tsv', .term))
+}
+
+#########1#########2#########3#########4
+# Run C++
+
+system('./a.out genotype2.tsv')
+
+.infiles = list.files('genotypes', pattern='.+\\.tsv', full.names=TRUE) %>>% (?.)
+.outfiles = str_replace(.infiles, '^genotypes/', 'loglik/') %>>% (?.)
+
+library(doParallel)
+
+a_out = function(.infiles, .outfiles, .cores=parallel::detectCores(logical=FALSE)) {
+    cluster = parallel::makeCluster(.cores)
+    on.exit(parallel::stopCluster(cluster))
+    doParallel::registerDoParallel(cluster)
+    foreach::foreach(infile=.infiles, outfile=.outfiles, .combine=c) %dopar% {
+        .cmd = paste('./a.out -c0.3 -e0.1 -g5 -n1000 -o', outfile, infile)
+        system(.cmd, ignore.stdout=TRUE, ignore.stderr=TRUE)
+    }
+}
+a_out(.infiles, .outfiles)
 
 #########1#########2#########3#########4#########5#########6#########7#########
 # Use only cancer data
