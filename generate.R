@@ -152,19 +152,19 @@ system('./a.out genotype2.tsv')
 
 .infiles = list.files('genotypes', pattern='.+\\.tsv', full.names=TRUE) %>>% (?.)
 .outfiles = str_replace(.infiles, '^genotypes/', 'loglik/') %>>% (?.)
+.commands = paste('./a.out -c0.3 -e0.1 -g91 -n1000 -o', .outfiles, .infiles) %>>% (?.)
 
 library(doParallel)
 
-a_out = function(.infiles, .outfiles, .cores=parallel::detectCores(logical=FALSE)) {
+system_par = function(.commands, .cores=parallel::detectCores(logical=FALSE)) {
     cluster = parallel::makeCluster(.cores)
     on.exit(parallel::stopCluster(cluster))
     doParallel::registerDoParallel(cluster)
-    foreach::foreach(infile=.infiles, outfile=.outfiles, .combine=c) %dopar% {
-        .cmd = paste('./a.out -c0.3 -e0.1 -g5 -n1000 -o', outfile, infile)
-        system(.cmd, ignore.stdout=TRUE, ignore.stderr=TRUE)
+    foreach::foreach(command=.commands, .combine=c) %dopar% {
+        system(command, ignore.stdout=TRUE, ignore.stderr=TRUE)
     }
 }
-a_out(.infiles, .outfiles)
+system_par(.commands)
 
 #########1#########2#########3#########4#########5#########6#########7#########
 # Use only cancer data
