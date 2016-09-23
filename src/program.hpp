@@ -41,7 +41,7 @@ class Program {
     size_t GRID_DENSITY = 11;
     size_t MAX_RESULTS = 16;
     double EPSILON = 0.1;
-    double THRESHOLD = 0.5;
+    double THRESHOLD = 0.3;
     std::string INFILE = "-";
     std::string OUTFILE = "-";
 
