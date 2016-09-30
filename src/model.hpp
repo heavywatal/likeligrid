@@ -7,6 +7,7 @@
 #define LMPP_MODEL_HPP_
 
 #include <iostream>
+#include <string>
 #include <vector>
 #include <map>
 
@@ -17,8 +18,17 @@ namespace lmpp {
 class Model {
   public:
     Model(std::istream& infile, const size_t g, const size_t n=65535);
+    Model(const std::vector<std::string>& names,
+          const Eigen::MatrixXd& genotypes,
+          const size_t grid_density,
+          const size_t max_results=65535):
+          names_(names),
+          genotypes_(genotypes),
+          grid_density_(grid_density),
+          max_results_(max_results) {}
 
-    void run(const double threshold, const double epsilon);
+    void run(const double threshold, const double epsilon,
+             const std::string& outfile="/dev/stdout");
 
     const std::vector<std::string>& names() const {return names_;}
     const Eigen::MatrixXd& genotypes() const {return genotypes_;}

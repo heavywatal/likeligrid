@@ -45,12 +45,13 @@ Model::Model(std::istream& infile, const size_t g, const size_t n):
     genotypes_(wtl::eigen::read_matrix<double>(infile, names_.size())),
     grid_density_(g), max_results_(n) {}
 
-void Model::run(const double threshold, const double epsilon) {HERE;
+void Model::run(const double threshold, const double epsilon, const std::string& outfile) {HERE;
     results_.clear();
     Eigen::VectorXd axis = Eigen::VectorXd::LinSpaced(grid_density_, 0.0, 1.0 - epsilon);
     columns_ = std::vector<Eigen::VectorXd>(genotypes_.cols(), axis);
 
     auto sim = wtl::itertools::simplex(columns_, 1.0 - epsilon);
+    const auto num_gridpoints = sim.count_max();
     std::function<double(double)> calc_lik;
     if (true) {
         calc_lik = IsoVar(threshold, epsilon);
@@ -58,12 +59,21 @@ void Model::run(const double threshold, const double epsilon) {HERE;
         calc_lik = ConstVar(threshold, epsilon, 0.1);
     }
     for (const auto& coefs: sim()) {
+        if (sim.count() % 1000 == 0) {
+            wtl::Fout fout(outfile);
+            fout << "# " << sim.count() << " in "
+                 << static_cast<double>(sim.count_all()) / static_cast<double>(num_gridpoints)
+                 << " (" << sim.count_all() << " / " << num_gridpoints << ")\n";
+            write_results(fout);
+        }
         const double loglik = (genotypes_ * coefs).array().unaryExpr(calc_lik).log().sum();
         results_.emplace(loglik, wtl::eigen::as_vector(coefs));
         while (results_.size() > max_results_) {
             results_.erase(results_.begin());
         }
     }
+    wtl::Fout fout(outfile);
+    write_results(fout);
 }
 
 std::ostream& Model::write_genotypes(std::ostream& ost, const bool header) const {

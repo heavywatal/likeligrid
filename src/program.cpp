@@ -11,8 +11,7 @@
 #include <cxxwtils/debug.hpp>
 #include <cxxwtils/iostr.hpp>
 #include <cxxwtils/getopt.hpp>
-#include <cxxwtils/os.hpp>
-#include <cxxwtils/gz.hpp>
+#include <cxxwtils/eigen.hpp>
 
 #include "model.hpp"
 
@@ -105,10 +104,11 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 
 void Program::run() {HERE;
     wtl::Fin fin(INFILE);
-    Model model(fin, GRID_DENSITY, MAX_RESULTS);
-    model.run(THRESHOLD, EPSILON);
-    wtl::Fout fout(OUTFILE);
-    model.write_results(fout);
+    const auto names = wtl::read_header(fin);
+    const auto genotypes = wtl::eigen::read_matrix<double>(fin, names.size());
+    fin.close();
+    Model model(names, genotypes, GRID_DENSITY, MAX_RESULTS);
+    model.run(THRESHOLD, EPSILON, OUTFILE);
 }
 
 } // namespace lmpp
