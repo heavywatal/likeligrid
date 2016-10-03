@@ -152,7 +152,7 @@ system('./a.out genotype2.tsv')
 
 .infiles = list.files('genotypes', pattern='.+\\.tsv', full.names=TRUE) %>>% (?.)
 .outfiles = str_replace(.infiles, '^genotypes/', 'loglik/') %>>% (?.)
-.commands = paste('./a.out -c0.3 -e0.1 -g91 -n1000 -o', .outfiles, .infiles) %>>% (?.)
+.commands = paste('./a.out -c0.3 -e0.1 -g21 -n1000 -o', .outfiles, .infiles) %>>% (?.)
 
 library(doParallel)
 
