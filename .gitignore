@@ -2,6 +2,7 @@
 *.png
 *.pdf
 *.trace
+*.rda
 lib*.a
 lib*.so
 build/
