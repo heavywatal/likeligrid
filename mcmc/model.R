@@ -1,96 +1,92 @@
-library(pipeR)
-library(dplyr)
-library(tidyr)
-library(purrr)
-library(stringr)
-library(readr)
-library(wtl)
 #########1#########2#########3#########4#########5#########6#########7#########
+# Exhaustive loops
+# Use only cancer data
 
-setwd('~/working/cancer')
-.drivers = read_tsv('driver_genes.tsv') %>>% (?.)
-top_drivers = .drivers %>>%
-    dplyr::filter(refs >= 4) %>>%
-    dplyr::rename(pathway=vogel_pathway) %>>%
-    tidyr::replace_na(list(role='TSG', pathway='NA')) %>>%
-    dplyr::select(gene, role, pathway) %>>%
+.epsilon = 0.1
+.threshold = 0.5
+.grid = 19
+.v = seq(0.0, 1.0 - .epsilon, length.out=.grid)
+num_params = ncol(.genotype_cancer)
+
+.grid = rep(.v, num_params - 1) %>>%
+    matrix(ncol=num_params - 1) %>>%
+    tibble::as_tibble() %>>%
+    expand.grid() %>>%
+    tibble::as_tibble() %>>%
+    dplyr::mutate(rest= 1.0 - .epsilon - rowSums(.)) %>>%
+    dplyr::filter(rest >= 0) %>>%
+    setNames(names(true_coefs)) %>>%
     (?.)
-init_genes = setNames(rep(1, nrow(top_drivers)), top_drivers$gene) %>>% (?.)
 
-.pathway_genes = .drivers %>>%
-    tidyr::replace_na(list(vogel_pathway='NA')) %>>%
-    dplyr::mutate(pathway= str_split(vogel_pathway, ':')) %>>%
+(.params = .grid %>>% sample_n(1) %>>% unlist())
+
+calc_loglik = function(genotype_mat, params, cancer=TRUE) {
+    dplyr::tibble(
+      mu= genotype_mat %*% params %>>% as.vector() + .epsilon,
+      sigma= sqrt(mu),
+      loglik= pnorm(.threshold, mu, sigma, lower.tail=!cancer, log.p=TRUE)
+    ) %>>% (sum(.$loglik))
+}
+
+calc_loglik(.genotype_cancer, .params)
+
+.results = .grid %>>%
+#    head() %>>%
+    purrr::by_row(~calc_loglik(.genotype_cancer, flatten_dbl(.x)), .to='loglik') %>>%
     tidyr::unnest() %>>%
-    dplyr::count(pathway) %>>%
-    (?.)
-init_pathways = setNames(rep(1, nrow(.pathway_genes)), .pathway_genes$pathway) %>>% (?.)
-
-maf_annot = read_tsv('gdc_topdrivers.maf.clean.tsv.gz') %>>%
-    dplyr::left_join(top_drivers, by='gene') %>>%
+    dplyr::arrange(desc(loglik)) %>>%
     (?.)
 
-maf_annot %>>%
-    dplyr::count(cancer_type, sample) %>>%
-    dplyr::count(cancer_type) %>>%
-    dplyr::arrange(desc(nn))
+#########1#########2#########3#########4
+# Use non-cancer too
 
-maf_annot %>>%
-    dplyr::mutate(width = end - start) %>>%
-    ggplot(aes(width))+geom_histogram(center=0, binwidth=1)
-
-#########1#########2#########3#########4#########5#########6#########7#########
-
-calc_mudens = function(.data) {.data %>>%
-    tidyr::nest(-role, -pathway, -gene, -mutype) %>>%
-    dplyr::select(-pathway) %>>%
+.grid %>>%
     purrr::by_row(~{
-        table(.$data[[1]]$start, dnn='pos') %>>%
-        tibble::as_tibble() %>>%
-        dplyr::mutate(pos=as.integer(pos),
-          mut_density= n / sum(n), n=NULL)
-    }) %>>%
-    dplyr::select(-data) %>>%
-    tidyr::unnest()
-}
-
-mut_density = maf_annot %>>%
-    (? dplyr::count(., mutype)) %>>%
-    dplyr::mutate(mutype= str_replace(mutype, 'splice', 'truncating')) %>>%
-    dplyr::filter(mutype %in% c('missense', 'truncating')) %>>%
-    calc_mudens() %>>% (?.)
-
-mut_density %>>%
-    dplyr::filter(mut_density > 0.1) %>>%
-    dplyr::filter(!(role=='oncogene' & mutype=='truncating')) %>>%
-    dplyr::arrange(role, gene, pos) %>>%
-    (?.) %>>% wtl::write_df('recurrent_mutations.tsv.gz')
-
-add_mudens_weight = function(.data) {
-    .oncomut_density = mut_density %>>%
-        dplyr::filter(role=='oncogene') %>>%
-        dplyr::select(-role)
-    left_join(.data, .oncomut_density, by=c('gene', 'pos', 'mutype')) %>>%
-    dplyr::mutate(mudens_weight= ifelse(role=='oncogene', mut_density, 1)) %>>%
-    tidyr::replace_na(list(mudens_weight=0)) %>>%
-    dplyr::select(-mut_density)
-}
-
-#' @param tsg_missense numeric value relative to truncating mutation
-summarise_mut_score_by_gene = function(.data, tsg_missense) {
-    dplyr::mutate(.data, tsg_weight=
-      ifelse(role!='oncogene' & mutype=='missense', tsg_missense, 1.0)) %>>%
-    dplyr::group_by(sample, pathway, gene, role) %>>%
-    dplyr::summarise(mut_score= sum(mudens_weight * tsg_weight)) %>>%
-    dplyr::ungroup() %>>%
-    dplyr::mutate(mut_score= pmin(1.0, mut_score))
-}
-
-maf_weighted = maf_annot %>>%
-    add_mudens_weight() %>>%
-    summarise_mut_score_by_gene(0.5) %>>%
-    dplyr::arrange(sample, pathway, desc(mut_score)) %>>% (?.)
+        .params = flatten_dbl(.x)
+        purrr::by_row(.geno_matrices, ~{
+            calc_loglik(.$data[[1]], .params, .$cancer)
+        }, .labels=FALSE, .collate='rows')$.out %>>% sum()
+    }, .to='loglik') %>>%
+    tidyr::unnest() %>>%
+    dplyr::arrange(desc(loglik))
 
 #########1#########2#########3#########4#########5#########6#########7#########
+# Visualize
+
+rescale = function(x, from=0, to=1) {
+    .range = range(x)
+    (x - .range[1]) / (.range[2] - .range[1])
+}
+
+.forplot = .results %>>%
+    dplyr::filter(loglik > 1.1 * max(loglik)) %>>%
+    dplyr::mutate(
+        x= rescale(loglik),
+        color= rgb(x, 1 - x, 1 - x)) %>>% (?.)
+
+#########1#########2#########3#########4
+
+library(rgl)
+
+if (rgl.cur()) {rgl.close()}
+rgl::open3d(windowRect=c(0, 0, 600, 600))
+.forplot %>>%
+    {rgl::spheres3d(x=.$TGF, y=.$Damage, z=.$Cycle,
+       color=.$color, radius=0.03)}
+rgl::axes3d(box=TRUE, xat=seq(0, 10, 0.05))
+rgl::box3d(xat=seq(0, 100, 0.1), yat=c(0, 2), zat=c(0, 1))
+#rgl::title3d('', '', 'x', 'y', 'z')
+rgl::writeWebGL('.', 'loglik_landscape.html', snapshot=FALSE, width=600, height=600)
+
+#########1#########2#########3#########4
+
+library(plotly)
+
+.forplot %>>%
+    plot_ly(x=~TGF, y=~Damage, z=~Cycle, type='scatter3d', mode='markers', marker=list(color=~color, size=24))
+
+#########1#########2#########3#########4#########5#########6#########7#########
+# deprecated
 
 unnest_pathway = function(.data) {
     dplyr::mutate(.data, pathway= str_split(pathway, ':')) %>>%
@@ -130,7 +126,7 @@ model1(maf_pathways, init_pathways * 10, 10)
 
 
 #########1#########2#########3#########4#########5#########6#########7#########
-# Exhaustive loops
+# Huge exhaustive loops
 
 .by = 0.1
 .v = seq(.by, 0.5, .by)
