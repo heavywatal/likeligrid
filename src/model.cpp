@@ -15,26 +15,26 @@ namespace lmpp {
 class IsoVar {
 public:
     IsoVar(const double t, const double e):
-        threshold_(t), epsilon_(e) {}
+        threshold_(t), intercept_(e) {}
     double operator()(double x) const {
-        x += epsilon_;
+        x += intercept_;
         return wtl::normal_ccdf(threshold_, x, std::sqrt(x));
     }
 private:
     const double threshold_;
-    const double epsilon_;
+    const double intercept_;
 };
 
 class ConstVar {
 public:
     ConstVar(const double t, const double e, const double s):
-        threshold_(t), epsilon_(e), sd_(s) {}
+        threshold_(t), intercept_(e), sd_(s) {}
     double operator()(double x) const {
-        return wtl::normal_ccdf(threshold_, x += epsilon_, sd_);
+        return wtl::normal_ccdf(threshold_, x += intercept_, sd_);
     }
 private:
     const double threshold_;
-    const double epsilon_;
+    const double intercept_;
     const double sd_;
 };
 
@@ -45,18 +45,18 @@ Model::Model(std::istream& infile, const size_t g, const size_t n):
     genotypes_(wtl::eigen::read_matrix<double>(infile, names_.size())),
     grid_density_(g), max_results_(n) {}
 
-void Model::run(const double threshold, const double epsilon, const std::string& outfile) {HERE;
+void Model::run(const double threshold, const double intercept, const std::string& outfile) {HERE;
     results_.clear();
-    Eigen::VectorXd axis = Eigen::VectorXd::LinSpaced(grid_density_, 0.0, 1.0 - epsilon);
+    Eigen::VectorXd axis = Eigen::VectorXd::LinSpaced(grid_density_, 0.0, 1.0 - intercept);
     columns_ = std::vector<Eigen::VectorXd>(genotypes_.cols(), axis);
 
-    auto sim = wtl::itertools::simplex(columns_, 1.0 - epsilon);
+    auto sim = wtl::itertools::simplex(columns_, 1.0 - intercept);
     const auto num_gridpoints = sim.count_max();
     std::function<double(double)> calc_lik;
     if (true) {
-        calc_lik = IsoVar(threshold, epsilon);
+        calc_lik = IsoVar(threshold, intercept);
     } else {
-        calc_lik = ConstVar(threshold, epsilon, 0.1);
+        calc_lik = ConstVar(threshold, intercept, 0.1);
     }
     for (const auto& coefs: sim()) {
         if (sim.count() % 1000 == 0) {

@@ -27,7 +27,7 @@ class Model {
           grid_density_(grid_density),
           max_results_(max_results) {}
 
-    void run(const double threshold, const double epsilon,
+    void run(const double threshold, const double intercept,
              const std::string& outfile="/dev/stdout");
 
     const std::vector<std::string>& names() const {return names_;}

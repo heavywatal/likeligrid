@@ -34,7 +34,7 @@ po::options_description Program::options_desc() {HERE;
     description.add_options()
         ("grid,g", po::value(&GRID_DENSITY)->default_value(GRID_DENSITY))
         ("max,n", po::value(&MAX_RESULTS)->default_value(MAX_RESULTS))
-        ("epsilon,e", po::value(&EPSILON)->default_value(EPSILON))
+        ("intercept,e", po::value(&INTERCEPT)->default_value(INTERCEPT))
         ("threshold,c", po::value(&THRESHOLD)->default_value(THRESHOLD))
         ("outfile,o", po::value<std::string>(&OUTFILE)->default_value(OUTFILE));
     return description;
@@ -108,7 +108,7 @@ void Program::run() {HERE;
     const auto genotypes = wtl::eigen::read_matrix<double>(fin, names.size());
     fin.close();
     Model model(names, genotypes, GRID_DENSITY, MAX_RESULTS);
-    model.run(THRESHOLD, EPSILON, OUTFILE);
+    model.run(THRESHOLD, INTERCEPT, OUTFILE);
 }
 
 } // namespace lmpp
