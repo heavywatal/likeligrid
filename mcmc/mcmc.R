@@ -42,11 +42,11 @@ stan_dens(.fit, pars=c('coefs'), color=NA, separate_chains=TRUE)+
 
 #########1#########2#########3#########4#########5#########6#########7#########
 
-.results = wtl::map_par(.infiles, ~{
+.results = purrr::map(.infiles, ~{
     .base = tools::file_path_sans_ext(basename(.x))
     .outfile = paste0(.base, '.stanfit.rds')
     message(.outfile)
     .fit = rstan::sampling(.model, make_data(.x), iter=10000, chains=3)
     saveRDS(.fit, .outfile)
     .fit
-}, .cores=2, .cluster='PSOCK')
+})
