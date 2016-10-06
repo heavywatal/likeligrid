@@ -41,7 +41,7 @@ make_phenotypes = function(genotypes, coefs, sd_coef, threshold, epsilon=0.1) {
 #########1#########2#########3#########4#########5#########6#########7#########
 # Shuffle genotypes
 
-working_dir = '~/Dropbox/working/tumor'
+working_dir = '~/Dropbox/working/cancer/genotypes'
 .infile = file.path(working_dir, 'genotype_pereira+er.tsv')
 genotype_pereira = readr::read_tsv(.infile)
 genotype_pereira %>>% dplyr::summarise_all(mean)
@@ -60,7 +60,7 @@ shuffle_genotypes = function(.data) {
 }
 
 .shuffled = genotype_pereira %>>% shuffle_genotypes() %>>% (?.)
-.outfile = file.path(working_dir, sprintf('genotype_pereira+er_%s.tsv', wtl::now()))
+.outfile = file.path(working_dir, sprintf('genotype_shuffled+er_%s.tsv', wtl::now()))
 wtl::write_df(.shuffled, .outfile)
 
 .dimensions = ncol(genotype_pereira)

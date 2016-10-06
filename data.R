@@ -35,7 +35,7 @@ genotype_pereira = observed %>>%
 
 genotype_pereira %>>% summarise_all(mean)
 
-.outdir = '~/Dropbox/working/tumor'
+.outdir = '~/Dropbox/working/cancer/genotypes'
 .outfile = file.path(.outdir, 'genotype_pereira+er.tsv')
 
 genotype_pereira %>>% write_df(.outfile)
