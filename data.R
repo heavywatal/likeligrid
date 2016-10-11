@@ -22,6 +22,10 @@ observed = mutations %>>%
                ifelse(str_detect(mutationType, '^missense|^inframe'), 'missense', 'truncating'))) %>>%
     dplyr::left_join(patients %>>% dplyr::select(sample, erStatus, her2Status), by='sample') %>>% (?.)
 
+.outdir = '~/Dropbox/working/cancer'
+.outfile = file.path(.outdir, 'pereira_tidy.tsv')
+write_tsv(observed, .outfile)
+
 observed %>>% dplyr::count(erStatus, her2Status)
 
 genotype_pereira = observed %>>%
