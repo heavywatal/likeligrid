@@ -1,0 +1,85 @@
+---
+title: "Pereira data mutation profile"
+author: "WMI"
+date: "October 11, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+opts_chunk$set(out.width='100%')
+library(pipeR)
+library(tidyverse)
+library(wtl)
+loadNamespace('cowplot')
+ggplot2::theme_set(wtl::theme_wtl())
+```
+
+```{r read}
+.indir = '~/Dropbox/working/cancer'
+.infile = file.path(.indir, 'pereira_tidy.tsv')
+pereira = readr::read_tsv(.infile) %>>%
+    dplyr::filter(pathway != 'Other') %>>%
+    dplyr::select(sample, gene, pathway) %>>%
+    dplyr::arrange(sample, pathway, gene)
+
+shuffled = pereira %>>%
+    dplyr::mutate(sample= sample(pereira$sample)) %>>%
+    dplyr::arrange(sample, pathway, gene)
+```
+
+## Relationship between number of mutated genes and pathways
+
+突然変異が10遺伝子を超えるサンプルを除いて
+
+```{r mutations, fig.width=9, fig.height=6}
+profile_mutations = function(.data) {
+    dplyr::full_join(
+        .data %>>% dplyr::count(sample) %>>% dplyr::rename(genes=n),
+        .data %>>% dplyr::count(sample, pathway) %>>% dplyr::count(sample) %>>% dplyr::rename(pathways=nn),
+        by='sample') %>>%
+    dplyr::filter(genes <= 10)
+}
+
+plot_mutations = function(.data, title='') {
+    .scatter = .data %>>%
+    ggplot(aes(pathways, genes))+
+    geom_jitter(width=0.6, height=0, alpha=0.3)+
+    geom_violin(aes(group=pathways), alpha=0.5, colour='dodgerblue', fill='dodgerblue')
+
+    .bar_p = .data %>>%
+    ggplot(aes(pathways))+
+    geom_bar()+
+    labs(title=title)+
+    theme(axis.title.x=element_blank())
+
+    .bar_g = .data %>>%
+    ggplot(aes(genes))+
+    geom_bar()+
+    coord_flip()+
+    theme(axis.title.y=element_blank())
+
+    cowplot::plot_grid(.bar_p, NULL, .scatter, .bar_g, align='hv', rel_widths=c(2, 1), rel_heights=c(1, 2))
+}
+
+cowplot::plot_grid(
+    profile_mutations(pereira) %>>% plot_mutations('pereira'),
+    profile_mutations(shuffled) %>>% plot_mutations('shuffled')
+)
+```
+
+## Number of mutated genes within pathways
+
+```{r within, fig.width=9, fig.height=6}
+plot_within_pathways = function(.data) {
+    .data %>>%
+    dplyr::count(sample, pathway) %>>%
+    ggplot(aes(n))+
+    geom_bar()+
+    labs(title=deparse(substitute(.data)))+
+    facet_wrap(~pathway)+
+    coord_cartesian(ylim=c(0, 1000))
+}
+
+cowplot::plot_grid(plot_within_pathways(pereira), plot_within_pathways(shuffled))
+```
