@@ -21,6 +21,9 @@ ggplot2::theme_set(wtl::theme_wtl())
 pereira = readr::read_tsv(.infile) %>>%
     dplyr::filter(pathway != 'Other') %>>%
     dplyr::select(sample, gene, pathway) %>>%
+    dplyr::group_by(sample, gene) %>>%
+    dplyr::summarise(pathway=head(pathway, 1)) %>>%
+    dplyr::ungroup() %>>%
     dplyr::arrange(sample, pathway, gene)
 
 shuffled = pereira %>>%
@@ -51,6 +54,7 @@ plot_mutations = function(.data, title='') {
     ggplot(aes(pathways))+
     geom_bar()+
     labs(title=title)+
+    coord_cartesian(ylim=c(0, 900))+
     theme(axis.title.x=element_blank())
 
     .bar_g = .data %>>%
@@ -78,7 +82,7 @@ plot_within_pathways = function(.data) {
     geom_bar()+
     labs(title=deparse(substitute(.data)))+
     facet_wrap(~pathway)+
-    coord_cartesian(ylim=c(0, 1000))
+    coord_cartesian(ylim=c(0, 1200))
 }
 
 cowplot::plot_grid(plot_within_pathways(pereira), plot_within_pathways(shuffled))
