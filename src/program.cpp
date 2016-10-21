@@ -15,7 +15,7 @@
 
 #include "model.hpp"
 
-namespace lmpp {
+namespace likeligrid {
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
@@ -51,7 +51,7 @@ void Program::help_and_exit() {HERE;
     auto description = general_desc();
     description.add(options_desc());
     // do not print positional arguments as options
-    std::cout << "Usage: lmpp [options] infile\n" << std::endl;
+    std::cout << "Usage: likeligrid [options] infile\n" << std::endl;
     description.print(std::cout);
     throw wtl::ExitSuccess();
 }
@@ -111,4 +111,4 @@ void Program::run() {HERE;
     model.run(THRESHOLD, INTERCEPT, OUTFILE);
 }
 
-} // namespace lmpp
+} // namespace likeligrid

@@ -3,8 +3,8 @@
     @brief Interface of Program class
 */
 #pragma once
-#ifndef LMPP_PROGRAM_HPP_
-#define LMPP_PROGRAM_HPP_
+#ifndef LIKELIGRID_PROGRAM_HPP_
+#define LIKELIGRID_PROGRAM_HPP_
 
 #include <iostream>
 #include <sstream>
@@ -18,7 +18,7 @@ namespace boost {
     }
 }
 
-namespace lmpp {
+namespace likeligrid {
 
 /*! @brief Represents single run
 */
@@ -49,6 +49,6 @@ class Program {
     std::string CONFIG_STRING;
 };
 
-} // namespace lmpp
+} // namespace likeligrid
 
-#endif /* LMPP_PROGRAM_HPP_ */
+#endif /* LIKELIGRID_PROGRAM_HPP_ */

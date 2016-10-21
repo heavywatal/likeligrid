@@ -10,7 +10,7 @@
 #include <cxxwtils/eigen.hpp>
 #include <cxxwtils/itertools.hpp>
 
-namespace lmpp {
+namespace likeligrid {
 
 class IsoVar {
 public:
@@ -104,4 +104,4 @@ void Model::unit_test() {HERE;
     }
 }
 
-} // namespace lmpp
+} // namespace likeligrid

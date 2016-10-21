@@ -3,8 +3,8 @@
     @brief Interface of Model class
 */
 #pragma once
-#ifndef LMPP_MODEL_HPP_
-#define LMPP_MODEL_HPP_
+#ifndef LIKELIGRID_MODEL_HPP_
+#define LIKELIGRID_MODEL_HPP_
 
 #include <iostream>
 #include <string>
@@ -13,7 +13,7 @@
 
 #include <Eigen/Core>
 
-namespace lmpp {
+namespace likeligrid {
 
 class Model {
   public:
@@ -47,6 +47,6 @@ class Model {
     std::multimap<double, std::vector<double>> results_;
 };
 
-} // namespace lmpp
+} // namespace likeligrid
 
-#endif /* LMPP_MODEL_HPP_ */
+#endif /* LIKELIGRID_MODEL_HPP_ */
