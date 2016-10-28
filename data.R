@@ -14,35 +14,60 @@ mutations_all %>>% dplyr::count(location, mutationType)
 mutations = file.path(datadir, 'somaticMutations.txt') %>>% read_tsv() %>>% (?.)
 mutations %>>% dplyr::count(location, mutationType)
 
-observed = mutations %>>%
+pereira_tidy_dup = mutations %>>%
     dplyr::left_join(drivers, by='gene') %>>%
     dplyr::transmute(sample, gene,
         pathway=coalesce(pathway, 'Other'),
         mutype=ifelse(str_detect(location ,'splicing'), 'truncating',
                ifelse(str_detect(mutationType, '^missense|^inframe'), 'missense', 'truncating'))) %>>%
-    dplyr::left_join(patients %>>% dplyr::select(sample, erStatus, her2Status), by='sample') %>>% (?.)
-
-.outdir = '~/Dropbox/working/cancer'
-.outfile = file.path(.outdir, 'pereira_tidy.tsv')
-write_tsv(observed, .outfile)
-
-observed %>>% dplyr::count(erStatus, her2Status)
-
-genotype_pereira = observed %>>%
-    dplyr::filter(erStatus == 'POS') %>>%
-    dplyr::count(sample, pathway) %>>%
-    tidyr::spread(pathway, n, 0L) %>>%
-    dplyr::ungroup() %>>% dplyr::select(-sample) %>>%
-    {ifelse(. > 0L, 1L, 0L)} %>>% as_tibble() %>>%
-#    dplyr::mutate(epsilon=1L) %>>%
+    dplyr::left_join(patients %>>% dplyr::select(sample, erStatus, her2Status), by='sample') %>>%
+    dplyr::filter(!duplicated(.)) %>>%
     (?.)
 
-genotype_pereira %>>% summarise_all(mean)
+.outdir = '~/Dropbox/working/cancer'
+.outfile = file.path(.outdir, 'pereira_tidy_dup.tsv')
+write_tsv(pereira_tidy, .outfile)
+
+#TODO: Filter significant mutations
+pereira_tidy_dup %>>% dplyr::group_by(sample, gene) %>>% dplyr::filter(n() > 1)
+
+pereira_tidy = pereira_tidy_dup %>>%
+    dplyr::group_by(sample, gene, erStatus, her2Status) %>>%
+    dplyr::summarise(pathway=head(pathway, 1)) %>>%
+    dplyr::ungroup() %>>%
+    dplyr::arrange(sample, pathway, gene) %>>%
+    (?.)
+.outfile = file.path(.outdir, 'pereira_tidy.tsv')
+write_tsv(pereira_tidy, .outfile)
+
+#########1#########2#########3#########4#########5#########6#########7#########
+
+.indir = '~/Dropbox/working/cancer'
+.infile = file.path(.indir, 'pereira_tidy.tsv')
+pereira_tidy = readr::read_tsv(.infile) %>>% (?.)
+
+pereira_tidy %>>% dplyr::count(erStatus, her2Status)
+
+genotype_pereira = pereira_tidy %>>%
+    dplyr::filter(erStatus == 'POS', pathway != 'Other') %>>%
+    dplyr::count(sample, pathway) %>>% dplyr::ungroup() %>>%
+    tidyr::spread(pathway, n, 0L) %>>%
+    dplyr::select(-sample) %>>%
+    (?.)
 
 .outdir = '~/Dropbox/working/cancer/genotypes'
 .outfile = file.path(.outdir, 'genotype_pereira+er.tsv')
-
 genotype_pereira %>>% write_df(.outfile)
+
+bingenotype_pereira = genotype_pereira %>>%
+    {ifelse(. > 0L, 1L, 0L)} %>>% as_tibble() %>>%
+    (?.)
+.outdir = '~/Dropbox/working/cancer/genotypes'
+.outfile = file.path(.outdir, 'bingenotype_pereira+er.tsv')
+bingenotype_pereira %>>% write_df(.outfile)
+
+genotype_pereira %>>% summarise_all(mean)
+bingenotype_pereira %>>% summarise_all(mean)
 
 #########1#########2#########3#########4#########5#########6#########7#########
 ## Normal samples from 1000 genomes

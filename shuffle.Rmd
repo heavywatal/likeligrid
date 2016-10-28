@@ -21,9 +21,6 @@ ggplot2::theme_set(wtl::theme_wtl())
 pereira = readr::read_tsv(.infile) %>>%
     dplyr::filter(pathway != 'Other') %>>%
     dplyr::select(sample, gene, pathway) %>>%
-    dplyr::group_by(sample, gene) %>>%
-    dplyr::summarise(pathway=head(pathway, 1)) %>>%
-    dplyr::ungroup() %>>%
     dplyr::arrange(sample, pathway, gene)
 
 shuffled = pereira %>>%
