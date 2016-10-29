@@ -1,5 +1,5 @@
-.indir = '~/Dropbox/working/cancer/genotypes'
-.infile = file.path(.indir, 'genotype_pereira+er.tsv')
+.indir = '~/Dropbox/working/cancer'
+.infile = file.path(.indir, 'genotypes/genotype_pereira+er.tsv')
 genotype_pereira = read_tsv(.infile) %>>% (?.)
 
 .names = names(genotype_pereira)
@@ -12,3 +12,25 @@ genotype_pereira = read_tsv(.infile) %>>% (?.)
     (?.)
 
 .nested$data[[3]]
+
+foreach::foreach(row=iterators::iter(.nested$data[[3]] %>>% head(), by='row')) %do% {
+    .v = unlist(row)
+    .freqs ^ .v
+}
+
+#########1#########2#########3#########4#########5#########6#########7#########
+
+.infile = file.path(.indir, 'pereira_tidy.tsv')
+pereira_tidy = read_tsv(.infile) %>>% (?.)
+
+erpos = pereira_tidy %>>%
+    dplyr::filter(erStatus == 'POS', pathway != 'Other') %>>%
+    dplyr::select(sample, pathway) %>>%
+    (?.)
+
+exclusivity = 0.6
+
+erpos %>>%
+    dplyr::mutate(p= .freqs[pathway]) %>>%
+    dplyr::group_by(sample) %>>%
+    dplyr::summarise(p= prod(p))
