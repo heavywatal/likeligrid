@@ -31,14 +31,16 @@ erpos = pereira_tidy %>>%
 exclusivity = 0.6
 
 permut = function(x) {
-    factorial(length(x)) / prod(factorial(table(x)))
+    factorial(sum(x)) / prod(factorial(x))
 }
 
 erpos %>>%
     dplyr::mutate(p= .freqs[pathway]) %>>%
     dplyr::group_by(sample) %>>%
-#    head(6) %>>%
+    head(6) %>>%
     purrr::by_slice(~{
-        log(prod(.$p) * permut(.$pathway))
+        s_paths = table(.$pathway)
+        dups = sum(s_paths - 1L)
+        log(prod(.$p) * permut(s_paths) * exclusivity^dups)
     }, .to= 'lnp') %>>%
     tidyr::unnest()
