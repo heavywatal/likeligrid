@@ -46,3 +46,31 @@ erpos %>>% calc_loglik()
 
 seq(0.1, 1.0, 0.1) %>>%
     purrr::map_dbl(~{calc_loglik(erpos, .x)$lnp %>>% sum()})
+
+#########1#########2#########3#########4#########5#########6#########7#########
+
+.names = names(genotype_pereira)
+.freqs = genotype_pereira %>>% colMeans() %>>% (. / sum(.))
+.excl = setNames(purrr::rep_along(.names, 0.6), .names)
+
+calc_probs_null = function(x, times) {
+    crossing_rep(x, times) %>>%
+    dplyr::transmute_(.out= paste(names(.), collapse='*')) %>>%
+    `[[`('.out')
+}
+calc_probs_null(.freqs, 3L)
+
+calc_coefs_excl = function(x, times) {
+    crossing_rep(names(x), times) %>>%
+    purrr::by_row(~{
+        dups = table(purrr::flatten_chr(.x)) - 1L
+        prod(x[names(dups)] ^ dups)
+    }, .labels=FALSE) %>>%
+    (flatten_dbl(.$.out))
+}
+calc_coefs_excl(.excl, 3L)
+
+calc_denom = function(weights, excl, times) {
+    sum(calc_probs_null(weights, times) * calc_coefs_excl(excl, times))
+}
+calc_denom(.freqs, .excl, 3L)
