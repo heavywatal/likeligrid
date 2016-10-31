@@ -42,7 +42,7 @@ calc_numer = function(.data, weights, excl) {
     .data %>>%
         dplyr::mutate(p= weights[pathway]) %>>%
         dplyr::group_by(sample, pathway) %>>%
-        dplyr::summarise(s= n(), p= prod(p)) %>>% (?.) %>>%
+        dplyr::summarise(s= n(), p= prod(p)) %>>%
         dplyr::left_join(.dups, by=c('sample', 'pathway')) %>>%
         dplyr::summarise(p= prod(p, coef_excl, na.rm=TRUE) * permut(s), s= sum(s))
 }
@@ -77,3 +77,19 @@ calc_denom = function(weights, excl, times=seq_len(6L)) {
     })
 }
 calc_denom(.freqs, .excl, seq_len(3L))
+
+
+calc_loglik = function(.data, excl=0.6, weights=.freqs, max_s=4L) {
+    .excl = setNames(purrr::rep_along(.freqs, excl), names(weights))
+    calc_numer(.data, weights, .excl) %>>%
+    dplyr::filter(s <= max_s) %>>%
+    dplyr::left_join(calc_denom(weights, .excl, seq_len(max_s)), by='s') %>>%
+    dplyr::summarise(loglik= sum(log(p / denom))) %>>% (loglik)
+}
+
+.results = tibble::tibble(excl= seq(0.1, 1.0, 0.1)) %>>%
+    purrr::by_row(~calc_loglik(erpos, .x$excl, max_s=6L)) %>>%
+    tidyr::unnest() %>>%
+    (?.)
+
+.results
