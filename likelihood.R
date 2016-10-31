@@ -20,6 +20,7 @@ foreach::foreach(row=iterators::iter(.nested$data[[3]] %>>% head(), by='row')) %
 
 #########1#########2#########3#########4#########5#########6#########7#########
 
+.indir = '~/Dropbox/working/cancer'
 .infile = file.path(.indir, 'pereira_tidy.tsv')
 pereira_tidy = read_tsv(.infile) %>>% (?.)
 
@@ -28,30 +29,29 @@ erpos = pereira_tidy %>>%
     dplyr::select(sample, pathway) %>>%
     (?.)
 
+erpos %>>% dplyr::count(sample) %>>% group_by(n) %>>% summarise(samples=n()) %>>% dplyr::arrange(n)
+
 permut = function(x) {
     factorial(sum(x)) / prod(factorial(x))
 }
 
-calc_loglik = function(.data, exclusivity=0.6) {.data %>>%
-    dplyr::mutate(p= .freqs[pathway]) %>>%
-    dplyr::group_by(sample) %>>%
-    purrr::by_slice(~{
-        s_paths = table(.$pathway)
-        dups = sum(s_paths - 1L)
-        log(prod(.$p) * permut(s_paths) * exclusivity^dups)
-    }, .to= 'lnp') %>>%
-    tidyr::unnest()
+calc_numer = function(.data, weights, excl) {
+    .dups = .data %>>%
+        dplyr::filter(duplicated(.)) %>>%
+        dplyr::mutate(coef_excl= excl[pathway])
+    .data %>>%
+        dplyr::mutate(p= weights[pathway]) %>>%
+        dplyr::group_by(sample, pathway) %>>%
+        dplyr::summarise(s= n(), p= prod(p)) %>>% (?.) %>>%
+        dplyr::left_join(.dups, by=c('sample', 'pathway')) %>>%
+        dplyr::summarise(p= prod(p, coef_excl, na.rm=TRUE) * permut(s), s= sum(s))
 }
-erpos %>>% calc_loglik()
-
-seq(0.1, 1.0, 0.1) %>>%
-    purrr::map_dbl(~{calc_loglik(erpos, .x)$lnp %>>% sum()})
+calc_numer(erpos, .freqs, .excl)
 
 #########1#########2#########3#########4#########5#########6#########7#########
 
-.names = names(genotype_pereira)
-.freqs = genotype_pereira %>>% colMeans() %>>% (. / sum(.))
-.excl = setNames(purrr::rep_along(.names, 0.6), .names)
+.freqs = erpos %>>% dplyr::count(pathway) %>>% (setNames(.$n / sum(.$n), .$pathway))
+.excl = setNames(purrr::rep_along(.freqs, 0.6), names(.freqs))
 
 calc_probs_null = function(x, times) {
     crossing_rep(x, times) %>>%
@@ -70,7 +70,10 @@ calc_coefs_excl = function(x, times) {
 }
 calc_coefs_excl(.excl, 3L)
 
-calc_denom = function(weights, excl, times) {
-    sum(calc_probs_null(weights, times) * calc_coefs_excl(excl, times))
+calc_denom = function(weights, excl, times=seq_len(6L)) {
+    purrr::map_df(times, ~{
+        .d = sum(calc_probs_null(weights, .x) * calc_coefs_excl(excl, .x))
+        tibble::tibble(s=.x, denom= .d)
+    })
 }
-calc_denom(.freqs, .excl, 3L)
+calc_denom(.freqs, .excl, seq_len(3L))
