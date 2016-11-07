@@ -88,8 +88,7 @@ calc_loglik = function(.data, excl=0.6, weights=.freqs, max_s=4L) {
 }
 
 .results = tibble::tibble(excl= seq(0.1, 1.0, 0.1)) %>>%
-    purrr::by_row(~calc_loglik(erpos, .x$excl, max_s=6L)) %>>%
-    tidyr::unnest() %>>%
+    dplyr::mutate(loglik= map_par(excl, ~calc_loglik(erpos, .x, max_s=6L)) %>>% flatten_dbl()) %>>%
     (?.)
 
 .results
