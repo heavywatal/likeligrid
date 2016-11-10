@@ -50,6 +50,7 @@ calc_numer(erpos, .freqs, .excl)
 
 #########1#########2#########3#########4#########5#########6#########7#########
 
+# .freqs = c(a=0.5, b=0.5)
 .freqs = erpos %>>% dplyr::count(pathway) %>>% (setNames(.$n / sum(.$n), .$pathway))
 .excl = setNames(purrr::rep_along(.freqs, 0.6), names(.freqs))
 

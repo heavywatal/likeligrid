@@ -14,6 +14,7 @@
 #include <cxxwtils/eigen.hpp>
 
 #include "model.hpp"
+#include "exclusivity.hpp"
 
 namespace likeligrid {
 
@@ -62,7 +63,7 @@ inline void test(const int flg) {HERE;
       case 0:
         break;
       case 1:
-        Model::unit_test();
+        Exclusivity::unit_test();
         throw wtl::ExitSuccess();
       default:
         throw std::runtime_error("Unknown argument for --test");
