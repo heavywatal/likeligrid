@@ -15,20 +15,11 @@
 
 namespace likeligrid {
 
-class FuncObj {
-public:
-    FuncObj() = default;
-    double operator()(double x) const {
-        return x;
-    }
-};
-
-/////////1/////////2/////////3/////////4
-
-Exclusivity::Exclusivity(std::istream& infile, const size_t g):
+Exclusivity::Exclusivity(std::istream& infile, const size_t g, const size_t n):
     names_(wtl::read_header(infile)),
     genotypes_(wtl::eigen::read_matrix<double>(infile, names_.size())),
-    grid_density_(g) {}
+    grid_density_(g),
+    max_results_(n) {}
 
 
 inline double calc_denom(
@@ -36,6 +27,7 @@ inline double calc_denom(
     const Eigen::VectorXd& exclusi,
     const size_t num_mutations) {
 
+    if (num_mutations < 1) return 1.0;
     const size_t ncol = weights.size();
     std::vector<size_t> indices(ncol);
     std::iota(std::begin(indices), std::end(indices), 0);
@@ -57,34 +49,54 @@ inline double calc_denom(
     return wtl::sum(probs);
 }
 
+inline double calc_loglik(
+    const Eigen::VectorXd& row,
+    const Eigen::VectorXd& weights,
+    const Eigen::VectorXd& exclusi) {
+
+    const size_t n = row.size();
+    double lnp = 0.0;
+    for (size_t i=0; i<n; ++i) {
+        int x = row[i];
+        if (x > 0) {
+            lnp += x * std::log(weights[i]);
+            lnp += --x * std::log(exclusi[i]);
+        }
+    }
+    return lnp;
+}
 
 void Exclusivity::run(const std::string& outfile) {HERE;
-    // Calculate denominator with all posibble genotypes for each S
-    Eigen::VectorXd freqs = genotypes_.colwise().sum() / genotypes_.sum();
-    Eigen::VectorXd alphas = Eigen::VectorXd::Ones(freqs.size()) * 0.6;
-    for (size_t i=1; i<=5; ++i) {
-        std::cout << i << ": " << calc_denom(freqs, alphas, i) << std::endl;;
-    }
-
-    // deprecated
     results_.clear();
-    Eigen::VectorXd axis = Eigen::VectorXd::LinSpaced(grid_density_, 0.0, 1.0);
-    std::vector<Eigen::VectorXd> columns_ = std::vector<Eigen::VectorXd>(genotypes_.cols(), axis);
+    const size_t nsam = genotypes_.rows();
+    const auto s = genotypes_.rowwise().sum();
+    const size_t max_sites = s.maxCoeff();
+    const Eigen::VectorXd freqs = genotypes_.colwise().sum() / genotypes_.sum();
 
-    auto sim = wtl::itertools::simplex(columns_, 1.0);
-    const auto num_gridpoints = sim.count_max();
-    std::function<double(double)> calc_lik;
-    calc_lik = FuncObj();
-    for (const auto& coefs: sim()) {
-        if (sim.count() % 1000 == 0) {
+    const Eigen::VectorXd axis = Eigen::VectorXd::LinSpaced(grid_density_, 0.1, 1.0);
+    const auto columns = std::vector<Eigen::VectorXd>(genotypes_.cols(), axis);
+    auto iter = wtl::itertools::product(columns);
+    const auto num_gridpoints = iter.count_max();
+    for (const auto& params: iter()) {
+        if (iter.count() % 1000 == 0) {  // snapshot for long run
             wtl::Fout fout(outfile);
-            fout << "# " << sim.count() << " in "
-                 << static_cast<double>(sim.count_all()) / static_cast<double>(num_gridpoints)
-                 << " (" << sim.count_all() << " / " << num_gridpoints << ")\n";
+            fout << "# " << iter.count() << " in " << num_gridpoints << "\n";
             write_results(fout);
         }
-        const double loglik = (genotypes_ * coefs).array().unaryExpr(calc_lik).log().sum();
-        results_.emplace(loglik, wtl::eigen::as_vector(coefs));
+
+        std::vector<double> ln_denoms(max_sites + 1);
+        for (size_t i=0; i<=max_sites; ++i) {
+            ln_denoms[i] = std::log(calc_denom(freqs, params, i));
+        }
+        double loglik = 0.0;
+        for (size_t i=0; i<nsam; ++i) {
+            loglik += calc_loglik(genotypes_.row(i), freqs, params);
+            loglik -= ln_denoms.at(s[i]);
+        }
+        results_.emplace(loglik, wtl::eigen::as_vector(params));
+        while (results_.size() > max_results_) {
+            results_.erase(results_.begin());
+        }
     }
     wtl::Fout fout(outfile);
     write_results(fout);
@@ -109,13 +121,6 @@ void Exclusivity::unit_test() {HERE;
     Exclusivity exclusivity(iss, 10);
     exclusivity.write_genotypes(std::cout);
     exclusivity.run();
-    exclusivity.write_results(std::cout);
-
-    auto calc_lik = FuncObj();
-    const std::vector<double> scores{0.1, 0.2, 0.4, 0.5, 0.9};
-    for (const auto x: scores) {
-        std::cout << calc_lik(x) << std::endl;
-    }
 }
 
 } // namespace likeligrid

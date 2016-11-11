@@ -17,13 +17,15 @@ namespace likeligrid {
 
 class Exclusivity {
   public:
-    Exclusivity(std::istream& infile, const size_t g);
+    Exclusivity(std::istream& infile, const size_t g, const size_t n=65535);
     Exclusivity(const std::vector<std::string>& names,
           const Eigen::MatrixXd& genotypes,
-          const size_t grid_density):
+          const size_t grid_density,
+          const size_t max_results=65535):
           names_(names),
           genotypes_(genotypes),
-          grid_density_(grid_density) {}
+          grid_density_(grid_density),
+          max_results_(max_results) {}
 
     void run(const std::string& outfile="/dev/stdout");
 
@@ -39,6 +41,7 @@ class Exclusivity {
     const std::vector<std::string> names_;
     const Eigen::MatrixXd genotypes_;
     const size_t grid_density_;
+    const size_t max_results_;
     std::multimap<double, std::vector<double>> results_;
 };
 

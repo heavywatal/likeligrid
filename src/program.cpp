@@ -108,8 +108,10 @@ void Program::run() {HERE;
     const auto names = wtl::read_header(fin);
     const auto genotypes = wtl::eigen::read_matrix<double>(fin, names.size());
     fin.close();
-    Model model(names, genotypes, GRID_DENSITY, MAX_RESULTS);
-    model.run(THRESHOLD, INTERCEPT, OUTFILE);
+    // Model model(names, genotypes, GRID_DENSITY, MAX_RESULTS);
+    // model.run(THRESHOLD, INTERCEPT, OUTFILE);
+    Exclusivity model(names, genotypes, GRID_DENSITY, MAX_RESULTS);
+    model.run(OUTFILE);
 }
 
 } // namespace likeligrid
