@@ -56,8 +56,13 @@ genotype_pereira = pereira_tidy %>>%
     (?.)
 
 .outdir = '~/Dropbox/working/cancer/genotypes'
-.outfile = file.path(.outdir, 'genotype_pereira+er.tsv')
-genotype_pereira %>>% write_df(.outfile)
+
+seq(2, 7) %>>% purrr::walk(~{
+    .outfile = file.path(.outdir, sprintf('genotype_pereira+er_max%d.tsv', .x))
+    genotype_pereira %>>%
+    dplyr::filter(rowSums(.) <= .x) %>>%
+    write_df(.outfile)
+})
 
 bingenotype_pereira = genotype_pereira %>>%
     {ifelse(. > 0L, 1L, 0L)} %>>% as_tibble() %>>%

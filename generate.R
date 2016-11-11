@@ -59,6 +59,19 @@ shuffle_genotypes = function(.data) {
     tidyr::unnest()
 }
 
+shuffle_genotype_file = function(.infile) {
+    .data = readr::read_tsv(.infile)
+    .outfile = str_replace(.infile, '\\bgenotype_', 'shuffled_')
+    message(.outfile)
+    shuffle_genotypes(.data) %>>% wtl::write_df(.outfile)
+}
+
+working_dir = '~/Dropbox/working/cancer/genotypes'
+.genotype_files = list.files(working_dir, pattern='\\bgenotype_pereira', full.names=TRUE)
+shuffle_genotype_file(.genotype_files[1])
+
+.genotype_files %>>% purrr::walk(shuffle_genotype_file)
+
 .shuffled = genotype_pereira %>>% shuffle_genotypes() %>>% (?.)
 .outfile = file.path(working_dir, sprintf('genotype_shuffled+er_%s.tsv', wtl::now()))
 wtl::write_df(.shuffled, .outfile)
