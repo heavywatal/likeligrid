@@ -60,7 +60,7 @@ genotype_pereira = pereira_tidy %>>%
 seq(2, 7) %>>% purrr::walk(~{
     .outfile = file.path(.outdir, sprintf('genotype_pereira+er_max%d.tsv', .x))
     genotype_pereira %>>%
-    dplyr::filter(rowSums(.) <= .x) %>>%
+    dplyr::filter(1 < rowSums(.), rowSums(.) <= .x) %>>%
     write_df(.outfile)
 })
 
