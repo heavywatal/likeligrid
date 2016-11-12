@@ -27,15 +27,15 @@ inline double calc_denom(
     const Eigen::VectorXd& exclusi,
     const size_t num_mutations) {
 
-    if (num_mutations < 1) return 1.0;
+    if (num_mutations < 2) return 1.0;
     const size_t ncol = weights.size();
     std::vector<size_t> indices(ncol);
     std::iota(std::begin(indices), std::end(indices), 0);
     const std::vector<std::vector<size_t>> columns(num_mutations, indices);
-    auto gen = wtl::itertools::product(columns);
+    auto iter = wtl::itertools::product(columns);
     std::vector<double> probs;
-    probs.reserve(static_cast<size_t>(gen.count_max()));
-    for (const auto v: gen()) {
+    probs.reserve(static_cast<size_t>(iter.count_max()));
+    for (const auto& v: iter()) {
         std::unordered_set<size_t> mutated;
         double p = 1.0;
         for (const auto x: v) {
