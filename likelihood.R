@@ -93,3 +93,35 @@ calc_loglik = function(.data, excl=0.6, weights=.freqs, max_s=4L) {
     (?.)
 
 .results
+
+
+#########1#########2#########3#########4#########5#########6#########7#########
+## Test
+
+.genotypes = 'A,B
+2,0
+2,0
+0,2
+1,1
+1,1
+1,1
+1,1
+1,1
+1,1
+1,1
+' %>>% read_csv() %>>% (?.)
+
+.genotypes %>>% write_tsv('test_genotypes.tsv')
+
+.n = nrow(.genotypes)
+.excl = c(0.5, 0.4)
+.sums = colSums(.genotypes)
+.x = .sums / sum(.sums)
+.c = sum(.excl * .x ^ 2) + 2 * prod(.x)
+.dups = .genotypes %>>% mutate_all(function(x) {ifelse(x > 0L, x - 1, x)}) %>>% colSums()
+
+
+sum(.dups * log(.excl) + .sums * log(.x)) - .n * log(.c)
+
+# TODO: polynomial coefs
+7 * log(2)
