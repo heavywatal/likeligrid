@@ -17,14 +17,14 @@ namespace likeligrid {
 
 Exclusivity::Exclusivity(std::istream& infile, const size_t g, const size_t n):
     names_(wtl::read_header(infile)),
-    genotypes_(wtl::eigen::read_matrix<int>(infile, names_.size())),
+    genotypes_(wtl::eigen::read_array<size_t>(infile, names_.size())),
     grid_density_(g),
     max_results_(n) {}
 
 
 inline double calc_denom(
-    const Eigen::VectorXd& weights,
-    const Eigen::VectorXd& exclusi,
+    const Eigen::ArrayXd& weights,
+    const Eigen::ArrayXd& exclusi,
     const size_t num_mutations) {
 
     if (num_mutations < 2) return 1.0;
@@ -51,22 +51,24 @@ inline double calc_denom(
 void Exclusivity::run(const std::string& outfile) {HERE;
     results_.clear();
     const size_t nsam = genotypes_.rows();
-    const auto s = genotypes_.rowwise().sum();
-    const size_t max_sites = s.maxCoeff();
-    const Eigen::ArrayXi freqs = genotypes_.colwise().sum().array();
-    const Eigen::ArrayXd weights = freqs.cast<double>() / genotypes_.sum();
+    const ArrayXu vs = genotypes_.rowwise().sum();
+    const size_t max_sites = vs.maxCoeff();
+    const ArrayXu freqs = genotypes_.colwise().sum();
+    const Eigen::ArrayXd weights = freqs.cast<double>() / freqs.sum();
+    double lnp_const = (freqs.cast<double>() * weights.log()).sum();
 
-    const Eigen::ArrayXd dups = genotypes_.unaryExpr([](int x){
+    const Eigen::ArrayXd dups = genotypes_.unaryExpr([](size_t x){
         if (x > 0) {return --x;} else {return x;}
-    }).colwise().sum().array().cast<double>();
+    }).colwise().sum().cast<double>();
 
     std::map<size_t, size_t> s_counts;
+    std::cout << lnp_const << std::endl;
     for (size_t i=0; i<nsam; ++i) {
-        ++s_counts[s[i]];
+        ++s_counts[vs[i]];
+        auto v = wtl::eigen::as_valarray(genotypes_.row(i));
+        lnp_const += std::log(wtl::polynomial(v));
     }
-
-    // TODO: polynomial coefs
-    double lnp_const = (freqs.cast<double>() * weights.log()).sum();
+    std::cout << lnp_const << std::endl;
 
     const Eigen::ArrayXd axis = Eigen::VectorXd::LinSpaced(grid_density_, 0.1, 1.0).array();
     const auto columns = std::vector<Eigen::ArrayXd>(genotypes_.cols(), axis);
@@ -79,14 +81,10 @@ void Exclusivity::run(const std::string& outfile) {HERE;
             write_results(fout);
         }
 
-        std::vector<double> ln_denoms(max_sites + 1);
-        for (size_t i=0; i<=max_sites; ++i) {
-            ln_denoms[i] = std::log(calc_denom(weights, params, i));
-        }
         double loglik = lnp_const;
         loglik += (dups * params.log()).sum();
-        for (auto it=s_counts.begin(); it!=s_counts.end(); ++it) {
-            loglik -= it->second * ln_denoms[it->first];
+        for (size_t s=0; s<=max_sites; ++s) {
+            loglik -= s_counts[s] * std::log(calc_denom(weights, params, s));
         }
 
         results_.emplace(loglik, wtl::eigen::as_vector(params));

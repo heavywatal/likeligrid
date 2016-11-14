@@ -119,9 +119,6 @@ calc_loglik = function(.data, excl=0.6, weights=.freqs, max_s=4L) {
 .x = .sums / sum(.sums)
 .c = sum(.excl * .x ^ 2) + 2 * prod(.x)
 .dups = .genotypes %>>% mutate_all(function(x) {ifelse(x > 0L, x - 1, x)}) %>>% colSums()
+.polynoms = 7 * log(2)
 
-
-sum(.dups * log(.excl) + .sums * log(.x)) - .n * log(.c)
-
-# TODO: polynomial coefs
-7 * log(2)
+sum(.dups * log(.excl) + .sums * log(.x)) - .n * log(.c) + .polynoms

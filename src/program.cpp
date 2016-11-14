@@ -105,12 +105,7 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 
 void Program::run() {HERE;
     wtl::Fin fin(INFILE);
-    const auto names = wtl::read_header(fin);
-    const auto genotypes = wtl::eigen::read_matrix<int>(fin, names.size());
-    fin.close();
-    // Model model(names, genotypes, GRID_DENSITY, MAX_RESULTS);
-    // model.run(THRESHOLD, INTERCEPT, OUTFILE);
-    Exclusivity model(names, genotypes, GRID_DENSITY, MAX_RESULTS);
+    Exclusivity model(fin, GRID_DENSITY, MAX_RESULTS);
     model.run(OUTFILE);
 }
 
