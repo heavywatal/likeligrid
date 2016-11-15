@@ -38,7 +38,7 @@ class Program {
     boost::program_options::options_description positional_desc();
     void help_and_exit();
 
-    size_t GRID_DENSITY = 11;
+    size_t GRID_DENSITY = 10;
     size_t MAX_RESULTS = 16;
     double INTERCEPT = 0.1;
     double THRESHOLD = 0.3;

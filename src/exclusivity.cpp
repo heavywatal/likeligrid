@@ -61,16 +61,15 @@ void Exclusivity::run(const std::string& outfile) {HERE;
         if (x > 0) {return --x;} else {return x;}
     }).colwise().sum().cast<double>();
 
-    std::map<size_t, size_t> s_counts;
-    std::cout << lnp_const << std::endl;
+    std::vector<size_t> s_counts(max_sites + 1, 0);
     for (size_t i=0; i<nsam; ++i) {
         ++s_counts[vs[i]];
         auto v = wtl::eigen::as_valarray(genotypes_.row(i));
         lnp_const += std::log(wtl::polynomial(v));
     }
-    std::cout << lnp_const << std::endl;
 
-    const Eigen::ArrayXd axis = Eigen::VectorXd::LinSpaced(grid_density_, 0.1, 1.0).array();
+    const double step = 1.0 / grid_density_;
+    const Eigen::ArrayXd axis = Eigen::VectorXd::LinSpaced(grid_density_, 1.0, step).array();
     const auto columns = std::vector<Eigen::ArrayXd>(genotypes_.cols(), axis);
     auto iter = wtl::itertools::product(columns);
     const auto num_gridpoints = iter.count_max();
