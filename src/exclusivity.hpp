@@ -15,13 +15,13 @@
 
 namespace likeligrid {
 
-class Exclusivity {
+class ExclusivityModel {
   public:
     typedef Eigen::Array<size_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> ArrayXXu;
     typedef Eigen::Array<size_t, Eigen::Dynamic, 1> ArrayXu;
 
-    Exclusivity(std::istream& infile, const size_t g, const size_t n=65535);
-    Exclusivity(const std::vector<std::string>& names,
+    ExclusivityModel(std::istream& infile, const size_t g, const size_t n=65535);
+    ExclusivityModel(const std::vector<std::string>& names,
           const Eigen::Array<size_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>& genotypes,
           const size_t grid_density,
           const size_t max_results=65535):

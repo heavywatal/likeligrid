@@ -15,7 +15,7 @@
 
 namespace likeligrid {
 
-Exclusivity::Exclusivity(std::istream& infile, const size_t g, const size_t n):
+ExclusivityModel::ExclusivityModel(std::istream& infile, const size_t g, const size_t n):
     names_(wtl::read_header(infile)),
     genotypes_(wtl::eigen::read_array<size_t>(infile, names_.size())),
     grid_density_(g),
@@ -48,7 +48,7 @@ inline double calc_denom(
     return wtl::sum(probs);
 }
 
-void Exclusivity::run(const std::string& outfile) {HERE;
+void ExclusivityModel::run(const std::string& outfile) {HERE;
     results_.clear();
     const size_t nsam = genotypes_.rows();
     const ArrayXu vs = genotypes_.rowwise().sum();
@@ -95,12 +95,12 @@ void Exclusivity::run(const std::string& outfile) {HERE;
     write_results(fout);
 }
 
-std::ostream& Exclusivity::write_genotypes(std::ostream& ost, const bool header) const {
+std::ostream& ExclusivityModel::write_genotypes(std::ostream& ost, const bool header) const {
     if (header) {ost << wtl::join(names_, "\t") << "\n";}
     return ost << genotypes_.format(wtl::eigen::tsv());
 }
 
-std::ostream& Exclusivity::write_results(std::ostream& ost, const bool header) const {
+std::ostream& ExclusivityModel::write_results(std::ostream& ost, const bool header) const {
     if (header) {ost << "loglik\t" << wtl::join(names_, "\t") << "\n";}
     for (const auto& p: results_) {
         ost << p.first << "\t" << wtl::join(p.second, "\t") << "\n";
@@ -108,12 +108,12 @@ std::ostream& Exclusivity::write_results(std::ostream& ost, const bool header) c
     return ost;
 }
 
-void Exclusivity::unit_test() {HERE;
+void ExclusivityModel::unit_test() {HERE;
     std::string geno = "a\tb\n0\t0\n0\t1\n1\t0\n1\t1\n";
     std::istringstream iss(geno);
-    Exclusivity exclusivity(iss, 10);
-    exclusivity.write_genotypes(std::cout);
-    exclusivity.run();
+    ExclusivityModel model(iss, 10);
+    model.write_genotypes(std::cout);
+    model.run();
 }
 
 } // namespace likeligrid

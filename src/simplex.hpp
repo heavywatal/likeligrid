@@ -3,8 +3,8 @@
     @brief Interface of Model class
 */
 #pragma once
-#ifndef LIKELIGRID_MODEL_HPP_
-#define LIKELIGRID_MODEL_HPP_
+#ifndef LIKELIGRID_SIMPLEX_HPP_
+#define LIKELIGRID_SIMPLEX_HPP_
 
 #include <iostream>
 #include <string>
@@ -15,10 +15,10 @@
 
 namespace likeligrid {
 
-class Model {
+class SimplexModel {
   public:
-    Model(std::istream& infile, const size_t g, const size_t n=65535);
-    Model(const std::vector<std::string>& names,
+    SimplexModel(std::istream& infile, const size_t g, const size_t n=65535);
+    SimplexModel(const std::vector<std::string>& names,
           const Eigen::MatrixXd& genotypes,
           const size_t grid_density,
           const size_t max_results=65535):
@@ -49,4 +49,4 @@ class Model {
 
 } // namespace likeligrid
 
-#endif /* LIKELIGRID_MODEL_HPP_ */
+#endif /* LIKELIGRID_SIMPLEX_HPP_ */

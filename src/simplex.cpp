@@ -2,7 +2,7 @@
 /*! @file model.cpp
     @brief Inplementation of Model class
 */
-#include "model.hpp"
+#include "simplex.hpp"
 
 #include <cxxwtils/debug.hpp>
 #include <cxxwtils/iostr.hpp>
@@ -40,12 +40,12 @@ private:
 
 /////////1/////////2/////////3/////////4
 
-Model::Model(std::istream& infile, const size_t g, const size_t n):
+SimplexModel::SimplexModel(std::istream& infile, const size_t g, const size_t n):
     names_(wtl::read_header(infile)),
     genotypes_(wtl::eigen::read_matrix<double>(infile, names_.size())),
     grid_density_(g), max_results_(n) {}
 
-void Model::run(const double threshold, const double intercept, const std::string& outfile) {HERE;
+void SimplexModel::run(const double threshold, const double intercept, const std::string& outfile) {HERE;
     results_.clear();
     Eigen::VectorXd axis = Eigen::VectorXd::LinSpaced(grid_density_, 0.0, 1.0 - intercept);
     columns_ = std::vector<Eigen::VectorXd>(genotypes_.cols(), axis);
@@ -76,12 +76,12 @@ void Model::run(const double threshold, const double intercept, const std::strin
     write_results(fout);
 }
 
-std::ostream& Model::write_genotypes(std::ostream& ost, const bool header) const {
+std::ostream& SimplexModel::write_genotypes(std::ostream& ost, const bool header) const {
     if (header) {ost << wtl::join(names_, "\t") << "\n";}
     return ost << genotypes_.format(wtl::eigen::tsv());
 }
 
-std::ostream& Model::write_results(std::ostream& ost, const bool header) const {
+std::ostream& SimplexModel::write_results(std::ostream& ost, const bool header) const {
     if (header) {ost << "loglik\t" << wtl::join(names_, "\t") << "\n";}
     for (const auto& p: results_) {
         ost << p.first << "\t" << wtl::join(p.second, "\t") << "\n";
@@ -89,10 +89,10 @@ std::ostream& Model::write_results(std::ostream& ost, const bool header) const {
     return ost;
 }
 
-void Model::unit_test() {HERE;
+void SimplexModel::unit_test() {HERE;
     std::string geno = "a\tb\n0\t0\n0\t1\n1\t0\n1\t1\n";
     std::istringstream iss(geno);
-    Model model(iss, 10);
+    SimplexModel model(iss, 10);
     model.write_genotypes(std::cout);
     model.run(0.5, 0.1);
     model.write_results(std::cout);

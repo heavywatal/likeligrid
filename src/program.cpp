@@ -13,7 +13,6 @@
 #include <cxxwtils/getopt.hpp>
 #include <cxxwtils/eigen.hpp>
 
-#include "model.hpp"
 #include "exclusivity.hpp"
 
 namespace likeligrid {
@@ -34,9 +33,7 @@ po::options_description Program::options_desc() {HERE;
     po::options_description description("Program");
     description.add_options()
         ("grid,g", po::value(&GRID_DENSITY)->default_value(GRID_DENSITY))
-        ("max,n", po::value(&MAX_RESULTS)->default_value(MAX_RESULTS))
-        ("intercept,e", po::value(&INTERCEPT)->default_value(INTERCEPT))
-        ("threshold,c", po::value(&THRESHOLD)->default_value(THRESHOLD))
+        ("results,n", po::value(&MAX_RESULTS)->default_value(MAX_RESULTS))
         ("outfile,o", po::value<std::string>(&OUTFILE)->default_value(OUTFILE));
     return description;
 }
@@ -63,7 +60,7 @@ inline void test(const int flg) {HERE;
       case 0:
         break;
       case 1:
-        Exclusivity::unit_test();
+        ExclusivityModel::unit_test();
         throw wtl::ExitSuccess();
       default:
         throw std::runtime_error("Unknown argument for --test");
@@ -105,7 +102,7 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 
 void Program::run() {HERE;
     wtl::Fin fin(INFILE);
-    Exclusivity model(fin, GRID_DENSITY, MAX_RESULTS);
+    ExclusivityModel model(fin, GRID_DENSITY, MAX_RESULTS);
     model.run(OUTFILE);
 }
 
