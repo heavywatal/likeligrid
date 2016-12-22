@@ -20,15 +20,10 @@ class ExclusivityModel {
     typedef Eigen::Array<size_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> ArrayXXu;
     typedef Eigen::Array<size_t, Eigen::Dynamic, 1> ArrayXu;
 
-    ExclusivityModel(std::istream& infile, const size_t g, const size_t n=65535);
-    ExclusivityModel(const std::vector<std::string>& names,
-          const Eigen::Array<size_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>& genotypes,
-          const size_t grid_density,
-          const size_t max_results=65535):
-          names_(names),
-          genotypes_(genotypes),
-          grid_density_(grid_density),
-          max_results_(max_results) {}
+    ExclusivityModel(std::istream& infile,
+        const size_t grid_density,
+        const size_t max_sites=65535,
+        const size_t max_results=65535);
 
     void run(const std::string& outfile="/dev/stdout");
 
@@ -42,7 +37,7 @@ class ExclusivityModel {
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
     const std::vector<std::string> names_;
-    const Eigen::Array<size_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> genotypes_;
+    Eigen::Array<size_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> genotypes_;
     const size_t grid_density_;
     const size_t max_results_;
     std::multimap<double, std::vector<double>> results_;

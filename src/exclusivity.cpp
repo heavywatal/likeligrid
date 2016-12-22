@@ -15,12 +15,17 @@
 
 namespace likeligrid {
 
-ExclusivityModel::ExclusivityModel(std::istream& infile, const size_t g, const size_t n):
+ExclusivityModel::ExclusivityModel(std::istream& infile,
+    const size_t grid_density,
+    const size_t max_sites,
+    const size_t max_results):
     names_(wtl::read_header(infile)),
     genotypes_(wtl::eigen::read_array<size_t>(infile, names_.size())),
-    grid_density_(g),
-    max_results_(n) {}
-
+    grid_density_(grid_density),
+    max_results_(max_results) {
+        const auto pred = genotypes_.rowwise().sum().array() < max_sites;
+        genotypes_ = wtl::eigen::filter(genotypes_, pred);
+    }
 
 inline double calc_denom(
     const Eigen::ArrayXd& weights,
@@ -111,7 +116,7 @@ std::ostream& ExclusivityModel::write_results(std::ostream& ost, const bool head
 void ExclusivityModel::unit_test() {HERE;
     std::string geno = "a\tb\n0\t0\n0\t1\n1\t0\n1\t1\n";
     std::istringstream iss(geno);
-    ExclusivityModel model(iss, 10);
+    ExclusivityModel model(iss, 5);
     model.write_genotypes(std::cout);
     model.run();
 }

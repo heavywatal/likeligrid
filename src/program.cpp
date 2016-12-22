@@ -30,6 +30,7 @@ po::options_description Program::options_desc() {HERE;
     po::options_description description("Program");
     description.add_options()
         ("grid,g", po::value(&GRID_DENSITY)->default_value(GRID_DENSITY))
+        ("max-sites,s", po::value(&MAX_SITES)->default_value(MAX_SITES))
         ("results,n", po::value(&MAX_RESULTS)->default_value(MAX_RESULTS))
         ("outfile,o", po::value<std::string>(&OUTFILE)->default_value(OUTFILE));
     return description;
@@ -99,7 +100,7 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 
 void Program::run() {HERE;
     wtl::Fin fin(INFILE);
-    ExclusivityModel model(fin, GRID_DENSITY, MAX_RESULTS);
+    ExclusivityModel model(fin, GRID_DENSITY, MAX_SITES, MAX_RESULTS);
     model.run(OUTFILE);
 }
 

@@ -39,6 +39,7 @@ class Program {
     void help_and_exit();
 
     size_t GRID_DENSITY = 10;
+    size_t MAX_SITES = 65535;
     size_t MAX_RESULTS = 16;
     std::string INFILE = "-";
     std::string OUTFILE = "-";
