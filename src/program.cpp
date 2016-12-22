@@ -6,8 +6,6 @@
 
 #include <cstdlib>
 
-#include <boost/filesystem.hpp>
-
 #include <cxxwtils/debug.hpp>
 #include <cxxwtils/iostr.hpp>
 #include <cxxwtils/getopt.hpp>
@@ -17,7 +15,6 @@
 
 namespace likeligrid {
 
-namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
 inline po::options_description general_desc() {HERE;
