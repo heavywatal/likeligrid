@@ -31,16 +31,16 @@ CC := $(CXX)
 CPPFLAGS := -Wall -Wextra -Wno-unused-parameter -fno-strict-aliasing ${INCLUDEDIR} ${CPPDBG} -ftemplate-depth=512
 CXXFLAGS := -std=c++14 -O2 -fPIC ${CXXDBG}
 LDFLAGS = -L${DESTDIR}/lib -L${BOOST}/lib
-LDLIBS := -lsfmt -lboost_program_options -lboost_context
+LDLIBS := -lsfmt -lboost_program_options-mt -lboost_context-mt
 TARGET_ARCH := -m64 -msse -msse2 -msse3
 ARFLAGS := -rcs
 
 ifneq (,$(filter $(CXX), ${GXX}))
   CXXFLAGS += -mfpmath=sse
-		BOOST := ${HOME}/local/boost-gcc
+  BOOST := ${HOME}/local/boost-gcc
 else
   CXXFLAGS += -stdlib=libc++
-		BOOST := ${HOME}/local/boost-clang
+  BOOST := ${HOME}/local/boost-clang
   ifeq ($(shell uname -s), Linux)
     LDLIBS += -lsupc++
   endif
