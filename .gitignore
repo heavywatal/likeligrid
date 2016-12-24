@@ -1,6 +1,7 @@
 *.out
 *.png
 *.pdf
+*.html
 *.trace
 *.rda
 lib*.a
