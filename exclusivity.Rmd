@@ -7,8 +7,8 @@ output:
     css: "~/.R/rmd.css"
     self_contained: true
     theme: null
-    mathjax: https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_CHTML
     highlight: null
+    mathjax: https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_CHTML
 ---
 
 - pathway: $i$
@@ -17,13 +17,12 @@ output:
     - number of mutated sites: $s_i$
 - configuration: $j$
     - number of mutated sites: $s_j = \sum_i s_i$
-    - naive probability of the configuration:
+    - unnormalized probability of the configuration:
       $p_j = \prod _i w_i^{s_i} x_i^{\max(s_i - 1, 0)}$
-    - true probability of the configuration:
+    - normalized probability of the configuration:
       $P_j = p_j / D_{s_j}$
     - denominator to normalize probability:
       $D_s = \sum_j^{s = s_j} p_j$.
-      $D_1 = 1$, $D_2 = 1$
 
 
 ```{r setup, include=FALSE, eval=FALSE}
