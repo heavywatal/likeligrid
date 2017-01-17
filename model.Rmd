@@ -1,5 +1,5 @@
 ---
-title: "Exclusivity model"
+title: "Model description"
 author: "WMI"
 date: "December 24, 2016"
 output:
@@ -18,7 +18,7 @@ output:
 - configuration: $j$
     - number of mutated sites: $s_j = \sum_i s_i$
     - unnormalized probability of the configuration:
-      $p_j = \prod _i w_i^{s_i} x_i^{\max(s_i - 1, 0)}$
+      $p_j = \prod _i w_i^{s_i} x_i^{\max(0, s_i - 1)}$
     - normalized probability of the configuration:
       $P_j = p_j / D_{s_j}$
     - denominator to normalize probability:
