@@ -23,14 +23,3 @@ output:
       $P_j = p_j / D_{s_j}$
     - denominator to normalize probability:
       $D_s = \sum_j^{s = s_j} p_j$.
-
-
-```{r setup, include=FALSE, eval=FALSE}
-library(knitr)
-opts_chunk$set(out.width='100%')
-library(pipeR)
-library(tidyverse)
-library(wtl)
-loadNamespace('cowplot')
-ggplot2::theme_set(wtl::theme_wtl())
-```
