@@ -2,8 +2,15 @@
 title: "Pereira data mutation profile"
 author: "WMI"
 date: "October 11, 2016"
-output: html_document
+output:
+  html_document:
+    css: "~/.R/rmd.css"
+    self_contained: true
+    # theme: null
+    mathjax: https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_CHTML
 ---
+
+## Pereira 2016 Nat Comm
 
 ```{r setup, include=FALSE}
 library(knitr)
@@ -13,6 +20,70 @@ library(tidyverse)
 library(wtl)
 loadNamespace('cowplot')
 ggplot2::theme_set(wtl::theme_wtl())
+```
+
+```{r data, eval=FALSE, include=FALSE}
+data_dir = '~/Dropbox/working/cancer'
+repo = '~/git/innanlab'
+orig_data_dir = file.path(repo, 'pereira/mutationalProfiles/Data')
+list.files(orig_data_dir)
+
+drivers = file.path(repo, 'pereira/drivers40.tsv') %>>% read_tsv() %>>% (?.)
+patients = file.path(orig_data_dir, 'patientData.txt') %>>% read_tsv() %>>% (?.)
+mutations_all = file.path(orig_data_dir, 'somaticMutations_incNC.txt') %>>% read_tsv() %>>% (?.)
+mutations = file.path(orig_data_dir, 'somaticMutations.txt') %>>% read_tsv() %>>% (?.)
+
+mutations_all %>>% dplyr::count(location, mutationType)
+mutations %>>% dplyr::count(location, mutationType)
+
+pereira_tidy_dup = mutations %>>%
+    dplyr::left_join(drivers, by='gene') %>>%
+    dplyr::transmute(sample, gene,
+        pathway=coalesce(pathway, 'Other'),
+        mutype=ifelse(str_detect(location ,'splicing'), 'truncating',
+               ifelse(str_detect(mutationType, '^missense|^inframe'), 'missense', 'truncating'))) %>>%
+    dplyr::left_join(patients %>>% dplyr::select(sample, erStatus, her2Status), by='sample') %>>%
+    dplyr::filter(!duplicated(.)) %>>%
+    (?.)
+
+.outfile = file.path(data_dir, 'pereira_tidy_dup.tsv')
+write_tsv(pereira_tidy, .outfile)
+
+#TODO: Filter significant mutations
+pereira_tidy_dup %>>% dplyr::group_by(sample, gene) %>>% dplyr::filter(n() > 1)
+
+pereira_tidy = pereira_tidy_dup %>>%
+    dplyr::group_by(sample, gene, erStatus, her2Status) %>>%
+    dplyr::summarise(pathway=head(pathway, 1)) %>>%
+    dplyr::ungroup() %>>%
+    dplyr::arrange(sample, pathway, gene) %>>%
+    (?.)
+
+.file = file.path(data_dir, 'pereira_tidy.tsv')
+write_tsv(pereira_tidy, .file)
+# pereira_tidy = readr::read_tsv(.file) %>>% (?.)
+
+pereira_tidy %>>% dplyr::count(erStatus, her2Status)
+
+genotype_pereira = pereira_tidy %>>%
+    dplyr::filter(erStatus == 'POS', pathway != 'Other') %>>%
+    dplyr::count(sample, pathway) %>>% dplyr::ungroup() %>>%
+    tidyr::spread(pathway, n, 0L) %>>%
+    dplyr::select(-sample) %>>%
+    (?.)
+
+genotype_pereira
+.outfile = file.path(data_dir, 'genotypes/genotype_pereira+er.tsv')
+write_df(genotype_pereira, .outfile)
+
+bingenotype_pereira = genotype_pereira %>>%
+    {ifelse(. > 0L, 1L, 0L)} %>>% as_tibble() %>>%
+    (?.)
+.outfile = file.path(data_dir, 'genotypes/bingenotype_pereira+er.tsv')
+write_df(bingenotype_pereira, .outfile)
+
+genotype_pereira %>>% summarise_all(mean)
+bingenotype_pereira %>>% summarise_all(mean)
 ```
 
 ```{r read}
