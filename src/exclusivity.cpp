@@ -7,6 +7,7 @@
 #include <unordered_map>
 
 #include <cxxwtils/debug.hpp>
+#include <cxxwtils/exception.hpp>
 #include <cxxwtils/iostr.hpp>
 #include <cxxwtils/numeric.hpp>
 #include <cxxwtils/math.hpp>
@@ -73,12 +74,16 @@ void ExclusivityModel::run(const std::string& outfile) {HERE;
         lnp_const += std::log(wtl::polynomial(v));
     }
 
+    if (outfile != "/dev/stdout") {
+        std::ifstream fin(outfile);
+        read_results(fin);
+    }
     const double step = 1.0 / grid_density_;
     const Eigen::ArrayXd axis = Eigen::VectorXd::LinSpaced(grid_density_, 1.0, step).array();
     const auto columns = std::vector<Eigen::ArrayXd>(genotypes_.cols(), axis);
     auto iter = wtl::itertools::product(columns);
     const auto num_gridpoints = iter.count_max();
-    for (const auto& params: iter()) {
+    for (const auto& params: iter(start_)) {
         if (iter.count() % 1000 == 0) {  // snapshot for long run
             wtl::Fout fout(outfile);
             fout << "# " << iter.count() << " in " << num_gridpoints << "\n";
@@ -111,6 +116,21 @@ std::ostream& ExclusivityModel::write_results(std::ostream& ost, const bool head
         ost << p.first << "\t" << wtl::join(p.second, "\t") << "\n";
     }
     return ost;
+}
+
+void ExclusivityModel::read_results(std::istream& ist) {
+    if (ist.fail()) return;
+    std::string buffer;
+    ist >> buffer;
+    if (buffer != "#") throw wtl::ExitSuccess("Completed already");
+    ist >> start_;
+    std::getline(ist, buffer); // in count_max()
+    std::getline(ist, buffer); // header
+    while (std::getline(ist, buffer)) {
+        std::istringstream iss(buffer);
+        std::istream_iterator<double> it(iss);
+        results_.emplace(double(*it), std::vector<double>(++it, std::istream_iterator<double>()));
+    }
 }
 
 void ExclusivityModel::unit_test() {HERE;

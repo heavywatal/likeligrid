@@ -10,6 +10,8 @@ int main(int argc, char* argv[]) {
     try {
         likeligrid::Program program(arguments);
         program.run();
-    } catch (wtl::ExitSuccess) {}
+    } catch (const wtl::ExitSuccess& e) {
+        std::cerr << e.what() << std::endl;
+    }
     return 0;
 }

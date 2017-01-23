@@ -31,6 +31,7 @@ class ExclusivityModel {
     const ArrayXXu& genotypes() const {return genotypes_;}
     std::ostream& write_genotypes(std::ostream&, const bool header=true) const;
     std::ostream& write_results(std::ostream&, const bool header=true) const;
+    void read_results(std::istream&);
 
     static void unit_test();
 
@@ -40,6 +41,7 @@ class ExclusivityModel {
     Eigen::Array<size_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> genotypes_;
     const size_t grid_density_;
     const size_t max_results_;
+    size_t start_ = 0;
     std::multimap<double, std::vector<double>> results_;
 };
 
