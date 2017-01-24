@@ -12,6 +12,7 @@
 #include <map>
 
 #include <Eigen/Core>
+#include <cxxwtils/itertools.hpp>
 
 namespace likeligrid {
 
@@ -37,11 +38,17 @@ class ExclusivityModel {
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
+    double calc_denom(
+        const Eigen::ArrayXd& weights,
+        const Eigen::ArrayXd& exclusi,
+        const size_t num_mutations);
+
     const std::vector<std::string> names_;
     Eigen::Array<size_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> genotypes_;
     const size_t grid_density_;
     const size_t max_results_;
     size_t start_ = 0;
+    std::vector<wtl::itertools::Product<std::vector<size_t>>> index_iters_;
     std::multimap<double, std::vector<double>> results_;
 };
 

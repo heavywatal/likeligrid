@@ -95,7 +95,7 @@ release:
 	$(MAKE) CPPDBG="-DNDEBUG" all
 
 profile: ${PROGRAM}
-	instruments -t "Time Profiler" -D profile$$(date +%Y%m%d) ${PROGRAM}
+	instruments -t "Time Profiler" -D profile$$(date +%Y%m%d) ${PROGRAM} ${ARGS}
 
 ${OBJDIR}/%.o: ${SRCDIR}/%.cpp | ${OBJDIR}
 	$(COMPILE.cpp) ${OUTPUT_OPTION} $<

@@ -26,20 +26,25 @@ ExclusivityModel::ExclusivityModel(std::istream& infile,
     max_results_(max_results) {
         const auto pred = genotypes_.rowwise().sum().array() < max_sites;
         genotypes_ = wtl::eigen::filter(genotypes_, pred);
+
+        std::vector<size_t> indices(genotypes_.cols());
+        std::iota(std::begin(indices), std::end(indices), 0);
+        const size_t max_sites_real = genotypes_.rowwise().sum().maxCoeff();
+        index_iters_.reserve(max_sites_real);
+        for (size_t i=0; i<=max_sites_real; ++i) {
+            index_iters_.emplace_back(std::vector<std::vector<size_t>>(i, indices));
+        }
     }
 
-inline double calc_denom(
+double ExclusivityModel::calc_denom(
     const Eigen::ArrayXd& weights,
     const Eigen::ArrayXd& exclusi,
     const size_t num_mutations) {
 
     if (num_mutations < 2) return 1.0;
-    std::vector<size_t> indices(weights.size());
-    std::iota(std::begin(indices), std::end(indices), 0);
-    const std::vector<std::vector<size_t>> columns(num_mutations, indices);
-    auto iter = wtl::itertools::product(columns);
-    std::vector<double> probs;
-    probs.reserve(static_cast<size_t>(iter.count_max()));
+    auto& iter = index_iters_[num_mutations];
+    iter.reset();
+    double sum_prob = 0.0;
     for (const auto& v: iter()) {
         std::unordered_set<size_t> mutated;
         double p = 1.0;
@@ -49,9 +54,9 @@ inline double calc_denom(
                 p *= exclusi[x];
             }
         }
-        probs.push_back(p);
+        sum_prob += p;
     }
-    return wtl::sum(probs);
+    return sum_prob;
 }
 
 void ExclusivityModel::run(const std::string& outfile) {HERE;
