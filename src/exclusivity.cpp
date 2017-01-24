@@ -6,6 +6,8 @@
 
 #include <unordered_map>
 
+#include <boost/dynamic_bitset.hpp>
+
 #include <cxxwtils/debug.hpp>
 #include <cxxwtils/exception.hpp>
 #include <cxxwtils/iostr.hpp>
@@ -43,19 +45,19 @@ double ExclusivityModel::calc_denom(
 
     if (num_mutations < 2) return 1.0;
     auto& iter = index_iters_[num_mutations];
-    iter.reset();
     double sum_prob = 0.0;
+    boost::dynamic_bitset<> mutated(exclusi.size());
     for (const auto& v: iter()) {
-        std::unordered_set<size_t> mutated;
         double p = 1.0;
         for (const auto x: v) {
             p *= weights[x];
-            if (!mutated.insert(x).second) {
-                p *= exclusi[x];
-            }
+            if (mutated.test(x)) p*= exclusi[x];
+            mutated.set(x);
         }
         sum_prob += p;
+        mutated.reset();
     }
+    iter.reset();
     return sum_prob;
 }
 
