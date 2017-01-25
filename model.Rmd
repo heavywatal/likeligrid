@@ -14,12 +14,21 @@ output:
 - pathway: $i$
     - weight: $w_i$, where $\sum_i w_i = 1$
     - exclusivity:  $x_i$
-    - number of mutated sites: $s_i$
 - configuration: $j$
-    - number of mutated sites: $s_j = \sum_i s_i$
+    - number of mutated sites: $s_{j,i}$; $s_j = \sum_i s_{j,i}$; $s_i = \sum_j s_{j,i}$
     - unnormalized probability of the configuration:
-      $p_j = \prod _i w_i^{s_i} x_i^{\max(0, s_i - 1)}$
+      $p_j = \prod_i w_i^{s_{j,i}} x_i^{\max(0, s_{j,i} - 1)}$
     - normalized probability of the configuration:
       $P_j = p_j / D_{s_j}$
     - denominator to normalize probability:
       $D_s = \sum_j^{s = s_j} p_j$.
+
+<div>$$\begin{split}
+\log \left(\prod _j ^\mathrm{samples} P_j \right)
+  &= \sum_j ^\mathrm{samples} \left(\log p_j / D_{s_j} \right) \\
+  &= \sum_j \left(\log \prod_i w_i^{s_{j,i}} x_i^{\max(0, s_{j,i} - 1)} \right) - \sum_j \left(\log D_{s_j} \right) \\
+  &= \sum_j \left( \sum_i s_{j,i} \log w_i + \sum_i \max(0, s_{j,i} - 1) \log x_i \right)
+     - \sum_j \left(\log D_{s_j} \right) \\
+  &= \sum_i s_i \log w_i + \sum_i \left(\sum_j \max(0, s_{j,i} - 1)\right) \log x_i
+     - \sum_j \left(\log D_{s_j} \right) \\
+\end{split}$$</div>
