@@ -61,6 +61,27 @@ double ExclusivityModel::calc_denom(
     return sum_prob;
 }
 
+std::vector<Eigen::ArrayXd> ExclusivityModel::read_axes(std::istream& ist) const {HERE;
+    std::string buffer;
+    std::getline(ist, buffer);
+    std::vector<std::string> names = wtl::split(buffer, "\t");
+    if (names != names_) throw std::runtime_error("Column names are wrong");
+    Eigen::ArrayXXd axes = wtl::eigen::read_array<double>(ist, names.size());
+    return wtl::eigen::columns(axes);
+}
+
+std::vector<Eigen::ArrayXd> ExclusivityModel::make_vicinity() const {HERE;
+    const auto best = results_.crbegin()->second;
+    std::vector<Eigen::ArrayXd> axes;
+    axes.reserve(best.size());
+    const double step = 1.0 / grid_density_;
+    for (const double center: best) {
+        Eigen::ArrayXd axis = Eigen::ArrayXd::LinSpaced(grid_density_ + 1, center + step, center - step);
+        axes.push_back(wtl::eigen::filter(axis, axis > 0.0));
+    }
+    return axes;
+}
+
 void ExclusivityModel::run(const std::string& outfile) {HERE;
     results_.clear();
     const size_t nsam = genotypes_.rows();
@@ -87,8 +108,8 @@ void ExclusivityModel::run(const std::string& outfile) {HERE;
     }
     const double step = 1.0 / grid_density_;
     const Eigen::ArrayXd axis = Eigen::VectorXd::LinSpaced(grid_density_, 1.0, step).array();
-    const auto columns = std::vector<Eigen::ArrayXd>(genotypes_.cols(), axis);
-    auto iter = wtl::itertools::product(columns);
+    const std::vector<Eigen::ArrayXd> axes(genotypes_.cols(), axis);
+    auto iter = wtl::itertools::product(axes);
     const auto num_gridpoints = iter.count_max();
     for (const auto& params: iter(start_)) {
         if (iter.count() % 1000 == 0) {  // snapshot for long run

@@ -30,9 +30,6 @@ class ExclusivityModel {
 
     const std::vector<std::string>& names() const {return names_;}
     const ArrayXXu& genotypes() const {return genotypes_;}
-    std::ostream& write_genotypes(std::ostream&, const bool header=true) const;
-    std::ostream& write_results(std::ostream&, const bool header=true) const;
-    void read_results(std::istream&);
 
     static void unit_test();
 
@@ -42,6 +39,11 @@ class ExclusivityModel {
         const Eigen::ArrayXd& weights,
         const Eigen::ArrayXd& exclusi,
         const size_t num_mutations);
+    std::ostream& write_genotypes(std::ostream&, const bool header=true) const;
+    std::ostream& write_results(std::ostream&, const bool header=true) const;
+    void read_results(std::istream&);
+    std::vector<Eigen::ArrayXd> read_axes(std::istream&) const;
+    std::vector<Eigen::ArrayXd> make_vicinity() const;
 
     const std::vector<std::string> names_;
     Eigen::Array<size_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> genotypes_;
