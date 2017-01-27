@@ -30,6 +30,7 @@ class ExclusivityModel {
 
     const std::vector<std::string>& names() const {return names_;}
     const ArrayXXu& genotypes() const {return genotypes_;}
+    const std::vector<double>& best_result() const {return results_.crbegin()->second;}
 
     static void unit_test();
 
@@ -43,7 +44,6 @@ class ExclusivityModel {
     std::ostream& write_results(std::ostream&, const bool header=true) const;
     void read_results(std::istream&);
     std::vector<Eigen::ArrayXd> read_axes(std::istream&) const;
-    std::vector<Eigen::ArrayXd> make_vicinity() const;
 
     const std::vector<std::string> names_;
     Eigen::Array<size_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> genotypes_;

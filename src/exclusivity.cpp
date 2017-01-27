@@ -70,13 +70,12 @@ std::vector<Eigen::ArrayXd> ExclusivityModel::read_axes(std::istream& ist) const
     return wtl::eigen::columns(axes);
 }
 
-std::vector<Eigen::ArrayXd> ExclusivityModel::make_vicinity() const {HERE;
-    const auto best = results_.crbegin()->second;
+inline std::vector<Eigen::ArrayXd>
+make_vicinity(const std::vector<double>& center, const double width, const size_t breaks) {HERE;
     std::vector<Eigen::ArrayXd> axes;
-    axes.reserve(best.size());
-    const double step = 1.0 / grid_density_;
-    for (const double center: best) {
-        Eigen::ArrayXd axis = Eigen::ArrayXd::LinSpaced(grid_density_ + 1, center + step, center - step);
+    axes.reserve(center.size());
+    for (const double x: center) {
+        Eigen::ArrayXd axis = Eigen::ArrayXd::LinSpaced(breaks, x + width, x - width);
         axes.push_back(wtl::eigen::filter(axis, axis > 0.0));
     }
     return axes;
@@ -129,6 +128,7 @@ void ExclusivityModel::run(const std::string& outfile) {HERE;
             results_.erase(results_.begin());
         }
     }
+    std::cout << make_vicinity(best_result(), step, grid_density_ + 1) << std::endl;
     wtl::Fout fout(outfile);
     write_results(fout);
 }
