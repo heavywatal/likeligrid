@@ -18,25 +18,21 @@
 
 namespace likeligrid {
 
-ExclusivityModel::ExclusivityModel(std::istream& infile,
-    const size_t grid_density,
-    const size_t max_sites,
-    const size_t max_results):
+ExclusivityModel::ExclusivityModel(std::istream& infile, const size_t max_sites):
     names_(wtl::read_header(infile)),
-    genotypes_(wtl::eigen::read_array<size_t>(infile, names_.size())),
-    grid_density_(grid_density),
-    max_results_(max_results) {
-        const auto pred = genotypes_.rowwise().sum().array() < max_sites;
-        genotypes_ = wtl::eigen::filter(genotypes_, pred);
+    genotypes_(wtl::eigen::read_array<size_t>(infile, names_.size())) {
 
-        std::vector<size_t> indices(genotypes_.cols());
-        std::iota(std::begin(indices), std::end(indices), 0);
-        const size_t max_sites_real = genotypes_.rowwise().sum().maxCoeff();
-        index_iters_.reserve(max_sites_real);
-        for (size_t i=0; i<=max_sites_real; ++i) {
-            index_iters_.emplace_back(std::vector<std::vector<size_t>>(i, indices));
-        }
+    const auto pred = genotypes_.rowwise().sum().array() < max_sites;
+    genotypes_ = wtl::eigen::filter(genotypes_, pred);
+
+    const size_t max_sites_real = genotypes_.rowwise().sum().maxCoeff();
+    index_iters_.reserve(max_sites_real);
+    std::vector<size_t> indices(genotypes_.cols());
+    std::iota(std::begin(indices), std::end(indices), 0);
+    for (size_t i=0; i<=max_sites_real; ++i) {
+        index_iters_.emplace_back(std::vector<std::vector<size_t>>(i, indices));
     }
+}
 
 double ExclusivityModel::calc_denom(
     const Eigen::ArrayXd& weights,
@@ -81,7 +77,7 @@ make_vicinity(const std::vector<double>& center, const double width, const size_
     return axes;
 }
 
-void ExclusivityModel::run(const std::string& outfile) {HERE;
+void ExclusivityModel::run(const std::string& outfile, const size_t grid_density, const std::string& axes_file, const size_t max_results) {HERE;
     results_.clear();
     const size_t nsam = genotypes_.rows();
     const ArrayXu vs = genotypes_.rowwise().sum();
@@ -105,9 +101,17 @@ void ExclusivityModel::run(const std::string& outfile) {HERE;
         std::ifstream fin(outfile);
         read_results(fin);
     }
-    const double step = 1.0 / grid_density_;
-    const Eigen::ArrayXd axis = Eigen::VectorXd::LinSpaced(grid_density_, 1.0, step).array();
-    const std::vector<Eigen::ArrayXd> axes(genotypes_.cols(), axis);
+    std::vector<Eigen::ArrayXd> axes;
+    double step = 0.0;
+    if (axes_file.empty()) {
+        step = 1.0 / grid_density;
+        const Eigen::ArrayXd axis = Eigen::VectorXd::LinSpaced(grid_density, 1.0, step).array();
+        axes = std::vector<Eigen::ArrayXd>(genotypes_.cols(), axis);
+    } else {
+        wtl::Fin fin(axes_file);
+        axes = read_axes(fin);
+        step = std::abs(axes[0][0] - axes[0][1]);
+    }
     auto iter = wtl::itertools::product(axes);
     const auto num_gridpoints = iter.count_max();
     for (const auto& params: iter(start_)) {
@@ -124,21 +128,23 @@ void ExclusivityModel::run(const std::string& outfile) {HERE;
         }
 
         results_.emplace(loglik, wtl::eigen::as_vector(params));
-        while (results_.size() > max_results_) {
+        while (results_.size() > max_results) {
             results_.erase(results_.begin());
         }
     }
-    std::cout << make_vicinity(best_result(), step, grid_density_ + 1) << std::endl;
-    wtl::Fout fout(outfile);
-    write_results(fout);
+    {
+        wtl::Fout fout(outfile);
+        write_results(fout);
+    }
+    std::cout << make_vicinity(best_result(), step, grid_density) << std::endl;
 }
 
-std::ostream& ExclusivityModel::write_genotypes(std::ostream& ost, const bool header) const {
+std::ostream& ExclusivityModel::write_genotypes(std::ostream& ost, const bool header) const {HERE;
     if (header) {ost << wtl::join(names_, "\t") << "\n";}
     return ost << genotypes_.format(wtl::eigen::tsv());
 }
 
-std::ostream& ExclusivityModel::write_results(std::ostream& ost, const bool header) const {
+std::ostream& ExclusivityModel::write_results(std::ostream& ost, const bool header) const {HERE;
     if (header) {ost << "loglik\t" << wtl::join(names_, "\t") << "\n";}
     for (const auto& p: results_) {
         ost << p.first << "\t" << wtl::join(p.second, "\t") << "\n";
@@ -146,14 +152,21 @@ std::ostream& ExclusivityModel::write_results(std::ostream& ost, const bool head
     return ost;
 }
 
-void ExclusivityModel::read_results(std::istream& ist) {
+void ExclusivityModel::read_results(std::istream& ist) {HERE;
     if (ist.fail()) return;
     std::string buffer;
     ist >> buffer;
-    if (buffer != "#") throw wtl::ExitSuccess("Completed already");
-    ist >> start_;
-    std::getline(ist, buffer); // in count_max()
+    if (buffer == "loglik") { // completed
+        start_ = -1;
+    } else {
+        ist >> start_;
+        std::getline(ist, buffer); // in count_max()
+        ist >> buffer; // loglik
+    }
     std::getline(ist, buffer); // header
+    if (names_ != wtl::split(buffer, "\t")) {
+        throw std::runtime_error("Column names are wrong");
+    }
     while (std::getline(ist, buffer)) {
         std::istringstream iss(buffer);
         std::istream_iterator<double> it(iss);
@@ -164,9 +177,9 @@ void ExclusivityModel::read_results(std::istream& ist) {
 void ExclusivityModel::unit_test() {HERE;
     std::string geno = "a\tb\n0\t0\n0\t1\n1\t0\n1\t1\n";
     std::istringstream iss(geno);
-    ExclusivityModel model(iss, 5);
+    ExclusivityModel model(iss);
     model.write_genotypes(std::cout);
-    model.run();
+    model.run("/dev/stdout", 5);
 }
 
 } // namespace likeligrid

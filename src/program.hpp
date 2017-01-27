@@ -41,7 +41,8 @@ class Program {
     size_t GRID_DENSITY = 10;
     size_t MAX_SITES = 65535;
     size_t MAX_RESULTS = 16;
-    std::string INFILE = "-";
+    std::string GENOTYPES_FILE = "-";
+    std::string AXES_FILE = "";
     std::string OUTFILE = "-";
 
     std::string COMMAND_ARGS;

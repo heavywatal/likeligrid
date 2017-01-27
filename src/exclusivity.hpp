@@ -21,12 +21,12 @@ class ExclusivityModel {
     typedef Eigen::Array<size_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> ArrayXXu;
     typedef Eigen::Array<size_t, Eigen::Dynamic, 1> ArrayXu;
 
-    ExclusivityModel(std::istream& infile,
-        const size_t grid_density,
-        const size_t max_sites=65535,
-        const size_t max_results=65535);
+    ExclusivityModel(std::istream& infile, const size_t max_sites=65535);
 
-    void run(const std::string& outfile="/dev/stdout");
+    void run(const std::string& outfile,
+        const size_t grid_density,
+        const std::string& axes_file="",
+        const size_t max_results=65535);
 
     const std::vector<std::string>& names() const {return names_;}
     const ArrayXXu& genotypes() const {return genotypes_;}
@@ -44,11 +44,10 @@ class ExclusivityModel {
     std::ostream& write_results(std::ostream&, const bool header=true) const;
     void read_results(std::istream&);
     std::vector<Eigen::ArrayXd> read_axes(std::istream&) const;
+    std::vector<Eigen::ArrayXd> init_grid(const std::string& infile);
 
     const std::vector<std::string> names_;
     Eigen::Array<size_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> genotypes_;
-    const size_t grid_density_;
-    const size_t max_results_;
     size_t start_ = 0;
     std::vector<wtl::itertools::Product<std::vector<size_t>>> index_iters_;
     std::multimap<double, std::vector<double>> results_;

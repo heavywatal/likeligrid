@@ -32,6 +32,7 @@ po::options_description Program::options_desc() {HERE;
         ("grid,g", po::value(&GRID_DENSITY)->default_value(GRID_DENSITY))
         ("max-sites,s", po::value(&MAX_SITES)->default_value(MAX_SITES))
         ("results,n", po::value(&MAX_RESULTS)->default_value(MAX_RESULTS))
+        ("axes,a", po::value<std::string>(&AXES_FILE)->default_value(AXES_FILE))
         ("outfile,o", po::value<std::string>(&OUTFILE)->default_value(OUTFILE));
     return description;
 }
@@ -39,7 +40,7 @@ po::options_description Program::options_desc() {HERE;
 po::options_description Program::positional_desc() {HERE;
     po::options_description description("Positional");
     description.add_options()
-        ("infile", po::value(&INFILE)->default_value(INFILE));
+        ("genotypes", po::value(&GENOTYPES_FILE)->default_value(GENOTYPES_FILE));
     return description;
 }
 
@@ -47,7 +48,7 @@ void Program::help_and_exit() {HERE;
     auto description = general_desc();
     description.add(options_desc());
     // do not print positional arguments as options
-    std::cout << "Usage: likeligrid [options] infile\n" << std::endl;
+    std::cout << "Usage: likeligrid [options] genotypes\n" << std::endl;
     description.print(std::cout);
     throw wtl::ExitSuccess();
 }
@@ -76,7 +77,7 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
     description.add(options_desc());
     description.add(positional_desc());
     po::positional_options_description positional;
-    positional.add("infile", 1);
+    positional.add("genotypes", 1);
     po::variables_map vm;
     po::store(po::command_line_parser(arguments).
               options(description).
@@ -90,8 +91,8 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
         std::cerr << CONFIG_STRING << std::endl;
     }
     test(vm["test"].as<int>());
-    if (INFILE == "-") {
-        INFILE = "/dev/stdin";
+    if (GENOTYPES_FILE == "-") {
+        GENOTYPES_FILE = "/dev/stdin";
     }
     if (OUTFILE == "-") {
         OUTFILE = "/dev/stdout";
@@ -99,9 +100,9 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 }
 
 void Program::run() {HERE;
-    wtl::Fin fin(INFILE);
-    ExclusivityModel model(fin, GRID_DENSITY, MAX_SITES, MAX_RESULTS);
-    model.run(OUTFILE);
+    wtl::Fin fin(GENOTYPES_FILE);
+    ExclusivityModel model(fin, MAX_SITES);
+    model.run(OUTFILE, GRID_DENSITY, AXES_FILE, MAX_RESULTS);
 }
 
 } // namespace likeligrid
