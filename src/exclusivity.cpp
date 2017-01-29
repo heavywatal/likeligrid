@@ -77,6 +77,19 @@ make_vicinity(const std::vector<double>& center, const double width, const size_
     return axes;
 }
 
+template <class T> inline
+std::map<std::string, T>
+set_names(const std::vector<T>& x, const std::vector<std::string>& names) {
+    if (x.size() != names.size()) {
+        throw std::runtime_error("x.size() != names.size()");
+    }
+    std::map<std::string, T> output;
+    for (size_t i=0; i<x.size(); ++i) {
+        output[names[i]] = x[i];
+    }
+    return output;
+}
+
 void ExclusivityModel::run(const std::string& outfile, const size_t grid_density, const std::string& axes_file, const size_t max_results) {HERE;
     results_.clear();
     const size_t nsam = genotypes_.rows();
@@ -136,7 +149,7 @@ void ExclusivityModel::run(const std::string& outfile, const size_t grid_density
         wtl::Fout fout(outfile);
         write_results(fout);
     }
-    std::cout << make_vicinity(best_result(), step, grid_density) << std::endl;
+    std::cout << set_names(make_vicinity(best_result(), step, grid_density), names_) << std::endl;
 }
 
 std::ostream& ExclusivityModel::write_genotypes(std::ostream& ost, const bool header) const {HERE;
