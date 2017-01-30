@@ -7,12 +7,15 @@
 #include <unordered_map>
 
 #include <boost/dynamic_bitset.hpp>
+#include <json.hpp>
+namespace json = nlohmann;
 
 #include <cxxwtils/debug.hpp>
 #include <cxxwtils/exception.hpp>
 #include <cxxwtils/iostr.hpp>
 #include <cxxwtils/numeric.hpp>
 #include <cxxwtils/math.hpp>
+#include <cxxwtils/algorithm.hpp>
 #include <cxxwtils/eigen.hpp>
 #include <cxxwtils/itertools.hpp>
 
@@ -57,37 +60,15 @@ double ExclusivityModel::calc_denom(
     return sum_prob;
 }
 
-std::vector<Eigen::ArrayXd> ExclusivityModel::read_axes(std::istream& ist) const {HERE;
-    std::string buffer;
-    std::getline(ist, buffer);
-    std::vector<std::string> names = wtl::split(buffer, "\t");
-    if (names != names_) throw std::runtime_error("Column names are wrong");
-    Eigen::ArrayXXd axes = wtl::eigen::read_array<double>(ist, names.size());
-    return wtl::eigen::columns(axes);
-}
-
-inline std::vector<Eigen::ArrayXd>
+inline std::vector<std::vector<double>>
 make_vicinity(const std::vector<double>& center, const double width, const size_t breaks) {HERE;
-    std::vector<Eigen::ArrayXd> axes;
+    std::vector<std::vector<double>> axes;
     axes.reserve(center.size());
     for (const double x: center) {
         Eigen::ArrayXd axis = Eigen::ArrayXd::LinSpaced(breaks, x + width, x - width);
-        axes.push_back(wtl::eigen::filter(axis, axis > 0.0));
+        axes.push_back(wtl::eigen::as_vector(wtl::eigen::filter(axis, axis > 0.0)));
     }
     return axes;
-}
-
-template <class T> inline
-std::map<std::string, T>
-set_names(const std::vector<T>& x, const std::vector<std::string>& names) {
-    if (x.size() != names.size()) {
-        throw std::runtime_error("x.size() != names.size()");
-    }
-    std::map<std::string, T> output;
-    for (size_t i=0; i<x.size(); ++i) {
-        output[names[i]] = x[i];
-    }
-    return output;
 }
 
 void ExclusivityModel::run(const std::string& outfile, const size_t grid_density, const std::string& axes_file, const size_t max_results) {HERE;
@@ -149,7 +130,11 @@ void ExclusivityModel::run(const std::string& outfile, const size_t grid_density
         wtl::Fout fout(outfile);
         write_results(fout);
     }
-    std::cout << set_names(make_vicinity(best_result(), step, grid_density), names_) << std::endl;
+    {
+        wtl::Fout fout("/dev/stderr");
+        json::json next_axes(wtl::map(names_, make_vicinity(best_result(), step, grid_density)));
+        fout << next_axes << std::endl;
+    }
 }
 
 std::ostream& ExclusivityModel::write_genotypes(std::ostream& ost, const bool header) const {HERE;
@@ -185,6 +170,22 @@ void ExclusivityModel::read_results(std::istream& ist) {HERE;
         std::istream_iterator<double> it(iss);
         results_.emplace(double(*it), std::vector<double>(++it, std::istream_iterator<double>()));
     }
+}
+
+std::vector<Eigen::ArrayXd> ExclusivityModel::read_axes(std::istream& ist) const {HERE;
+    json::json obj;
+    ist >> obj;
+    std::vector<std::string> names;
+    std::vector<Eigen::ArrayXd> values;
+    names.reserve(obj.size());
+    values.reserve(obj.size());
+    for (auto it=obj.cbegin(); it!=obj.cend(); ++it) {
+        names.push_back(it.key());
+        const auto v = it.value().get<std::vector<double>>();
+        values.push_back(Eigen::ArrayXd::Map(v.data(), v.size()));
+    }
+    if (names != names_) throw std::runtime_error("Parameter names are wrong");
+    return values;
 }
 
 void ExclusivityModel::unit_test() {HERE;
