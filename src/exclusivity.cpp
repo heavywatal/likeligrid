@@ -21,6 +21,8 @@ namespace json = nlohmann;
 
 namespace likeligrid {
 
+const std::vector<double> ExclusivityModel::STEPS_ = {0.2, 0.1, 0.05, 0.02, 0.01};
+
 ExclusivityModel::ExclusivityModel(std::istream& infile, const size_t max_sites):
     names_(wtl::read_header(infile)),
     genotypes_(wtl::eigen::read_array<size_t>(infile, names_.size())) {
@@ -71,7 +73,7 @@ make_vicinity(const std::vector<double>& center, const double width, const size_
     return axes;
 }
 
-void ExclusivityModel::run(const std::string& outfile, const size_t grid_density, const std::string& axes_file, const size_t max_results) {HERE;
+void ExclusivityModel::run(const std::string& outfile, const std::string& axes_file, const size_t max_results) {HERE;
     results_.clear();
     const size_t nsam = genotypes_.rows();
     const ArrayXu vs = genotypes_.rowwise().sum();
@@ -96,15 +98,20 @@ void ExclusivityModel::run(const std::string& outfile, const size_t grid_density
         read_results(fin);
     }
     std::vector<Eigen::ArrayXd> axes;
-    double step = 0.0;
     if (axes_file.empty()) {
-        step = 1.0 / grid_density;
-        const Eigen::ArrayXd axis = Eigen::VectorXd::LinSpaced(grid_density, 1.0, step).array();
+        const double step = STEPS_[step_index_];
+        const size_t breaks = 1.0 / step;
+        const Eigen::ArrayXd axis = Eigen::VectorXd::LinSpaced(breaks, 1.0, step).array();
         axes = std::vector<Eigen::ArrayXd>(genotypes_.cols(), axis);
     } else {
         wtl::Fin fin(axes_file);
         axes = read_axes(fin);
-        step = std::abs(axes[0][0] - axes[0][1]);
+        const double step = std::abs(axes[0][0] - axes[0][1]);
+        const auto it = std::find_if(STEPS_.begin(), STEPS_.end(), [step](const double x){
+            return std::abs(x - step) < 1e-6;
+        });
+        if (it == STEPS_.end()) throw std::runtime_error("invalid step size");
+        step_index_ = it - STEPS_.begin();
     }
     auto iter = wtl::itertools::product(axes);
     const auto num_gridpoints = iter.count_max();
@@ -131,8 +138,11 @@ void ExclusivityModel::run(const std::string& outfile, const size_t grid_density
         write_results(fout);
     }
     {
-        wtl::Fout fout("/dev/stderr");
-        json::json next_axes(wtl::map(names_, make_vicinity(best_result(), step, grid_density)));
+        wtl::Fout fout("/dev/stdout");
+        const double current_step = STEPS_[step_index_];
+        size_t breaks = 5;
+        if (current_step == 0.05) ++breaks;
+        json::json next_axes(wtl::map(names_, make_vicinity(best_result(), current_step, breaks)));
         fout << next_axes << std::endl;
     }
 }
@@ -193,7 +203,7 @@ void ExclusivityModel::unit_test() {HERE;
     std::istringstream iss(geno);
     ExclusivityModel model(iss);
     model.write_genotypes(std::cout);
-    model.run("/dev/stdout", 5);
+    model.run("/dev/stdout");
 }
 
 } // namespace likeligrid

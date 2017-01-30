@@ -20,11 +20,11 @@ class ExclusivityModel {
   public:
     typedef Eigen::Array<size_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> ArrayXXu;
     typedef Eigen::Array<size_t, Eigen::Dynamic, 1> ArrayXu;
+    static const std::vector<double> STEPS_;
 
     ExclusivityModel(std::istream& infile, const size_t max_sites=65535);
 
     void run(const std::string& outfile,
-        const size_t grid_density,
         const std::string& axes_file="",
         const size_t max_results=65535);
 
@@ -49,6 +49,7 @@ class ExclusivityModel {
     const std::vector<std::string> names_;
     Eigen::Array<size_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> genotypes_;
     size_t start_ = 0;
+    size_t step_index_ = 0;
     std::vector<wtl::itertools::Product<std::vector<size_t>>> index_iters_;
     std::multimap<double, std::vector<double>> results_;
 };

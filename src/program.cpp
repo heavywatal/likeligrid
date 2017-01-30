@@ -29,7 +29,6 @@ inline po::options_description general_desc() {HERE;
 po::options_description Program::options_desc() {HERE;
     po::options_description description("Program");
     description.add_options()
-        ("grid,g", po::value(&GRID_DENSITY)->default_value(GRID_DENSITY))
         ("max-sites,s", po::value(&MAX_SITES)->default_value(MAX_SITES))
         ("results,n", po::value(&MAX_RESULTS)->default_value(MAX_RESULTS))
         ("axes,a", po::value<std::string>(&AXES_FILE)->default_value(AXES_FILE))
@@ -102,7 +101,7 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 void Program::run() {HERE;
     wtl::Fin fin(GENOTYPES_FILE);
     ExclusivityModel model(fin, MAX_SITES);
-    model.run(OUTFILE, GRID_DENSITY, AXES_FILE, MAX_RESULTS);
+    model.run(OUTFILE, AXES_FILE, MAX_RESULTS);
 }
 
 } // namespace likeligrid
