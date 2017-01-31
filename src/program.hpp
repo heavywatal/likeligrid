@@ -41,8 +41,7 @@ class Program {
     size_t MAX_SITES = 3;
     size_t MAX_RESULTS = 16;
     std::string GENOTYPES_FILE = "-";
-    std::string AXES_FILE = "";
-    std::string OUTFILE = "-";
+    std::string PREFIX = "";
 
     std::string COMMAND_ARGS;
     std::string CONFIG_STRING;

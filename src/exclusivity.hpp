@@ -22,11 +22,11 @@ class ExclusivityModel {
     typedef Eigen::Array<size_t, Eigen::Dynamic, 1> ArrayXu;
     static const std::vector<double> STEPS_;
 
-    ExclusivityModel(std::istream& infile, const size_t max_sites=65535);
-
-    void run(const std::string& outfile,
-        const std::string& axes_file="",
+    ExclusivityModel(std::istream& genotypes,
+        const size_t max_sites=65535,
         const size_t max_results=65535);
+
+    void run(const std::string& infile="");
 
     const std::vector<std::string>& names() const {return names_;}
     const ArrayXXu& genotypes() const {return genotypes_;}
@@ -36,18 +36,23 @@ class ExclusivityModel {
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
+    void init_axes(const std::string&);
     double calc_denom(
         const Eigen::ArrayXd& weights,
         const Eigen::ArrayXd& exclusi,
         const size_t num_mutations);
     std::ostream& write_genotypes(std::ostream&, const bool header=true) const;
-    std::ostream& write_results(std::ostream&, const bool header=true) const;
-    void read_results(std::istream&);
-    std::vector<Eigen::ArrayXd> read_axes(std::istream&) const;
+    std::ostream& write_results(std::ostream&) const;
+    bool read_results(const std::string&);
     std::vector<Eigen::ArrayXd> init_grid(const std::string& infile);
+    std::string name_outfile(const std::string& infile) const;
+    void check_outfile(const std::string& outfile);
 
     const std::vector<std::string> names_;
     Eigen::Array<size_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> genotypes_;
+    size_t max_results_;
+    size_t max_sites_;
+    std::vector<Eigen::ArrayXd> axes_;
     size_t start_ = 0;
     size_t step_index_ = 0;
     std::vector<wtl::itertools::Product<std::vector<size_t>>> index_iters_;

@@ -31,8 +31,7 @@ po::options_description Program::options_desc() {HERE;
     description.add_options()
         ("max-sites,s", po::value(&MAX_SITES)->default_value(MAX_SITES))
         ("results,n", po::value(&MAX_RESULTS)->default_value(MAX_RESULTS))
-        ("axes,a", po::value<std::string>(&AXES_FILE)->default_value(AXES_FILE))
-        ("outfile,o", po::value<std::string>(&OUTFILE)->default_value(OUTFILE));
+        ("prefix,p", po::value(&PREFIX)->default_value(PREFIX), "prefix or previous result");
     return description;
 }
 
@@ -93,15 +92,12 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
     if (GENOTYPES_FILE == "-") {
         GENOTYPES_FILE = "/dev/stdin";
     }
-    if (OUTFILE == "-") {
-        OUTFILE = "/dev/stdout";
-    }
 }
 
 void Program::run() {HERE;
     wtl::Fin fin(GENOTYPES_FILE);
-    ExclusivityModel model(fin, MAX_SITES);
-    model.run(OUTFILE, AXES_FILE, MAX_RESULTS);
+    ExclusivityModel model(fin, MAX_SITES, MAX_RESULTS);
+    model.run(PREFIX);
 }
 
 } // namespace likeligrid
