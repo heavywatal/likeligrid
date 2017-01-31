@@ -38,7 +38,7 @@ class Program {
     boost::program_options::options_description positional_desc();
     void help_and_exit();
 
-    size_t MAX_SITES = 65535;
+    size_t MAX_SITES = 3;
     size_t MAX_RESULTS = 16;
     std::string GENOTYPES_FILE = "-";
     std::string AXES_FILE = "";
