@@ -40,20 +40,44 @@ ExclusivityModel::ExclusivityModel(std::istream& genotypes,
     }
 }
 
+void ExclusivityModel::run(const std::string& infile) {HERE;
+    init_axes(infile);
+    if (step_index_ == STEPS_.size()) {
+        std::cerr << "Done: step size = " << STEPS_.back() << std::endl;
+        return;
+    }
+    const std::string outfile = name_outfile(infile);
+    if (read_results(outfile) && start_ == 0) {
+        std::cerr << outfile << " is already completed:" << std::endl;
+        write_results(std::cout);
+        run(outfile);
+        return;
+    }
+    std::cerr << "Start: " << start_ << std::endl;
+    for (size_t i=0; i<names_.size(); ++i) {
+        std::cerr << names_[i] << ": " << axes_[i].transpose() << std::endl;
+    }
+    run_impl(outfile);
+    if (outfile != "/dev/null") {
+        run(outfile);
+    }
+}
+
 void ExclusivityModel::init_axes(const std::string& infile) {HERE;
     if (read_results(infile)) {
         if (start_ > 0) {
             throw std::runtime_error("infile must be a complete result");
         }
+        max_results_ = results_.size();
         const double step = STEPS_.at(step_index_);
         size_t breaks = 5;
         if (step == 0.05) ++breaks;
+        axes_.clear();
         axes_.reserve(names_.size());
         for (const double x: best_result()) {
             Eigen::ArrayXd axis = Eigen::ArrayXd::LinSpaced(breaks, x + step, x - step);
             axes_.push_back(wtl::eigen::filter(axis, axis > 0.0));
         }
-        max_results_ = results_.size();
         results_.clear();
         ++step_index_;
     } else {
@@ -62,15 +86,12 @@ void ExclusivityModel::init_axes(const std::string& infile) {HERE;
         const Eigen::ArrayXd axis = Eigen::VectorXd::LinSpaced(breaks, 1.0, step).array();
         axes_ = std::vector<Eigen::ArrayXd>(names_.size(), axis);
     }
-    for (size_t i=0; i<names_.size(); ++i) {
-        std::cerr << names_[i] << ": " << axes_[i].transpose() << std::endl;
-    }
 }
 
 std::string ExclusivityModel::name_outfile(const std::string& infile) const {HERE;
     std::string prefix = "output";
-    if (infile == "-") {
-        return "/dev/stdout";
+    if (infile == "/dev/null") {
+        return infile;
     } else if (!infile.empty()) {
         prefix = wtl::split(infile, "-")[0];
     }
@@ -81,23 +102,7 @@ std::string ExclusivityModel::name_outfile(const std::string& infile) const {HER
     return oss.str();
 }
 
-void ExclusivityModel::check_outfile(const std::string& outfile) {HERE;
-    if (outfile != "/dev/stdout" && read_results(outfile)) {
-        if (start_ == 0) {
-            std::cerr << "outfile is already completed:" << std::endl;
-            write_results(std::cout);
-            throw wtl::ExitSuccess();
-        } else {
-            std::cerr << "Restart from " << start_ << std::endl;
-        }
-    }
-}
-
-void ExclusivityModel::run(const std::string& infile) {HERE;
-    init_axes(infile);
-    const std::string outfile = name_outfile(infile);
-    check_outfile(outfile);
-
+void ExclusivityModel::run_impl(const std::string& outfile) {HERE;
     const ArrayXu freqs = genotypes_.colwise().sum();
     const Eigen::ArrayXd weights = freqs.cast<double>() / freqs.sum();
     double lnp_const = (freqs.cast<double>() * weights.log()).sum();
@@ -118,8 +123,8 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
     const auto max_count = iter.max_count();
     for (const auto& params: iter(start_)) {
         if (iter.count() % 1000 == 0) {  // snapshot for long run
-            wtl::Fout fout(outfile);
             std::cerr << "\r" << iter.count() << " in " << max_count << std::flush;
+            wtl::Fout fout(outfile);
             fout << "# " << iter.count() << " in " << max_count << "\n";
             write_results(fout);
         }
@@ -135,7 +140,8 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
             results_.erase(results_.begin());
         }
     }
-    std::cerr << "\nWriting " << outfile << std::endl;
+    write_results(std::cout);
+    std::cerr << "\nWriting to " << outfile << std::endl;
     wtl::Fout fout(outfile);
     write_results(fout);
 }
@@ -181,14 +187,22 @@ std::ostream& ExclusivityModel::write_results(std::ostream& ost) const {
 bool ExclusivityModel::read_results(const std::string& infile) {HERE;
     results_.clear();
     std::ifstream ist(infile);
-    if (ist.fail() || ist.bad()) return false;
+    if (ist.fail() || ist.bad() || infile == "/dev/null") return false;
     std::cerr << "Reading: " << infile << std::endl;
+    read_metadata(ist);
+    read_body(ist);
+    return true;
+}
+
+void ExclusivityModel::read_metadata(std::istream& ist) {HERE;
     std::string buffer;
     ist >> buffer;
     if (buffer == "#") { // incomplete
         ist >> start_;
         std::getline(ist, buffer); // in count_max()
         ist >> buffer;
+    } else {
+        start_ = 0;
     }
     max_sites_ = std::stoul(wtl::split(buffer, "=")[1]);
     ist >> buffer;
@@ -197,6 +211,10 @@ bool ExclusivityModel::read_results(const std::string& infile) {HERE;
     const auto it = std::find_if(STEPS_.begin(), STEPS_.end(), pred);
     if (it == STEPS_.end()) throw std::runtime_error("invalid step size");
     step_index_ = it - STEPS_.begin();
+}
+
+void ExclusivityModel::read_body(std::istream& ist) {HERE;
+    std::string buffer;
     ist >> buffer; // loglik
     std::getline(ist, buffer); // header
     buffer.erase(0, 1); // \t
@@ -210,15 +228,14 @@ bool ExclusivityModel::read_results(const std::string& infile) {HERE;
         std::istream_iterator<double> it(iss);
         results_.emplace(double(*it), std::vector<double>(++it, std::istream_iterator<double>()));
     }
-    return true;
 }
 
 void ExclusivityModel::unit_test() {HERE;
-    std::string geno = "a\tb\n0\t0\n0\t1\n1\t0\n1\t1\n";
+    std::string geno = "A\tB\n0\t0\n0\t1\n1\t0\n1\t1\n";
     std::istringstream iss(geno);
     ExclusivityModel model(iss);
-    model.write_genotypes(std::cout);
-    model.run("-");
+    model.write_genotypes(std::cerr);
+    model.run("/dev/null");
 }
 
 } // namespace likeligrid

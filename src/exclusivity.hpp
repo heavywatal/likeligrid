@@ -37,6 +37,8 @@ class ExclusivityModel {
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
     void init_axes(const std::string&);
+    std::string name_outfile(const std::string&) const;
+    void run_impl(const std::string&);
     double calc_denom(
         const Eigen::ArrayXd& weights,
         const Eigen::ArrayXd& exclusi,
@@ -44,19 +46,18 @@ class ExclusivityModel {
     std::ostream& write_genotypes(std::ostream&, const bool header=true) const;
     std::ostream& write_results(std::ostream&) const;
     bool read_results(const std::string&);
-    std::vector<Eigen::ArrayXd> init_grid(const std::string& infile);
-    std::string name_outfile(const std::string& infile) const;
-    void check_outfile(const std::string& outfile);
+    void read_metadata(std::istream&);
+    void read_body(std::istream&);
 
     const std::vector<std::string> names_;
     Eigen::Array<size_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> genotypes_;
     size_t max_results_;
     size_t max_sites_;
+    std::multimap<double, std::vector<double>> results_;
     std::vector<Eigen::ArrayXd> axes_;
     size_t start_ = 0;
     size_t step_index_ = 0;
     std::vector<wtl::itertools::Product<std::vector<size_t>>> index_iters_;
-    std::multimap<double, std::vector<double>> results_;
 };
 
 } // namespace likeligrid
