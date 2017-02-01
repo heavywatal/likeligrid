@@ -6,7 +6,7 @@
 
 #include <cxxwtils/debug.hpp>
 #include <cxxwtils/iostr.hpp>
-#include <cxxwtils/math.hpp>
+#include <cxxwtils/bmath.hpp>
 #include <cxxwtils/eigen.hpp>
 #include <cxxwtils/itertools.hpp>
 
@@ -51,7 +51,7 @@ void SimplexModel::run(const double threshold, const double intercept, const std
     columns_ = std::vector<Eigen::VectorXd>(genotypes_.cols(), axis);
 
     auto sim = wtl::itertools::simplex(columns_, 1.0 - intercept);
-    const auto num_gridpoints = sim.count_max();
+    const auto max_count = sim.max_count();
     std::function<double(double)> calc_lik;
     if (true) {
         calc_lik = IsoVar(threshold, intercept);
@@ -62,8 +62,8 @@ void SimplexModel::run(const double threshold, const double intercept, const std
         if (sim.count() % 1000 == 0) {
             wtl::Fout fout(outfile);
             fout << "# " << sim.count() << " in "
-                 << static_cast<double>(sim.count_all()) / static_cast<double>(num_gridpoints)
-                 << " (" << sim.count_all() << " / " << num_gridpoints << ")\n";
+                 << static_cast<double>(sim.raw_count()) / static_cast<double>(max_count)
+                 << " (" << sim.raw_count() << " / " << max_count << ")\n";
             write_results(fout);
         }
         const double loglik = (genotypes_ * coefs).array().unaryExpr(calc_lik).log().sum();

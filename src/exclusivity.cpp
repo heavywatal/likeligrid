@@ -4,6 +4,7 @@
 */
 #include "exclusivity.hpp"
 
+#include <functional>
 #include <unordered_map>
 
 #include <boost/dynamic_bitset.hpp>
@@ -114,12 +115,12 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
     }
 
     auto iter = wtl::itertools::product(axes_);
-    const auto num_gridpoints = iter.count_max();
+    const auto max_count = iter.max_count();
     for (const auto& params: iter(start_)) {
         if (iter.count() % 1000 == 0) {  // snapshot for long run
             wtl::Fout fout(outfile);
-            std::cerr << "\r" << iter.count() << " in " << num_gridpoints << std::flush;
-            fout << "# " << iter.count() << " in " << num_gridpoints << "\n";
+            std::cerr << "\r" << iter.count() << " in " << max_count << std::flush;
+            fout << "# " << iter.count() << " in " << max_count << "\n";
             write_results(fout);
         }
 
@@ -192,9 +193,8 @@ bool ExclusivityModel::read_results(const std::string& infile) {HERE;
     max_sites_ = std::stoul(wtl::split(buffer, "=")[1]);
     ist >> buffer;
     const double step = std::stod(wtl::split(buffer, "=")[1]);
-    const auto it = std::find_if(STEPS_.begin(), STEPS_.end(), [step](const double x){
-        return std::abs(x - step) < 1e-6;
-    });
+    auto pred = std::bind(wtl::equal<double>, std::placeholders::_1, step);
+    const auto it = std::find_if(STEPS_.begin(), STEPS_.end(), pred);
     if (it == STEPS_.end()) throw std::runtime_error("invalid step size");
     step_index_ = it - STEPS_.begin();
     ist >> buffer; // loglik
