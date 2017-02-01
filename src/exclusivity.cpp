@@ -20,6 +20,7 @@
 namespace likeligrid {
 
 const std::vector<double> ExclusivityModel::STEPS_ = {0.2, 0.1, 0.05, 0.02, 0.01};
+const std::vector<size_t> ExclusivityModel::BREAKS_ = {5, 5, 6, 5, 5};
 
 ExclusivityModel::ExclusivityModel(std::istream& genotypes,
     const size_t max_sites,
@@ -42,7 +43,7 @@ ExclusivityModel::ExclusivityModel(std::istream& genotypes,
 
 void ExclusivityModel::run(const std::string& infile) {HERE;
     init_axes(infile);
-    if (step_index_ == STEPS_.size()) {
+    if (stage_ == STEPS_.size()) {
         std::cerr << "Done: step size = " << STEPS_.back() << std::endl;
         return;
     }
@@ -69,9 +70,8 @@ void ExclusivityModel::init_axes(const std::string& infile) {HERE;
             throw std::runtime_error("infile must be a complete result");
         }
         max_results_ = results_.size();
-        const double step = STEPS_.at(step_index_);
-        size_t breaks = 5;
-        if (step == 0.05) ++breaks;
+        const double step = STEPS_.at(stage_);
+        const size_t breaks = BREAKS_.at(stage_);
         axes_.clear();
         axes_.reserve(names_.size());
         for (const double x: best_result()) {
@@ -79,12 +79,11 @@ void ExclusivityModel::init_axes(const std::string& infile) {HERE;
             axes_.push_back(wtl::eigen::filter(axis, axis > 0.0));
         }
         results_.clear();
-        ++step_index_;
+        ++stage_;
     } else {
-        const double step = STEPS_.at(step_index_);
-        const size_t breaks = 1.0 / step;
-        const Eigen::ArrayXd axis = Eigen::VectorXd::LinSpaced(breaks, 1.0, step).array();
-        axes_ = std::vector<Eigen::ArrayXd>(names_.size(), axis);
+        const double step = STEPS_[0];
+        const size_t breaks = BREAKS_[0];
+        axes_.assign(names_.size(), Eigen::VectorXd::LinSpaced(breaks, 1.0, step).array());
     }
 }
 
@@ -97,7 +96,7 @@ std::string ExclusivityModel::name_outfile(const std::string& infile) const {HER
     }
     std::ostringstream oss(prefix, std::ios::ate);
     oss << "-s" << max_sites_
-        << "-step" << STEPS_.at(step_index_)
+        << "-step" << STEPS_.at(stage_)
         << ".tsv";
     return oss.str();
 }
@@ -176,7 +175,7 @@ std::ostream& ExclusivityModel::write_genotypes(std::ostream& ost, const bool he
 
 std::ostream& ExclusivityModel::write_results(std::ostream& ost) const {
     ost << "##max_sites=" << max_sites_ << "\n";
-    ost << "##step=" << STEPS_[step_index_] << "\n";
+    ost << "##step=" << STEPS_.at(stage_) << "\n";
     ost << "loglik\t" << wtl::join(names_, "\t") << "\n";
     for (const auto& p: results_) {
         ost << p.first << "\t" << wtl::join(p.second, "\t") << "\n";
@@ -210,7 +209,7 @@ void ExclusivityModel::read_metadata(std::istream& ist) {HERE;
     auto pred = std::bind(wtl::equal<double>, std::placeholders::_1, step);
     const auto it = std::find_if(STEPS_.begin(), STEPS_.end(), pred);
     if (it == STEPS_.end()) throw std::runtime_error("invalid step size");
-    step_index_ = it - STEPS_.begin();
+    stage_ = it - STEPS_.begin();
 }
 
 void ExclusivityModel::read_body(std::istream& ist) {HERE;
