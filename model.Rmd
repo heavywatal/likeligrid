@@ -1,7 +1,5 @@
 ---
-title: "Model description"
-author: "WMI"
-date: "December 24, 2016"
+title: "Likelihood function description"
 output:
   html_document:
     css: "~/.R/rmd.css"
@@ -10,6 +8,8 @@ output:
     highlight: null
     mathjax: https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_CHTML
 ---
+
+## Symbols
 
 - genotypes ($I \times J$ matrix)
     - number of mutated genes in pathway $j$ of sample $i$ : $s_{i,j}$
@@ -34,7 +34,9 @@ output:
 - constant
     - set of all the possible genotypes: $K$
     - denominator to normalize probability:
-      $D_s = \sum_{k \in K \mid s_k = s} M_k p_k$ ,<br>
+      $D_s = \sum_{k \in K \mid s_k = s} p_k$ ,<br>
+
+## Log likelihood
 
 <div>$$\begin{split}
 \log \left(\prod_i P_i \right)
