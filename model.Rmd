@@ -25,7 +25,7 @@ output:
 
 - sample (row): $i$
     - total mutations: $s_i = \sum_j s_{i,j}$
-    - multinomial coefficient: $M_i = \frac {s_i!} {\prod_i s_{i,j}!}$
+    - multinomial coefficient: $M_i = \frac {s_i!} {\prod_j s_{i,j}!}$
     - unnormalized probability of the configuration:
       $p_i = M_i \prod_j w_j^{s_{i,j}} x_j^{a_{i,j}}$
     - normalized probability of the configuration:
