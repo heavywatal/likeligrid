@@ -11,29 +11,40 @@ output:
     mathjax: https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_CHTML
 ---
 
-- pathway: $i$
-    - weight: $w_i$, where $\sum_i w_i = 1$
-    - exclusivity:  $x_i$
-- configuration: $j$
-    - number of mutated sites: $s_{j,i}$; $s_j = \sum_i s_{j,i}$; $s_i = \sum_j s_{j,i}$
-    - number of non-first mutations: $a_{j,i} = \max(0, s_{j,i} - 1)$
-    - multinomial coefficient: $M_j = \frac {s_j!} {\prod_i s_{j,i}!}$
+- genotypes ($I \times J$ matrix)
+    - number of mutated genes in pathway $j$ of sample $i$ : $s_{i,j}$
+    - number of non-first mutations: $a_{i,j} = \max(0, s_{i,j} - 1)$
+    - number of samples with $s$ mutations: $N_s$
+
+- pathway (column): $j$
+    - total mutations: $s_j = \sum_i s_{i,j}$
+    - weight: $w_j = \frac{s_j} {\sum_j s_j}$
+      &nbsp;&nbsp;&nbsp; (**parameter** in the future)
+    - exclusivity: $x_j$
+      &nbsp;&nbsp;&nbsp; (**parameter**)
+
+- sample (row): $i$
+    - total mutations: $s_i = \sum_j s_{i,j}$
+    - multinomial coefficient: $M_i = \frac {s_i!} {\prod_i s_{i,j}!}$
     - unnormalized probability of the configuration:
-      $p_j = M_j \prod_i w_i^{s_{j,i}} x_i^{a_{j,i}}$
+      $p_i = M_i \prod_j w_j^{s_{i,j}} x_j^{a_{i,j}}$
     - normalized probability of the configuration:
-      $P_j = \frac {p_j} {D_{s_j}}$
+      $P_i = \frac {p_i} {D_{s_i}}$
+
+- constant
+    - set of all the possible genotypes: $K$
     - denominator to normalize probability:
-      $D_s = \sum_j^{s = s_j} p_j$.
+      $D_s = \sum_{k \in K \mid s_k = s} M_k p_k$ ,<br>
 
 <div>$$\begin{split}
-\log \left(\prod _j ^\mathrm{samples} P_j \right)
-  &= \sum_j ^\mathrm{samples} \log \frac {p_j} {D_{s_j}} \\
-  &= \sum_j \log \left(M_j \prod_i w_i^{s_{j,i}} x_i^{a_{j,i}} \right)
-   - \sum_j \log D_{s_j} \\
-  &= \sum_j \left(\log M_j + \sum_i s_{j,i} \log w_i + \sum_i a_{j,i} \log x_i \right)
-   - \sum_j \log D_{s_j} \\
-  &= \sum_j \log M_j
-   + \sum_i s_i \log w_i
-   + \sum_i a_i \log x_i
+\log \left(\prod_i P_i \right)
+  &= \sum_i \log \frac {p_i} {D_{s_i}} \\
+  &= \sum_i \log \left(M_j \prod_i w_j^{s_{i,j}} x_j^{a_{i,j}} \right)
+   - \sum_i \log D_{s_i} \\
+  &= \sum_i \left(\log M_i + \sum_j s_{i,j} \log w_j + \sum_j a_{i,j} \log x_j \right)
+   - \sum_i \log D_{s_i} \\
+  &= \sum_i \log M_i
+   + \sum_j s_j \log w_j
+   + \sum_j a_j \log x_j
    - \sum_s \left(N_s \log D_s \right) \\
 \end{split}$$</div>

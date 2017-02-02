@@ -86,8 +86,8 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
         return;
     }
     std::cerr << "Start: " << start_ << std::endl;
-    for (size_t i=0; i<names_.size(); ++i) {
-        std::cerr << names_[i] << ": " << axes_[i].transpose() << std::endl;
+    for (size_t j=0; j<names_.size(); ++j) {
+        std::cerr << names_[j] << ": " << axes_[j].transpose() << std::endl;
     }
     run_impl(outfile, wtl::itertools::product(axes_));
     if (outfile != "/dev/null") {
@@ -160,23 +160,23 @@ void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Gene
 }
 
 double ExclusivityModel::calc_denom(
-    const Eigen::ArrayXd& weights,
-    const Eigen::ArrayXd& exclusi,
+    const Eigen::ArrayXd& w_pathway,
+    const Eigen::ArrayXd& x_pathway,
     const size_t num_mutations) {
 
     if (num_mutations < 2) return 1.0;
     auto& iter = index_iters_[num_mutations];
     double sum_prob = 0.0;
-    boost::dynamic_bitset<> mutated(exclusi.size());
-    for (const auto& v: iter()) {
+    boost::dynamic_bitset<> bits(x_pathway.size());
+    for (const auto& indices: iter()) {
         double p = 1.0;
-        for (const auto x: v) {
-            p *= weights[x];
-            if (mutated.test(x)) p*= exclusi[x];
-            mutated.set(x);
+        for (const auto j: indices) {
+            p *= w_pathway[j];
+            if (bits[j]) p *= x_pathway[j];
+            bits.set(j);
         }
         sum_prob += p;
-        mutated.reset();
+        bits.reset();
     }
     iter.reset();
     return sum_prob;
