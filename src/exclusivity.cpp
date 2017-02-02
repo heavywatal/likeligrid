@@ -114,7 +114,7 @@ void ExclusivityModel::run_impl(const std::string& outfile) {HERE;
     std::vector<size_t> s_counts(max_sites_ + 1, 0);
     for (Eigen::Index i=0; i<genotypes_.rows(); ++i) {
         ++s_counts[s_samples[i]];
-        auto v = wtl::eigen::as_valarray(genotypes_.row(i));
+        auto v = wtl::eigen::valarray(genotypes_.row(i));
         lnp_const += std::log(wtl::polynomial(v));
     }
 
@@ -134,7 +134,7 @@ void ExclusivityModel::run_impl(const std::string& outfile) {HERE;
             loglik -= s_counts[s] * std::log(calc_denom(weights, params, s));
         }
 
-        results_.emplace(loglik, wtl::eigen::as_vector(params));
+        results_.emplace(loglik, wtl::eigen::vector(params));
         while (results_.size() > max_results_) {
             results_.erase(results_.begin());
         }

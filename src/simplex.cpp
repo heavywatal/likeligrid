@@ -67,7 +67,7 @@ void SimplexModel::run(const double threshold, const double intercept, const std
             write_results(fout);
         }
         const double loglik = (genotypes_ * coefs).array().unaryExpr(calc_lik).log().sum();
-        results_.emplace(loglik, wtl::eigen::as_vector(coefs));
+        results_.emplace(loglik, wtl::eigen::vector(coefs));
         while (results_.size() > max_results_) {
             results_.erase(results_.begin());
         }
