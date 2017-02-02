@@ -27,17 +27,44 @@ ExclusivityModel::ExclusivityModel(std::istream& genotypes,
     const size_t max_results):
     names_(wtl::read_header(genotypes)),
     genotypes_(wtl::eigen::read_array<size_t>(genotypes, names_.size())),
-    max_results_(max_results) {
+    max_results_(max_results)
+    {HERE;
 
-    const auto pred = genotypes_.rowwise().sum().array() <= max_sites;
-    genotypes_ = wtl::eigen::filter(genotypes_, pred);
+    const ArrayXu raw_s_sample = genotypes_.rowwise().sum().array();
+    nsam_with_s_.assign(raw_s_sample.maxCoeff() + 1, 0);
+    for (Eigen::Index i=0; i<raw_s_sample.size(); ++i) {
+        ++nsam_with_s_[raw_s_sample[i]];
+    }
+    std::cerr << "Original N_s: " << nsam_with_s_ << std::endl;
+    if (nsam_with_s_.size() - 1 < max_sites) {
+        std::cerr << "Note: -s is too large" << std::endl;
+    } else {
+        nsam_with_s_.resize(max_sites + 1);
+        std::cerr << "Filtered N_s: " << nsam_with_s_ << std::endl;
+    }
+    const auto final_max_s = nsam_with_s_.size() - 1;
+    genotypes_ = wtl::eigen::filter(genotypes_, raw_s_sample <= final_max_s);
 
-    max_sites_ = genotypes_.rowwise().sum().maxCoeff();
-    index_iters_.reserve(max_sites_);
+    const Eigen::ArrayXd s_pathway = genotypes_.colwise().sum().cast<double>();
+    w_pathway_ = s_pathway / s_pathway.sum();
+    a_pathway_ = genotypes_.unaryExpr([](size_t x){
+        if (x > 0) {return --x;} else {return x;}
+    }).colwise().sum().cast<double>();
+    lnp_const_ = (s_pathway * w_pathway_.log()).sum();
+    for (Eigen::Index i=0; i<genotypes_.rows(); ++i) {
+        auto v = wtl::eigen::valarray(genotypes_.row(i));
+        lnp_const_ += std::log(wtl::polynomial(v));
+    }
+    std::cerr << "s_pathway_: " << s_pathway.transpose() << std::endl;
+    std::cerr << "w_pathway_: " << w_pathway_.transpose() << std::endl;
+    std::cerr << "a_pathway_: " << a_pathway_.transpose() << std::endl;
+    std::cerr << "lnp_const_: " << lnp_const_ << std::endl;
+
+    index_iters_.reserve(nsam_with_s_.size());
     std::vector<size_t> indices(genotypes_.cols());
     std::iota(std::begin(indices), std::end(indices), 0);
-    for (size_t i=0; i<=max_sites_; ++i) {
-        index_iters_.emplace_back(std::vector<std::vector<size_t>>(i, indices));
+    for (size_t s=0; s<=nsam_with_s_.size(); ++s) {
+        index_iters_.emplace_back(std::vector<std::vector<size_t>>(s, indices));
     }
 }
 
@@ -45,6 +72,10 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
     init_axes(infile);
     if (stage_ == STEPS_.size()) {
         std::cerr << "Done: step size = " << STEPS_.back() << std::endl;
+        --stage_;
+        max_results_ = -1;
+        axes_.assign(names_.size(), Eigen::ArrayXd::LinSpaced(100, 1.0, 0.01));
+        run_impl(name_outfile("uniaxis"), wtl::itertools::uniaxis(axes_, best_));
         return;
     }
     const std::string outfile = name_outfile(infile);
@@ -58,7 +89,7 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
     for (size_t i=0; i<names_.size(); ++i) {
         std::cerr << names_[i] << ": " << axes_[i].transpose() << std::endl;
     }
-    run_impl(outfile);
+    run_impl(outfile, wtl::itertools::product(axes_));
     if (outfile != "/dev/null") {
         run(outfile);
     }
@@ -69,16 +100,16 @@ void ExclusivityModel::init_axes(const std::string& infile) {HERE;
         if (start_ > 0) {
             throw std::runtime_error("infile must be a complete result");
         }
-        max_results_ = results_.size();
+        best_ = results_.crbegin()->second;
+        results_.clear();
         const double step = STEPS_.at(stage_);
         const size_t breaks = BREAKS_.at(stage_);
         axes_.clear();
         axes_.reserve(names_.size());
-        for (const double x: best_result()) {
+        for (const double x: wtl::eigen::vector(best_)) {
             Eigen::ArrayXd axis = Eigen::ArrayXd::LinSpaced(breaks, x + step, x - step);
             axes_.push_back(wtl::eigen::filter(axis, axis > 0.0));
         }
-        results_.clear();
         ++stage_;
     } else {
         const double step = STEPS_[0];
@@ -95,46 +126,29 @@ std::string ExclusivityModel::name_outfile(const std::string& infile) const {HER
         prefix = wtl::split(infile, "-")[0];
     }
     std::ostringstream oss(prefix, std::ios::ate);
-    oss << "-s" << max_sites_
+    oss << "-s" << nsam_with_s_.size() - 1
         << "-step" << STEPS_.at(stage_)
         << ".tsv";
     return oss.str();
 }
 
-void ExclusivityModel::run_impl(const std::string& outfile) {HERE;
-    const ArrayXu freqs = genotypes_.colwise().sum();
-    const Eigen::ArrayXd weights = freqs.cast<double>() / freqs.sum();
-    double lnp_const = (freqs.cast<double>() * weights.log()).sum();
-
-    const Eigen::ArrayXd dups = genotypes_.unaryExpr([](size_t x){
-        if (x > 0) {return --x;} else {return x;}
-    }).colwise().sum().cast<double>();
-
-    const ArrayXu s_samples = genotypes_.rowwise().sum();
-    std::vector<size_t> s_counts(max_sites_ + 1, 0);
-    for (Eigen::Index i=0; i<genotypes_.rows(); ++i) {
-        ++s_counts[s_samples[i]];
-        auto v = wtl::eigen::valarray(genotypes_.row(i));
-        lnp_const += std::log(wtl::polynomial(v));
-    }
-
-    auto iter = wtl::itertools::product(axes_);
-    const auto max_count = iter.max_count();
-    for (const auto& params: iter(start_)) {
-        if (iter.count() % 1000 == 0) {  // snapshot for long run
-            std::cerr << "\r" << iter.count() << " in " << max_count << std::flush;
+void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Generator<Eigen::ArrayXd>&& gen) {HERE;
+    const auto max_count = gen.max_count();
+    for (const auto& params: gen(start_)) {
+        if (gen.count() % 1000 == 0) {  // snapshot for long run
+            std::cerr << "\r" << gen.count() << " in " << max_count << std::flush;
             wtl::Fout fout(outfile);
-            fout << "# " << iter.count() << " in " << max_count << "\n";
+            fout << "# " << gen.count() << " in " << max_count << "\n";
             write_results(fout);
         }
 
-        double loglik = lnp_const;
-        loglik += (dups * params.log()).sum();
-        for (size_t s=0; s<=max_sites_; ++s) {
-            loglik -= s_counts[s] * std::log(calc_denom(weights, params, s));
+        double loglik = lnp_const_;
+        loglik += (a_pathway_ * params.log()).sum();
+        for (size_t s=0; s<nsam_with_s_.size(); ++s) {
+            loglik -= nsam_with_s_[s] * std::log(calc_denom(w_pathway_, params, s));
         }
 
-        results_.emplace(loglik, wtl::eigen::vector(params));
+        results_.emplace(loglik, params);
         while (results_.size() > max_results_) {
             results_.erase(results_.begin());
         }
@@ -174,11 +188,11 @@ std::ostream& ExclusivityModel::write_genotypes(std::ostream& ost, const bool he
 }
 
 std::ostream& ExclusivityModel::write_results(std::ostream& ost) const {
-    ost << "##max_sites=" << max_sites_ << "\n";
+    ost << "##max_sites=" << nsam_with_s_.size() - 1 << "\n";
     ost << "##step=" << STEPS_.at(stage_) << "\n";
     ost << "loglik\t" << wtl::join(names_, "\t") << "\n";
     for (const auto& p: results_) {
-        ost << p.first << "\t" << wtl::join(p.second, "\t") << "\n";
+        ost << p.first << "\t" << wtl::join(wtl::eigen::vector(p.second), "\t") << "\n";
     }
     return ost;
 }
@@ -203,7 +217,10 @@ void ExclusivityModel::read_metadata(std::istream& ist) {HERE;
     } else {
         start_ = 0;
     }
-    max_sites_ = std::stoul(wtl::split(buffer, "=")[1]);
+    const size_t max_sites = std::stoul(wtl::split(buffer, "=")[1]);
+    if (nsam_with_s_.size() - 1 != max_sites) {
+        std::cerr << "Note: -s is different between arg and file\n";
+    }
     ist >> buffer;
     const double step = std::stod(wtl::split(buffer, "=")[1]);
     auto pred = std::bind(wtl::equal<double>, std::placeholders::_1, step);
@@ -225,7 +242,7 @@ void ExclusivityModel::read_body(std::istream& ist) {HERE;
     while (std::getline(ist, buffer)) {
         std::istringstream iss(buffer);
         std::istream_iterator<double> it(iss);
-        results_.emplace(double(*it), std::vector<double>(++it, std::istream_iterator<double>()));
+        results_.emplace(double(*it), wtl::eigen::ArrayX(std::vector<double>(++it, std::istream_iterator<double>())));
     }
 }
 

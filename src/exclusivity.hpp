@@ -29,17 +29,13 @@ class ExclusivityModel {
 
     void run(const std::string& infile="");
 
-    const std::vector<std::string>& names() const {return names_;}
-    const ArrayXXu& genotypes() const {return genotypes_;}
-    const std::vector<double>& best_result() const {return results_.crbegin()->second;}
-
     static void unit_test();
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
     void init_axes(const std::string&);
     std::string name_outfile(const std::string&) const;
-    void run_impl(const std::string&);
+    void run_impl(const std::string&, wtl::itertools::Generator<Eigen::ArrayXd>&&);
     double calc_denom(
         const Eigen::ArrayXd& weights,
         const Eigen::ArrayXd& exclusi,
@@ -51,10 +47,14 @@ class ExclusivityModel {
     void read_body(std::istream&);
 
     const std::vector<std::string> names_;
-    Eigen::Array<size_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> genotypes_;
+    ArrayXXu genotypes_;
     size_t max_results_;
-    size_t max_sites_;
-    std::multimap<double, std::vector<double>> results_;
+    Eigen::ArrayXd w_pathway_;
+    Eigen::ArrayXd a_pathway_;
+    std::vector<size_t> nsam_with_s_;
+    double lnp_const_ = 0.0;
+    std::multimap<double, Eigen::ArrayXd> results_;
+    Eigen::ArrayXd best_;
     std::vector<Eigen::ArrayXd> axes_;
     size_t start_ = 0;
     size_t stage_ = 0;
