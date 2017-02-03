@@ -68,14 +68,32 @@ ExclusivityModel::ExclusivityModel(std::istream& genotypes,
     }
 }
 
+inline std::vector<Eigen::ArrayXd>
+make_vicinity(const Eigen::ArrayXd& center, const size_t breaks, const double radius, const double max=1.0) {
+    std::vector<Eigen::ArrayXd> axes;
+    axes.reserve(center.size());
+    for (const double x: wtl::eigen::vector(center)){
+        Eigen::ArrayXd axis = Eigen::ArrayXd::LinSpaced(breaks, x + radius, x - radius);
+        axes.push_back(wtl::eigen::filter(axis, (0.0 < axis) * (axis < max)));
+    }
+    return axes;
+}
+
 void ExclusivityModel::run(const std::string& infile) {HERE;
     init_axes(infile);
     if (stage_ == STEPS_.size()) {
         std::cerr << "Done: step size = " << STEPS_.back() << std::endl;
         --stage_;
         max_results_ = -1;
-        axes_.assign(names_.size(), Eigen::ArrayXd::LinSpaced(100, 1.0, 0.01));
-        run_impl(name_outfile("uniaxis"), wtl::itertools::uniaxis(axes_, best_));
+        if (true) {
+            axes_.assign(names_.size(), Eigen::ArrayXd::LinSpaced(100, 1.0, 0.01));
+            run_impl(name_outfile("uniaxis"), wtl::itertools::uniaxis(axes_, best_));
+        } else {
+            //TODO
+            const auto axes = make_vicinity(best_, 21, 1.0);
+            const auto vicinity = make_vicinity(best_, 3, 0.01, 1.2);
+            run_impl(name_outfile("prototype"), wtl::itertools::prototype(axes, vicinity));
+        }
         return;
     }
     const std::string outfile = name_outfile(infile);
@@ -102,14 +120,7 @@ void ExclusivityModel::init_axes(const std::string& infile) {HERE;
         }
         best_ = results_.crbegin()->second;
         results_.clear();
-        const double step = STEPS_.at(stage_);
-        const size_t breaks = BREAKS_.at(stage_);
-        axes_.clear();
-        axes_.reserve(names_.size());
-        for (const double x: wtl::eigen::vector(best_)) {
-            Eigen::ArrayXd axis = Eigen::ArrayXd::LinSpaced(breaks, x + step, x - step);
-            axes_.push_back(wtl::eigen::filter(axis, axis > 0.0));
-        }
+        axes_ = make_vicinity(best_, BREAKS_.at(stage_), STEPS_.at(stage_), 2.0);
         ++stage_;
     } else {
         const double step = STEPS_[0];
@@ -247,7 +258,7 @@ void ExclusivityModel::read_body(std::istream& ist) {HERE;
 }
 
 void ExclusivityModel::unit_test() {HERE;
-    std::string geno = "A\tB\n0\t0\n0\t1\n1\t0\n1\t1\n";
+    std::string geno = "A\tB\n0\t1\n1\t0\n1\t1\n0\t2\n";
     std::istringstream iss(geno);
     ExclusivityModel model(iss);
     model.write_genotypes(std::cerr);
