@@ -99,7 +99,7 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
     const std::string outfile = name_outfile(infile);
     if (read_results(outfile) && start_ == 0) {
         std::cerr << outfile << " is already completed:" << std::endl;
-        write_results(std::cout);
+        write_results(std::cout, 10);
         run(outfile);
         return;
     }
@@ -114,7 +114,8 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
 }
 
 void ExclusivityModel::init_axes(const std::string& infile) {HERE;
-    if (read_results(infile)) {
+    if (!results_.empty() || read_results(infile, 1)) {
+        write_results(std::cerr, 1);
         if (start_ > 0) {
             throw std::runtime_error("infile must be a complete result");
         }
@@ -146,7 +147,7 @@ std::string ExclusivityModel::name_outfile(const std::string& infile) const {HER
 void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Generator<Eigen::ArrayXd>&& gen) {HERE;
     const auto max_count = gen.max_count();
     for (const auto& params: gen(start_)) {
-        if (gen.count() % 1000 == 0) {  // snapshot for long run
+        if (gen.count() % 10000 == 0) {  // snapshot for long run
             std::cerr << "\r" << gen.count() << " in " << max_count << std::flush;
             wtl::Fout fout(outfile);
             fout << "# " << gen.count() << " in " << max_count << "\n";
@@ -164,7 +165,7 @@ void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Gene
             results_.erase(--results_.end());
         }
     }
-    write_results(std::cout);
+    write_results(std::cout, 20);
     std::cerr << "\nWriting to " << outfile << std::endl;
     wtl::Fout fout(outfile);
     write_results(fout);
@@ -198,23 +199,28 @@ std::ostream& ExclusivityModel::write_genotypes(std::ostream& ost, const bool he
     return ost << genotypes_.format(wtl::eigen::tsv());
 }
 
-std::ostream& ExclusivityModel::write_results(std::ostream& ost) const {
+std::ostream& ExclusivityModel::write_results(std::ostream& ost, const size_t max_rows) const {
     ost << "##max_sites=" << nsam_with_s_.size() - 1 << "\n";
     ost << "##step=" << STEPS_.at(stage_) << "\n";
     ost << "loglik\t" << wtl::join(names_, "\t") << "\n";
+    size_t i = 0;
     for (const auto& p: results_) {
+        if (++i > max_rows) {
+            ost << "# ... with " << results_.size() - max_rows << " more rows\n";
+            break;
+        }
         ost << p.first << "\t" << wtl::join(wtl::eigen::vector(p.second), "\t") << "\n";
     }
     return ost;
 }
 
-bool ExclusivityModel::read_results(const std::string& infile) {HERE;
+bool ExclusivityModel::read_results(const std::string& infile, const size_t max_rows) {HERE;
     results_.clear();
     std::ifstream ist(infile);
     if (ist.fail() || ist.bad() || infile == "/dev/null") return false;
     std::cerr << "Reading: " << infile << std::endl;
     read_metadata(ist);
-    read_body(ist);
+    read_body(ist, max_rows);
     return true;
 }
 
@@ -240,7 +246,7 @@ void ExclusivityModel::read_metadata(std::istream& ist) {HERE;
     stage_ = it - STEPS_.begin();
 }
 
-void ExclusivityModel::read_body(std::istream& ist) {HERE;
+void ExclusivityModel::read_body(std::istream& ist, const size_t max_rows) {HERE;
     std::string buffer;
     ist >> buffer; // loglik
     std::getline(ist, buffer); // header
@@ -250,7 +256,9 @@ void ExclusivityModel::read_body(std::istream& ist) {HERE;
         std::cerr << wtl::split(buffer, "\t") << std::endl;
         throw std::runtime_error("Column names are wrong");
     }
+    size_t i = 0;
     while (std::getline(ist, buffer)) {
+        if (++i > max_rows) break;
         std::istringstream iss(buffer);
         std::istream_iterator<double> it(iss);
         results_.emplace(double(*it), wtl::eigen::ArrayX(std::vector<double>(++it, std::istream_iterator<double>())));

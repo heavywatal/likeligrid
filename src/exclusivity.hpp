@@ -41,10 +41,10 @@ class ExclusivityModel {
         const Eigen::ArrayXd& exclusi,
         const size_t num_mutations);
     std::ostream& write_genotypes(std::ostream&, const bool header=true) const;
-    std::ostream& write_results(std::ostream&) const;
-    bool read_results(const std::string&);
+    std::ostream& write_results(std::ostream&, const size_t max_rows=-1) const;
+    bool read_results(const std::string&, const size_t max_rows=-1);
     void read_metadata(std::istream&);
-    void read_body(std::istream&);
+    void read_body(std::istream&, const size_t max_rows);
 
     const std::vector<std::string> names_;
     ArrayXXu genotypes_;

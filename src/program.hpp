@@ -39,7 +39,7 @@ class Program {
     void help_and_exit();
 
     size_t MAX_SITES = 3;
-    size_t MAX_RESULTS = 16;
+    size_t MAX_RESULTS = 1000;
     std::string GENOTYPES_FILE = "-";
     std::string PREFIX = "";
 
