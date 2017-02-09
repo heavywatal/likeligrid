@@ -16,6 +16,7 @@
 #include <cxxwtils/math.hpp>
 #include <cxxwtils/eigen.hpp>
 #include <cxxwtils/itertools.hpp>
+#include <cxxwtils/gz.hpp>
 
 namespace likeligrid {
 
@@ -140,35 +141,37 @@ std::string ExclusivityModel::name_outfile(const std::string& infile) const {HER
     std::ostringstream oss(prefix, std::ios::ate);
     oss << "-s" << nsam_with_s_.size() - 1
         << "-step" << STEPS_.at(stage_)
-        << ".tsv";
+        << ".tsv.gz";
     return oss.str();
 }
 
 void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Generator<Eigen::ArrayXd>&& gen) {HERE;
+    std::cerr << "\nWriting to " << outfile << std::endl;
     const auto max_count = gen.max_count();
     for (const auto& params: gen(start_)) {
         if (gen.count() % 10000 == 0) {  // snapshot for long run
             std::cerr << "\r" << gen.count() << " in " << max_count << std::flush;
-            wtl::Fout fout(outfile);
-            fout << "# " << gen.count() << " in " << max_count << "\n";
-            write_results(fout);
+            auto oss = wtl::make_oss();
+            oss << "# " << gen.count() << " in " << max_count << "\n";
+            write_results(oss);
+            wtl::gzip{wtl::Fout(outfile)} << oss.str();
         }
 
-        double loglik = lnp_const_;
+        double loglik = 0.0;
         loglik += (a_pathway_ * params.log()).sum();
         for (size_t s=0; s<nsam_with_s_.size(); ++s) {
             loglik -= nsam_with_s_[s] * std::log(calc_denom(w_pathway_, params, s));
         }
 
-        results_.emplace(loglik, params);
+        results_.emplace(loglik += lnp_const_, params);
         while (results_.size() > max_results_) {
             results_.erase(--results_.end());
         }
     }
     write_results(std::cout, 20);
-    std::cerr << "\nWriting to " << outfile << std::endl;
-    wtl::Fout fout(outfile);
-    write_results(fout);
+    auto oss = wtl::make_oss();
+    write_results(oss);
+    wtl::gzip{wtl::Fout(outfile)} << oss.str();
 }
 
 double ExclusivityModel::calc_denom(
@@ -218,9 +221,10 @@ bool ExclusivityModel::read_results(const std::string& infile, const size_t max_
     results_.clear();
     std::ifstream ist(infile);
     if (ist.fail() || ist.bad() || infile == "/dev/null") return false;
+    wtl::gunzip zist(ist);
     std::cerr << "Reading: " << infile << std::endl;
-    read_metadata(ist);
-    read_body(ist, max_rows);
+    read_metadata(zist);
+    read_body(zist, max_rows);
     return true;
 }
 
