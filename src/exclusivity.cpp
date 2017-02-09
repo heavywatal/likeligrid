@@ -118,7 +118,7 @@ void ExclusivityModel::init_axes(const std::string& infile) {HERE;
         if (start_ > 0) {
             throw std::runtime_error("infile must be a complete result");
         }
-        best_ = results_.crbegin()->second;
+        best_ = results_.begin()->second;
         results_.clear();
         axes_ = make_vicinity(best_, BREAKS_.at(stage_), STEPS_.at(stage_), 2.0);
         ++stage_;
@@ -161,7 +161,7 @@ void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Gene
 
         results_.emplace(loglik, params);
         while (results_.size() > max_results_) {
-            results_.erase(results_.begin());
+            results_.erase(--results_.end());
         }
     }
     write_results(std::cout);

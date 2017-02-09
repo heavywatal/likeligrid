@@ -53,7 +53,7 @@ class ExclusivityModel {
     Eigen::ArrayXd a_pathway_;
     std::vector<size_t> nsam_with_s_;
     double lnp_const_ = 0.0;
-    std::multimap<double, Eigen::ArrayXd> results_;
+    std::multimap<double, Eigen::ArrayXd, std::greater<double>> results_;
     Eigen::ArrayXd best_;
     std::vector<Eigen::ArrayXd> axes_;
     size_t start_ = 0;
