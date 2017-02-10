@@ -20,8 +20,8 @@
 
 namespace likeligrid {
 
-const std::vector<double> ExclusivityModel::STEPS_ = {0.2, 0.1, 0.05, 0.02, 0.01};
-const std::vector<size_t> ExclusivityModel::BREAKS_ = {5, 5, 6, 5, 5};
+const std::vector<double> ExclusivityModel::STEPS_ = {0.4, 0.2, 0.1, 0.05, 0.02, 0.01};
+const std::vector<size_t> ExclusivityModel::BREAKS_ = {5, 5, 5, 6, 5, 5};
 
 ExclusivityModel::ExclusivityModel(std::istream& genotypes,
     const size_t max_sites,
@@ -127,7 +127,7 @@ void ExclusivityModel::init_axes(const std::string& infile) {HERE;
     } else {
         const double step = STEPS_[0];
         const size_t breaks = BREAKS_[0];
-        axes_.assign(names_.size(), Eigen::VectorXd::LinSpaced(breaks, 1.0, step).array());
+        axes_.assign(names_.size(), Eigen::VectorXd::LinSpaced(breaks, 2.0, step).array());
     }
 }
 
