@@ -100,7 +100,6 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
     const std::string outfile = name_outfile(infile);
     if (read_results(outfile) && start_ == 0) {
         std::cerr << outfile << " is already completed:" << std::endl;
-        write_results(std::cout, 10);
         run(outfile);
         return;
     }
@@ -115,13 +114,11 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
 }
 
 void ExclusivityModel::init_axes(const std::string& infile) {HERE;
-    if (!results_.empty() || read_results(infile, 1)) {
-        write_results(std::cerr, 1);
+    if (best_.size() > 0 || read_results(infile)) {
+        std::cerr << best_.transpose() << std::endl;
         if (start_ > 0) {
             throw std::runtime_error("infile must be a complete result");
         }
-        best_ = results_.begin()->second;
-        results_.clear();
         axes_ = make_vicinity(best_, BREAKS_.at(stage_), STEPS_.at(stage_), 2.0);
         ++stage_;
     } else {
@@ -148,13 +145,19 @@ std::string ExclusivityModel::name_outfile(const std::string& infile) const {HER
 void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Generator<Eigen::ArrayXd>&& gen) {HERE;
     std::cerr << "\nWriting to " << outfile << std::endl;
     const auto max_count = gen.max_count();
+    auto buffer = wtl::make_oss();
+    wtl::ogzstream fout(outfile);
+    buffer << "##max_count=" << max_count << "\n";
+    buffer << "##max_sites=" << nsam_with_s_.size() - 1 << "\n";
+    buffer << "##step=" << STEPS_.at(stage_) << "\n";
+    buffer << "loglik\t" << wtl::join(names_, "\t") << "\n";
+    double max_ll = std::numeric_limits<double>::lowest();
     for (const auto& params: gen(start_)) {
         if (gen.count() % 10000 == 0) {  // snapshot for long run
             std::cerr << "\r" << gen.count() << " in " << max_count << std::flush;
-            auto oss = wtl::make_oss();
-            oss << "# " << gen.count() << " in " << max_count << "\n";
-            write_results(oss);
-            wtl::gzip{wtl::Fout(outfile)} << oss.str();
+            fout << buffer.str();
+            fout.strict_sync();
+            buffer.str("");
         }
 
         double loglik = 0.0;
@@ -163,15 +166,11 @@ void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Gene
             loglik -= nsam_with_s_[s] * std::log(calc_denom(w_pathway_, params, s));
         }
 
-        results_.emplace(loglik += lnp_const_, params);
-        while (results_.size() > max_results_) {
-            results_.erase(--results_.end());
-        }
+        buffer << (loglik += lnp_const_) << "\t"
+               << wtl::join(wtl::eigen::vector(params), "\t") << "\n";
+        if (loglik > max_ll) best_ = params;
     }
-    write_results(std::cout, 20);
-    auto oss = wtl::make_oss();
-    write_results(oss);
-    wtl::gzip{wtl::Fout(outfile)} << oss.str();
+    fout << buffer.str();
 }
 
 double ExclusivityModel::calc_denom(
@@ -202,55 +201,36 @@ std::ostream& ExclusivityModel::write_genotypes(std::ostream& ost, const bool he
     return ost << genotypes_.format(wtl::eigen::tsv());
 }
 
-std::ostream& ExclusivityModel::write_results(std::ostream& ost, const size_t max_rows) const {
-    ost << "##max_sites=" << nsam_with_s_.size() - 1 << "\n";
-    ost << "##step=" << STEPS_.at(stage_) << "\n";
-    ost << "loglik\t" << wtl::join(names_, "\t") << "\n";
-    size_t i = 0;
-    for (const auto& p: results_) {
-        if (++i > max_rows) {
-            ost << "# ... with " << results_.size() - max_rows << " more rows\n";
-            break;
-        }
-        ost << p.first << "\t" << wtl::join(wtl::eigen::vector(p.second), "\t") << "\n";
-    }
-    return ost;
-}
-
-bool ExclusivityModel::read_results(const std::string& infile, const size_t max_rows) {HERE;
-    results_.clear();
+bool ExclusivityModel::read_results(const std::string& infile) {HERE;
     std::ifstream ist(infile);
     if (ist.fail() || ist.bad() || infile == "/dev/null") return false;
     wtl::gunzip zist(ist);
     std::cerr << "Reading: " << infile << std::endl;
-    read_metadata(zist);
-    read_body(zist, max_rows);
+    const size_t max_count = read_metadata(zist);
+    start_ = read_body(zist);
+    if (start_ == max_count) start_ = 0;
     return true;
 }
 
-void ExclusivityModel::read_metadata(std::istream& ist) {HERE;
+size_t ExclusivityModel::read_metadata(std::istream& ist) {HERE;
     std::string buffer;
-    ist >> buffer;
-    if (buffer == "#") { // incomplete
-        ist >> start_;
-        std::getline(ist, buffer); // in count_max()
-        ist >> buffer;
-    } else {
-        start_ = 0;
-    }
+    std::getline(ist, buffer);
+    const size_t max_count = std::stoul(wtl::split(buffer, "=")[1]);
+    std::getline(ist, buffer);
     const size_t max_sites = std::stoul(wtl::split(buffer, "=")[1]);
     if (nsam_with_s_.size() - 1 != max_sites) {
         std::cerr << "Note: -s is different between arg and file\n";
     }
-    ist >> buffer;
+    std::getline(ist, buffer);
     const double step = std::stod(wtl::split(buffer, "=")[1]);
     auto pred = std::bind(wtl::equal<double>, std::placeholders::_1, step);
     const auto it = std::find_if(STEPS_.begin(), STEPS_.end(), pred);
     if (it == STEPS_.end()) throw std::runtime_error("invalid step size");
     stage_ = it - STEPS_.begin();
+    return max_count;
 }
 
-void ExclusivityModel::read_body(std::istream& ist, const size_t max_rows) {HERE;
+size_t ExclusivityModel::read_body(std::istream& ist) {HERE;
     std::string buffer;
     ist >> buffer; // loglik
     std::getline(ist, buffer); // header
@@ -261,12 +241,16 @@ void ExclusivityModel::read_body(std::istream& ist, const size_t max_rows) {HERE
         throw std::runtime_error("Column names are wrong");
     }
     size_t i = 0;
+    double max_ll = std::numeric_limits<double>::lowest();
     while (std::getline(ist, buffer)) {
-        if (++i > max_rows) break;
         std::istringstream iss(buffer);
         std::istream_iterator<double> it(iss);
-        results_.emplace(double(*it), wtl::eigen::ArrayX(std::vector<double>(++it, std::istream_iterator<double>())));
+        if (*it > max_ll) {
+            max_ll = *it;
+            best_ = wtl::eigen::ArrayX(std::vector<double>(++it, std::istream_iterator<double>()));
+        }
     }
+    return i;
 }
 
 void ExclusivityModel::unit_test() {HERE;

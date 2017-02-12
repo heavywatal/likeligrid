@@ -41,10 +41,9 @@ class ExclusivityModel {
         const Eigen::ArrayXd& exclusi,
         const size_t num_mutations);
     std::ostream& write_genotypes(std::ostream&, const bool header=true) const;
-    std::ostream& write_results(std::ostream&, const size_t max_rows=-1) const;
-    bool read_results(const std::string&, const size_t max_rows=-1);
-    void read_metadata(std::istream&);
-    void read_body(std::istream&, const size_t max_rows);
+    bool read_results(const std::string&);
+    size_t read_metadata(std::istream&);
+    size_t read_body(std::istream&);
 
     const std::vector<std::string> names_;
     ArrayXXu genotypes_;
@@ -53,7 +52,6 @@ class ExclusivityModel {
     Eigen::ArrayXd a_pathway_;
     std::vector<size_t> nsam_with_s_;
     double lnp_const_ = 0.0;
-    std::multimap<double, Eigen::ArrayXd, std::greater<double>> results_;
     Eigen::ArrayXd best_;
     std::vector<Eigen::ArrayXd> axes_;
     size_t start_ = 0;
