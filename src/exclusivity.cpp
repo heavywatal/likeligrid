@@ -202,12 +202,11 @@ std::ostream& ExclusivityModel::write_genotypes(std::ostream& ost, const bool he
 }
 
 bool ExclusivityModel::read_results(const std::string& infile) {HERE;
-    std::ifstream ist(infile);
-    if (ist.fail() || ist.bad() || infile == "/dev/null") return false;
-    wtl::gunzip zist(ist);
+    wtl::igzstream ist(infile);
+    if (!ist || infile == "/dev/null") return false;
     std::cerr << "Reading: " << infile << std::endl;
-    const size_t max_count = read_metadata(zist);
-    start_ = read_body(zist);
+    const size_t max_count = read_metadata(ist);
+    start_ = read_body(ist);
     if (start_ == max_count) start_ = 0;
     return true;
 }
