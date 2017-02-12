@@ -88,11 +88,11 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
         max_results_ = -1;
         if (true) {
             axes_.assign(names_.size(), Eigen::ArrayXd::LinSpaced(100, 1.0, 0.01));
-            run_impl(name_outfile("uniaxis"), wtl::itertools::uniaxis(axes_, best_));
+            run_impl(name_outfile("uniaxis"), wtl::itertools::uniaxis(axes_, mle_params_));
         } else {
             //TODO
-            const auto axes = make_vicinity(best_, 21, 1.0);
-            const auto vicinity = make_vicinity(best_, 3, 0.01, 1.2);
+            const auto axes = make_vicinity(mle_params_, 21, 1.0);
+            const auto vicinity = make_vicinity(mle_params_, 3, 0.01, 1.2);
             run_impl(name_outfile("prototype"), wtl::itertools::prototype(axes, vicinity));
         }
         return;
@@ -114,12 +114,12 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
 }
 
 void ExclusivityModel::init_axes(const std::string& infile) {HERE;
-    if (best_.size() > 0 || read_results(infile)) {
-        std::cerr << best_.transpose() << std::endl;
+    if (mle_params_.size() > 0 || read_results(infile)) {
+        std::cerr << mle_params_.transpose() << std::endl;
         if (start_ > 0) {
             throw std::runtime_error("infile must be a complete result");
         }
-        axes_ = make_vicinity(best_, BREAKS_.at(stage_), STEPS_.at(stage_), 2.0);
+        axes_ = make_vicinity(mle_params_, BREAKS_.at(stage_), STEPS_.at(stage_), 2.0);
         ++stage_;
     } else {
         const double step = STEPS_[0];
@@ -168,7 +168,7 @@ void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Gene
 
         buffer << (loglik += lnp_const_) << "\t"
                << wtl::join(wtl::eigen::vector(params), "\t") << "\n";
-        if (loglik > max_ll) best_ = params;
+        if (loglik > max_ll) mle_params_ = params;
     }
     fout << buffer.str();
 }
@@ -247,7 +247,7 @@ size_t ExclusivityModel::read_body(std::istream& ist) {HERE;
         std::istream_iterator<double> it(iss);
         if (*it > max_ll) {
             max_ll = *it;
-            best_ = wtl::eigen::ArrayX(std::vector<double>(++it, std::istream_iterator<double>()));
+            mle_params_ = wtl::eigen::ArrayX(std::vector<double>(++it, std::istream_iterator<double>()));
         }
     }
     return i;

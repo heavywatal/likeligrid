@@ -52,7 +52,7 @@ class ExclusivityModel {
     Eigen::ArrayXd a_pathway_;
     std::vector<size_t> nsam_with_s_;
     double lnp_const_ = 0.0;
-    Eigen::ArrayXd best_;
+    Eigen::ArrayXd mle_params_;
     std::vector<Eigen::ArrayXd> axes_;
     size_t start_ = 0;
     size_t stage_ = 0;
