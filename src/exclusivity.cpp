@@ -168,7 +168,10 @@ void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Gene
 
         buffer << (loglik += lnp_const_) << "\t"
                << wtl::join(wtl::eigen::vector(params), "\t") << "\n";
-        if (loglik > max_ll) mle_params_ = params;
+        if (loglik > max_ll) {
+            max_ll = loglik;
+            mle_params_ = params;
+        }
     }
     fout << buffer.str();
 }
