@@ -9,6 +9,7 @@
 #include <csignal>
 
 #include <boost/dynamic_bitset.hpp>
+#include <boost/math/distributions/chi_squared.hpp>
 
 #include <cxxwtils/debug.hpp>
 #include <cxxwtils/exception.hpp>
@@ -28,12 +29,9 @@ namespace likeligrid {
 const std::vector<double> ExclusivityModel::STEPS_ = {0.4, 0.2, 0.1, 0.05, 0.02, 0.01};
 const std::vector<size_t> ExclusivityModel::BREAKS_ = {5, 5, 5, 6, 5, 5};
 
-ExclusivityModel::ExclusivityModel(std::istream& genotypes,
-    const size_t max_sites,
-    const size_t max_results):
+ExclusivityModel::ExclusivityModel(std::istream& genotypes, const size_t max_sites):
     names_(wtl::read_header(genotypes)),
-    genotypes_(wtl::eigen::read_array<size_t>(genotypes, names_.size())),
-    max_results_(max_results)
+    genotypes_(wtl::eigen::read_array<size_t>(genotypes, names_.size()))
     {HERE;
 
     const ArrayXu raw_s_sample = genotypes_.rowwise().sum().array();
@@ -79,7 +77,7 @@ ExclusivityModel::ExclusivityModel(std::istream& genotypes,
 }
 
 inline std::vector<Eigen::ArrayXd>
-make_vicinity(const Eigen::ArrayXd& center, const size_t breaks, const double radius, const double max=1.0) {
+make_vicinity(const Eigen::ArrayXd& center, const size_t breaks, const double radius, const double max=2.0) {
     std::vector<Eigen::ArrayXd> axes;
     axes.reserve(center.size());
     for (const double x: wtl::eigen::vector(center)){
@@ -94,16 +92,8 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
     if (stage_ == STEPS_.size()) {
         std::cerr << "Done: step size = " << STEPS_.back() << std::endl;
         --stage_;
-        max_results_ = -1;
-        if (true) {
-            axes_.assign(names_.size(), Eigen::ArrayXd::LinSpaced(200, 2.0, 0.01));
-            run_impl(name_outfile("uniaxis"), wtl::itertools::uniaxis(axes_, mle_params_));
-        } else {
-            //TODO
-            const auto axes = make_vicinity(mle_params_, 21, 1.0);
-            const auto vicinity = make_vicinity(mle_params_, 3, 0.01, 1.2);
-            run_impl(name_outfile("prototype"), wtl::itertools::prototype(axes, vicinity));
-        }
+        axes_.assign(names_.size(), Eigen::ArrayXd::LinSpaced(200, 2.0, 0.01));
+        run_impl(name_outfile("uniaxis"), wtl::itertools::uniaxis(axes_, mle_params_));
         return;
     }
     const std::string outfile = name_outfile(infile);
@@ -122,8 +112,43 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
     }
 }
 
+void ExclusivityModel::search_limits() const {HERE;
+    for (const auto& p: find_intersections()) {
+        std::cerr << p.first << ": " << wtl::eigen::vector(p.second) << std::endl;
+        const auto axes = make_vicinity(p.second, 5, 0.02, 2.0);
+        run_impl(name_outfile("limit_" + p.first), wtl::itertools::product(axes));
+    }
+}
+
+std::unordered_map<std::string, Eigen::ArrayXd> ExclusivityModel::find_intersections() const {HERE;
+    namespace bmath = boost::math;
+    bmath::chi_squared_distribution<> chisq(1.0);
+    const double step = 0.01;
+    const double max_ll = calc_loglik(mle_params_);
+    const double threshold = max_ll - 0.5 * bmath::quantile(bmath::complement(chisq, 0.05));
+    std::unordered_map<std::string, Eigen::ArrayXd> intersections;
+    for (Eigen::Index j=0; j<mle_params_.size(); ++j) {
+        auto params = mle_params_;
+        for (size_t i=0; i<200; ++i) {
+            params[j] -= step;
+            if (params[j] < step || calc_loglik(params) < threshold) {
+                intersections.emplace(names_[j] + "_L", params);
+                break;
+            }
+        }
+        for (size_t i=0; i<200; ++i) {
+            params[j] += step;
+            if (params[j] >= 2.0 || calc_loglik(params) < threshold) {
+                intersections.emplace(names_[j] + "_U", params);
+                break;
+            }
+        }
+    }
+    return intersections;
+}
+
 void ExclusivityModel::init_axes(const std::string& infile) {HERE;
-    if (mle_params_.size() > 0 || read_results(infile)) {
+    if (read_results(infile)) {
         std::cerr << mle_params_.transpose() << std::endl;
         if (start_ > 0) {
             throw std::runtime_error("infile must be a complete result");
@@ -151,7 +176,7 @@ std::string ExclusivityModel::name_outfile(const std::string& infile) const {HER
     return oss.str();
 }
 
-void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Generator<Eigen::ArrayXd>&& gen) {HERE;
+void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Generator<Eigen::ArrayXd>&& gen) const {HERE;
     const auto max_count = gen.max_count();
     auto buffer = wtl::make_oss();
     std::ios::openmode mode = std::ios::out;
@@ -165,7 +190,6 @@ void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Gene
     }
     std::cerr << "\nWriting to " << outfile << std::endl;
     wtl::ogzstream fout(outfile, mode);
-    double max_ll = std::numeric_limits<double>::lowest();
     for (const auto& params: gen(start_)) {
         if (gen.count() % 10000 == 0) {  // snapshot for long run
             std::cerr << "\r" << gen.count() << " in " << max_count << std::flush;
@@ -173,12 +197,7 @@ void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Gene
             fout.strict_sync();
             buffer.str("");
         }
-        const double loglik = calc_loglik(params);
-        buffer << loglik << "\t" << wtl::join(wtl::eigen::vector(params), "\t") << "\n";
-        if (loglik > max_ll) {
-            max_ll = loglik;
-            mle_params_ = params;
-        }
+        buffer << calc_loglik(params) << "\t" << wtl::join(wtl::eigen::vector(params), "\t") << "\n";
         if (SIGINT_RAISED) {throw wtl::ExitSuccess("KeyboardInterrupt");}
     }
     fout << buffer.str();

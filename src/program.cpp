@@ -30,7 +30,7 @@ po::options_description Program::options_desc() {HERE;
     po::options_description description("Program");
     description.add_options()
         ("max-sites,s", po::value(&MAX_SITES)->default_value(MAX_SITES))
-        ("results,n", po::value(&MAX_RESULTS)->default_value(MAX_RESULTS))
+        ("limits,l", po::value(&SEARCH_LIMITS)->default_value(SEARCH_LIMITS)->implicit_value(true))
         ("prefix,p", po::value(&PREFIX)->default_value(PREFIX), "prefix or previous result");
     return description;
 }
@@ -96,8 +96,9 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 
 void Program::run() {HERE;
     wtl::Fin fin(GENOTYPES_FILE);
-    ExclusivityModel model(fin, MAX_SITES, MAX_RESULTS);
+    ExclusivityModel model(fin, MAX_SITES);
     model.run(PREFIX);
+    if (SEARCH_LIMITS) model.search_limits();
 }
 
 } // namespace likeligrid
