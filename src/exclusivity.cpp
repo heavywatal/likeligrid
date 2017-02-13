@@ -152,14 +152,19 @@ std::string ExclusivityModel::name_outfile(const std::string& infile) const {HER
 }
 
 void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Generator<Eigen::ArrayXd>&& gen) {HERE;
-    std::cerr << "\nWriting to " << outfile << std::endl;
     const auto max_count = gen.max_count();
     auto buffer = wtl::make_oss();
-    wtl::ogzstream fout(outfile);
-    buffer << "##max_count=" << max_count << "\n";
-    buffer << "##max_sites=" << nsam_with_s_.size() - 1 << "\n";
-    buffer << "##step=" << STEPS_.at(stage_) << "\n";
-    buffer << "loglik\t" << wtl::join(names_, "\t") << "\n";
+    std::ios::openmode mode = std::ios::out;
+    if (start_ == 0) {
+        buffer << "##max_count=" << max_count << "\n";
+        buffer << "##max_sites=" << nsam_with_s_.size() - 1 << "\n";
+        buffer << "##step=" << STEPS_.at(stage_) << "\n";
+        buffer << "loglik\t" << wtl::join(names_, "\t") << "\n";
+    } else {
+        mode |= std::ios::app;
+    }
+    std::cerr << "\nWriting to " << outfile << std::endl;
+    wtl::ogzstream fout(outfile, mode);
     double max_ll = std::numeric_limits<double>::lowest();
     for (const auto& params: gen(start_)) {
         if (gen.count() % 10000 == 0) {  // snapshot for long run
@@ -255,6 +260,7 @@ size_t ExclusivityModel::read_body(std::istream& ist) {HERE;
     size_t i = 0;
     double max_ll = std::numeric_limits<double>::lowest();
     while (std::getline(ist, buffer)) {
+        ++i;
         std::istringstream iss(buffer);
         std::istream_iterator<double> it(iss);
         if (*it > max_ll) {
