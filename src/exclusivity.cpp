@@ -6,6 +6,7 @@
 
 #include <functional>
 #include <unordered_map>
+#include <csignal>
 
 #include <boost/dynamic_bitset.hpp>
 
@@ -17,6 +18,10 @@
 #include <cxxwtils/eigen.hpp>
 #include <cxxwtils/itertools.hpp>
 #include <cxxwtils/gz.hpp>
+
+namespace {
+    bool SIGINT_RAISED = false;
+}
 
 namespace likeligrid {
 
@@ -67,6 +72,10 @@ ExclusivityModel::ExclusivityModel(std::istream& genotypes,
     for (size_t s=0; s<=nsam_with_s_.size(); ++s) {
         index_iters_.emplace_back(std::vector<std::vector<size_t>>(s, indices));
     }
+    std::signal(SIGINT, [](int signum){
+        if (signum == SIGINT) SIGINT_RAISED = true;
+        // TODO: how to handle other signum?
+    });
 }
 
 inline std::vector<Eigen::ArrayXd>
@@ -172,6 +181,7 @@ void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Gene
             max_ll = loglik;
             mle_params_ = params;
         }
+        if (SIGINT_RAISED) {throw wtl::ExitSuccess("KeyboardInterrupt");}
     }
     fout << buffer.str();
 }
