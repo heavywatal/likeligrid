@@ -96,7 +96,7 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
         --stage_;
         max_results_ = -1;
         if (true) {
-            axes_.assign(names_.size(), Eigen::ArrayXd::LinSpaced(100, 1.0, 0.01));
+            axes_.assign(names_.size(), Eigen::ArrayXd::LinSpaced(200, 2.0, 0.01));
             run_impl(name_outfile("uniaxis"), wtl::itertools::uniaxis(axes_, mle_params_));
         } else {
             //TODO
