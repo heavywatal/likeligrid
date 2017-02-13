@@ -36,10 +36,11 @@ class ExclusivityModel {
     void init_axes(const std::string&);
     std::string name_outfile(const std::string&) const;
     void run_impl(const std::string&, wtl::itertools::Generator<Eigen::ArrayXd>&&);
+    double calc_loglik(const Eigen::ArrayXd& params) const;
     double calc_denom(
         const Eigen::ArrayXd& weights,
         const Eigen::ArrayXd& exclusi,
-        const size_t num_mutations);
+        const size_t num_mutations) const;
     std::ostream& write_genotypes(std::ostream&, const bool header=true) const;
     bool read_results(const std::string&);
     size_t read_metadata(std::istream&);
@@ -56,7 +57,7 @@ class ExclusivityModel {
     std::vector<Eigen::ArrayXd> axes_;
     size_t start_ = 0;
     size_t stage_ = 0;
-    std::vector<wtl::itertools::Product<std::vector<size_t>>> index_iters_;
+    std::vector<std::vector<std::vector<size_t>>> index_axes_;
 };
 
 } // namespace likeligrid

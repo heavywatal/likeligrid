@@ -66,11 +66,11 @@ ExclusivityModel::ExclusivityModel(std::istream& genotypes,
     std::cerr << "a_pathway_: " << a_pathway_.transpose() << std::endl;
     std::cerr << "lnp_const_: " << lnp_const_ << std::endl;
 
-    index_iters_.reserve(nsam_with_s_.size());
+    index_axes_.reserve(nsam_with_s_.size());
     std::vector<size_t> indices(genotypes_.cols());
     std::iota(std::begin(indices), std::end(indices), 0);
     for (size_t s=0; s<=nsam_with_s_.size(); ++s) {
-        index_iters_.emplace_back(std::vector<std::vector<size_t>>(s, indices));
+        index_axes_.emplace_back(s, indices);
     }
     std::signal(SIGINT, [](int signum){
         if (signum == SIGINT) SIGINT_RAISED = true;
@@ -173,15 +173,8 @@ void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Gene
             fout.strict_sync();
             buffer.str("");
         }
-
-        double loglik = 0.0;
-        loglik += (a_pathway_ * params.log()).sum();
-        for (size_t s=0; s<nsam_with_s_.size(); ++s) {
-            loglik -= nsam_with_s_[s] * std::log(calc_denom(w_pathway_, params, s));
-        }
-
-        buffer << (loglik += lnp_const_) << "\t"
-               << wtl::join(wtl::eigen::vector(params), "\t") << "\n";
+        const double loglik = calc_loglik(params);
+        buffer << loglik << "\t" << wtl::join(wtl::eigen::vector(params), "\t") << "\n";
         if (loglik > max_ll) {
             max_ll = loglik;
             mle_params_ = params;
@@ -191,15 +184,25 @@ void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Gene
     fout << buffer.str();
 }
 
+double ExclusivityModel::calc_loglik(const Eigen::ArrayXd& params) const {
+    double loglik = 0.0;
+    loglik += (a_pathway_ * params.log()).sum();
+    for (size_t s=0; s<nsam_with_s_.size(); ++s) {
+        loglik -= nsam_with_s_[s] * std::log(calc_denom(w_pathway_, params, s));
+    }
+    return loglik += lnp_const_;
+}
+
 double ExclusivityModel::calc_denom(
     const Eigen::ArrayXd& w_pathway,
     const Eigen::ArrayXd& x_pathway,
-    const size_t num_mutations) {
+    const size_t num_mutations) const {
 
     if (num_mutations < 2) return 1.0;
-    auto& iter = index_iters_[num_mutations];
+    auto iter = wtl::itertools::product(index_axes_[num_mutations]);
     double sum_prob = 0.0;
     boost::dynamic_bitset<> bits(x_pathway.size());
+
     for (const auto& indices: iter()) {
         double p = 1.0;
         for (const auto j: indices) {
@@ -210,7 +213,6 @@ double ExclusivityModel::calc_denom(
         sum_prob += p;
         bits.reset();
     }
-    iter.reset();
     return sum_prob;
 }
 
