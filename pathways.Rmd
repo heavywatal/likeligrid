@@ -1,0 +1,62 @@
+---
+title: "Pathway Definition"
+output:
+  html_document:
+    css: "~/.R/rmd.css"
+    self_contained: true
+    mathjax: https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_CHTML
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+opts_chunk$set(out.width='100%')
+library(pipeR)
+library(tidyverse)
+library(wtl)
+loadNamespace('cowplot')
+ggplot2::theme_set(wtl::theme_wtl())
+```
+
+## GSEA MSigDB (Molecular Signatures Database)
+
+- http://software.broadinstitute.org/gsea/msigdb/
+- http://software.broadinstitute.org/gsea/downloads.jsp
+
+```{r data}
+dbdir = '~/Dropbox/cache/gsea'
+filename = 'c2.all.v5.2.symbols.gmt'
+infile = file.path(dbdir, filename)
+```
+
+### Pure R
+
+```{r pure-r, eval=FALSE}
+read_gmt = function(infile, n=-1L) {
+    readLines(infile, n) %>>%
+    purrr::map_df(~{
+      .row = wtl::split_chr(.x, '\t')
+      tibble(set=.row[1], genes=list(.row[c(-1, -2)]))
+    })
+}
+
+c2symbols = read_gmt(infile) %>>% (?.)
+
+c2symbols$genes %>>% lengths() %>>% as.double() %>>% wtl::gghist()
+```
+
+### Bioconductor
+
+https://www.bioconductor.org/packages/release/bioc/html/GSEABase.html
+
+class `GeneSetCollection`
+
+```{r bioc, eval=FALSE}
+# source("https://bioconductor.org/biocLite.R")
+# biocLite("GSEABase")
+library(GSEABase)
+gsc = getGmt(infile)
+names(gsc)
+geneIds(gsc)
+gsc[['SA_PTEN_PATHWAY']]
+details(gsc[['SA_PTEN_PATHWAY']])
+```
