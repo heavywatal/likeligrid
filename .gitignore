@@ -1,4 +1,5 @@
 *.out
+*.gz
 *.png
 *.pdf
 *.html

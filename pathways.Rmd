@@ -11,6 +11,7 @@ output:
 library(knitr)
 opts_chunk$set(out.width='100%')
 library(pipeR)
+library(stringr)
 library(tidyverse)
 library(wtl)
 loadNamespace('cowplot')
@@ -20,43 +21,110 @@ ggplot2::theme_set(wtl::theme_wtl())
 ## GSEA MSigDB (Molecular Signatures Database)
 
 - http://software.broadinstitute.org/gsea/msigdb/
-- http://software.broadinstitute.org/gsea/downloads.jsp
+- [Downloads (GUI only)](http://software.broadinstitute.org/gsea/downloads.jsp)
 
-```{r data}
+### Read gmt
+
+```{r read}
 dbdir = '~/Dropbox/cache/gsea'
-filename = 'c2.all.v5.2.symbols.gmt'
+filename = 'h.all.v5.2.symbols.gmt'
 infile = file.path(dbdir, filename)
-```
 
-### Pure R
-
-```{r pure-r, eval=FALSE}
 read_gmt = function(infile, n=-1L) {
     readLines(infile, n) %>>%
     purrr::map_df(~{
       .row = wtl::split_chr(.x, '\t')
-      tibble(set=.row[1], genes=list(.row[c(-1, -2)]))
-    })
+      tibble(name=.row[1], genes=list(.row[c(-1, -2)]))
+    }) %>>%
+    (setNames(.$genes, .$name))
 }
 
-c2symbols = read_gmt(infile) %>>% (?.)
+gmt = read_gmt(infile) %>>% (?.)
+groupnames = names(gmt) %>>% str_replace('^[^_]+_', '')
+#hgroups %>>% lengths() %>>% as.double() %>>% wtl::gghist()
+```
 
-c2symbols$genes %>>% lengths() %>>% as.double() %>>% wtl::gghist()
+### CGC
+
+```{r cgc}
+repo = '~/git/innanlab'
+cgc = file.path(repo, 'cosmic/cancer_gene_census.csv') %>>%
+    read_csv() %>>%
+    dplyr::transmute(
+    symbol= `Gene Symbol`,
+    entrez= `Entrez GeneId`,
+    role= `Role in Cancer`,
+    vartype= `Mutation Types`,
+    tissue= `Tissue Type`,
+    molgenet= `Molecular Genetics`,
+    type_somatic= `Tumour Types(Somatic)`,
+    type_germline= `Tumour Types(Germline)`,
+    syndrome= `Cancer Syndrome`,
+    synonyms= Synonyms) #%>>% (?.)
+
+cgc_set = cgc %>>%
+    dplyr::select(symbol, role, molgenet) %>>%
+    purrr::by_row(~{
+        .gene = .x$symbol
+        gmt %>>% map_df(~.gene %in% .x) %>>% setNames(groupnames)
+    }) %>>%
+    tidyr::unnest() #%>>% (?.)
+
+cgc_set %>>%
+    dplyr::summarise_if(is.logical, sum) %>>%
+    gather(group, num_genes) %>>%
+    dplyr::arrange(desc(num_genes)) %>>%
+    wtl::max_print()
+
+gene_ngroups = cgc %>>%
+    dplyr::select(symbol, role, molgenet) %>>%
+    purrr::by_row(~{
+        .gene = .x$symbol
+        gmt %>>% map_int(~.gene %in% .x) %>>% sum()
+    }, .to= 'num_groups') %>>%
+    tidyr::unnest() %>>%
+    dplyr::arrange(role, symbol) #%>>% (?.)
+
+gene_ngroups %>>% dplyr::arrange(desc(num_groups)) %>>% wtl::max_print()
+```
+
+### Pereira
+
+```{r pereira, eval=FALSE}
+drivers = file.path(repo, 'pereira/drivers40.tsv') %>>% read_tsv() %>>% (?.)
+drivers %>>% purrr::by_row(~{
+    .gene = .x$gene
+    gmt %>>% map_df(~.gene %in% .x) %>>% setNames(groupnames)
+  }) %>>%
+  tidyr::unnest() %>>%
+  dplyr::mutate_if(is.logical, function(x) ifelse(x, 1L, NA)) %>>%
+  write_df('pereira_msigdb.tsv', na='')
 ```
 
 ### Bioconductor
 
-https://www.bioconductor.org/packages/release/bioc/html/GSEABase.html
+https://bioconductor.org/packages/GSEABase
 
-class `GeneSetCollection`
+あんまり更新されてないっぽい。
 
 ```{r bioc, eval=FALSE}
 # source("https://bioconductor.org/biocLite.R")
 # biocLite("GSEABase")
 library(GSEABase)
-gsc = getGmt(infile)
-names(gsc)
+gsc = getGmt(infile, SymbolIdentifier(), BroadCollection(category="h"))
+groupnames = names(gsc) %>>% str_replace('^[^_]+_', '')
+
+## class GeneSetCollection
+showMethods('GeneSetCollection')
 geneIds(gsc)
-gsc[['SA_PTEN_PATHWAY']]
-details(gsc[['SA_PTEN_PATHWAY']])
+
+## class GeneSet
+showMethods('GeneSet')
+gsc[['HALLMARK_P53_PATHWAY']]
+details(gsc[['HALLMARK_P53_PATHWAY']])
+
+# フルの情報が欲しい場合はセットごとにまたダウンロードが必要
+broad_base = 'http://software.broadinstitute.org/gsea/msigdb/cards'
+p53 = asBroadUri('HALLMARK_P53_PATHWAY', base=broad_base) %>>% getBroadSets()
+details(p53[[1]])
 ```
