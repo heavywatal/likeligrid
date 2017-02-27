@@ -162,7 +162,13 @@ ggsave('hist_gene_pathway.png', .p, width=16, height=3)
     facet_wrap(~group)
 ```
 
-### Pereira
+### Vogelstein 2013
+
+```{r vogelstein, eval=FALSE}
+file.path(repo, 'vogelstein/*.tsv') %>>% read_tsv() %>>% (?.)
+```
+
+### Pereira 2016
 
 ```{r pereira, eval=FALSE}
 pereira_drivers = file.path(repo, 'pereira/drivers40.tsv') %>>% read_tsv() %>>% (?.)
