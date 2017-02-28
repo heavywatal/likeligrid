@@ -13,6 +13,7 @@ opts_chunk$set(out.width='100%')
 library(pipeR)
 library(stringr)
 library(tidyverse)
+library(jsonlite)
 library(wtl)
 loadNamespace('cowplot')
 ggplot2::theme_set(wtl::theme_wtl())
@@ -41,9 +42,9 @@ read_gmt = function(infile, n=-1L) {
     readLines(infile, n) %>>%
     purrr::map_df(~{
       .row = wtl::split_chr(.x, '\t')
-      tibble(name=.row[1], genes=list(.row[c(-1, -2)]))
+      tibble::tibble(name=.row[1], genes=list(.row[c(-1, -2)]))
     }) %>>%
-    (setNames(.$genes, .$name))
+    (stats::setNames(.$genes, .$name))
 }
 
 dbdir = '~/Dropbox/cache/gsea'
@@ -54,7 +55,7 @@ names(gmt_h) = names(gmt_h) %>>% str_replace('^HALLMARK_', '')
 #gmt_h %>>% map(~str_subset(.x, 'RAS')) %>>% compact()
 
 gmt_c2cp = sprintf(.template, 'c2.cp') %>>% read_gmt()
-gmt_c2 = c('SA', 'ST', 'KEGG', 'PID', 'BIOCARTA', 'REACTOME') %>>%
+gmt_c2 = c('SA', 'ST', 'KEGG', 'PID', 'BIOCARTA') %>>%
     purrr::set_names() %>>%
     purrr::map(~{
         .pattern = sprintf('^%s_', .x)
@@ -64,48 +65,94 @@ gmt_c2 = c('SA', 'ST', 'KEGG', 'PID', 'BIOCARTA', 'REACTOME') %>>%
     })
 
 gmts = c(list(HALLMARK=gmt_h), gmt_c2)
-lengths(gmts)
 
 gmts %>>%
+    (?lengths(.)) %>>%
     purrr::map_df(~{tibble(ngenes=lengths(.x))}, .id='group') %>>%
-    dplyr::filter(group != 'REACTOME') %>>%
-    ggplot(aes(ngenes))+geom_histogram(bins=30)+facet_wrap(~group)
+    ggplot(aes(ngenes))+
+    geom_histogram(bins=30)+
+    facet_wrap(~group)
 ```
 
-### CGC
+## Other definitions
 
-```{r cgc}
+```{r other-defs}
 repo = '~/git/innanlab'
-cgc = file.path(repo, 'cosmic/cancer_gene_census.csv') %>>%
-    read_csv() %>>%
-    dplyr::transmute(
-    symbol= `Gene Symbol`,
-    entrez= `Entrez GeneId`,
-    role= `Role in Cancer`,
-    vartype= `Mutation Types`,
-    tissue= `Tissue Type`,
-    molgenet= `Molecular Genetics`,
-    type_somatic= `Tumour Types(Somatic)`,
-    type_germline= `Tumour Types(Germline)`,
-    syndrome= `Cancer Syndrome`,
-    synonyms= Synonyms) #%>>% (?.)
+drivers_all = file.path(repo, 'driver_genes.tsv') %>>% read_tsv()
+pereira_drivers = file.path(repo, 'pereira/drivers40.tsv') %>>%
+    read_tsv() %>>%
+    dplyr::rename(symbol=gene) %>>% (?.)
+# intersect(pereira_drivers$symbol, tr$primary)
+# intersect(pereira_drivers$symbol, tr$synonym)
 
-cgc_drivers = cgc %>>%
-    dplyr::select(symbol, role, molgenet) %>>%
-    dplyr::filter(!is.na(role)) %>>% (?.)
-
-check_pathways = function(.gmt, .drivers=cgc_drivers) {
-    .drivers %>>% purrr::by_row(~{
-      .gene = .x$symbol
-      .gmt %>>% map_df(~.gene %in% .x)
-    }) %>>%
-    dplyr::transmute(gene=symbol, .out) %>>%
+.tolist = function(.data, .key='pathway', .value='symbol') {
+    .data %>>%
+    dplyr::mutate_(.dots=setNames(list(~str_split(.[[.key]], ':')), .key)) %>>%
     tidyr::unnest() %>>%
-    tidyr::gather(pathway, included, -gene)
+    purrr::slice_rows(.key) %>>%
+    purrr::by_slice(~.x[[.value]]) %>>%
+    (setNames(.$.out, .[[.key]])) %>>%
+    (.[!is.na(names(.))])
 }
 
+other_defs = list(
+  vogelstein= .tolist(drivers_all, 'vogel_pathway'),
+  vogelstein3= .tolist(drivers_all, 'vogel_process'),
+  pereira= .tolist(pereira_drivers, 'pathway'))
+```
+
+## Save
+
+```{r write, eval=FALSE}
+pathdefs = c(other_defs, gmts)
+pathdefs %>>% (all.equal(., fromJSON(toJSON(.))))
+write_json(pathdefs, 'pathway-defs.json')
+```
+
+
+## Check
+
+### Define driver genes
+
+```{r drivers, eval=FALSE}
+if (FALSE) {
+    .pathdefs = pathdefs
+    pathdefs = read_json('pathway-defs.json', simplifyVector=TRUE)
+    all.equal(pathdefs, .pathdefs)
+}
+
+lengths(pathdefs)
+
+check_pathways = function(.pdef, .drivers=drivers) {
+    .drivers %>>% purrr::by_row(~{
+      .gene = .x$symbol
+      .pdef %>>% map_df(~.gene %in% .x)
+    }) %>>%
+    dplyr::transmute(symbol=symbol, .out) %>>%
+    tidyr::unnest() %>>%
+    tidyr::gather(pathway, included, -symbol)
+}
+
+.tmp_ldata = pathdefs[c('HALLMARK', 'vogelstein', 'vogelstein3', 'pereira')] %>>%
+    purrr::map(check_pathways, .drivers=drivers_all)
+
+mapped_genes = .tmp_ldata %>>%
+    map_df(~., .id='group') %>>%
+    dplyr::group_by(symbol) %>>%
+    dplyr::summarise(included=sum(included)) %>>%
+    dplyr::filter(included > 0) %>>%
+    (symbol)
+
+drivers = drivers_all %>>% dplyr::filter(symbol %in% mapped_genes)
+.ldata = pathdefs %>>% purrr::map(check_pathways, .drivers=drivers)
+.tidy = .ldata %>>% map_df(~., .id='group')
+```
+
+### Summary and plot
+
+```{r, eval=FALSE}
 plot_included = function(.data, .name, base_size=12) {
-    ggplot(.data, aes(pathway, gene))+
+    ggplot(.data, aes(pathway, symbol))+
     geom_raster(aes(fill=included))+
     scale_fill_manual(values=c(`TRUE`='#333333', `FALSE`='#dddddd'))+
     coord_fixed()+
@@ -115,32 +162,16 @@ plot_included = function(.data, .name, base_size=12) {
     axis.title=element_blank(), axis.ticks=element_blank(),
     legend.position='none')
 }
-
-.ldata = gmts %>>% purrr::keep(~length(.x) < 300) %>>% purrr::map(check_pathways)
 .lgp = .ldata %>>% purrr::map2(names(.), plot_included, base_size=8)
-.pg = cowplot::plot_grid(plotlist=.lgp, nrow=1, rel_widths=c(2,1,1,3,3,4))
+.pg = cowplot::plot_grid(plotlist=.lgp, nrow=1, rel_widths=c(2,1,1,2,1,1,3,3,4))
 .pg
-ggsave('gene_pathway.png', .pg, width=16, height=6)
+ggsave('gene_pathway.png', .pg, width=16, height=12)
 
-.tidy = .ldata %>>% map_df(~., .id='group')
 
 .summary = .tidy %>>%
-    dplyr::group_by(group, gene) %>>%
+    dplyr::group_by(group, symbol) %>>%
     dplyr::summarise(included=sum(included)) %>>%
-    dplyr::ungroup() %>>% (?.)
-
-.p = .summary %>>%
-    ggplot(aes(gene, included))+
-    geom_col(aes(fill=group))+
-    scale_fill_brewer(type='qual', palette='Paired')+
-    wtl::theme_wtl(8)+
-    theme(
-      panel.grid.major.x=element_blank(),
-      axis.text.x=element_text(angle=90, hjust=1, vjust=0.5),
-      axis.title=element_blank(), axis.ticks=element_blank(),
-      legend.position=c(0.1,0.9), legend.justification=c(0, 1))
-.p
-ggsave('hist_gene_pathway.png', .p, width=16, height=3)
+    dplyr::ungroup()
 
 .summary %>>%
     dplyr::group_by(group) %>>%
@@ -149,70 +180,51 @@ ggsave('hist_gene_pathway.png', .p, width=16, height=3)
 .summary %>>%
     dplyr::filter(included > 0) %>>%
     ggplot(aes(included))+
-    geom_histogram(bins=30)+
+    geom_bar()+
     facet_wrap(~group)
 
 .tidy %>>%
     dplyr::group_by(group, pathway) %>>%
-    dplyr::summarise(included=sum(included)) %>>%
+    dplyr::summarise(ngenes=sum(included)) %>>%
     dplyr::ungroup() %>>%
-    dplyr::filter(included > 0) %>>%
-    ggplot(aes(included))+
+    dplyr::filter(ngenes > 0) %>>%
+    ggplot(aes(ngenes))+
     geom_bar()+
     facet_wrap(~group)
+
+.p = .tidy %>>%
+    dplyr::group_by(group, symbol) %>>%
+    dplyr::summarise(included=sum(included)) %>>%
+    dplyr::ungroup() %>>% (?.) %>>%
+    ggplot(aes(symbol, included))+
+    geom_col(aes(fill=group))+
+    scale_fill_brewer(type='qual', palette='Paired')+
+    wtl::theme_wtl(8)+
+    theme(
+      panel.grid.major.x=element_blank(),
+      axis.text.x=element_text(angle=90, hjust=1, vjust=0.5),
+      axis.title=element_blank(), axis.ticks=element_blank(),
+      legend.position=c(0.05,0.95), legend.justification=c(0, 1))
+.p
+ggsave('hist_gene_pathway.png', .p, width=16, height=5)
 ```
 
-### Vogelstein 2013
-
-```{r vogelstein, eval=FALSE}
-file.path(repo, 'vogelstein/*.tsv') %>>% read_tsv() %>>% (?.)
-```
 
 ### Pereira 2016
 
-```{r pereira, eval=FALSE}
-pereira_drivers = file.path(repo, 'pereira/drivers40.tsv') %>>% read_tsv() %>>% (?.)
-
-check_pathways_pere = function(.gmt, .drivers=pereira_drivers) {
+```{r pereira-genes, eval=FALSE}
+check_pathways_pere = function(.pdef, .drivers=pereira_drivers) {
     .drivers %>>% purrr::by_row(~{
-      .gene = .x$gene
-      .gmt %>>% map_df(~.gene %in% .x)
+      .gene = .x$symbol
+      .pdef %>>% map_df(~.gene %in% .x)
     }) %>>%
-    dplyr::transmute(gene=paste0(gene, '-', pathway) %>>% factor(., levels=.), .out) %>>%
+    dplyr::transmute(symbol=paste0(symbol, '-', pathway) %>>% factor(., levels=.), .out) %>>%
     tidyr::unnest() %>>%
-    tidyr::gather(pathway, included, -gene)
+    tidyr::gather(pathway, included, -symbol)
 }
 
-.ldata = gmts %>>% purrr::keep(~length(.x) < 300) %>>% purrr::map(check_pathways_pere)
-.lgp = .ldata %>>% purrr::map2(names(.), plot_included, base_size=10)
-cowplot::plot_grid(plotlist=.lgp)
-```
-
-
-### Bioconductor
-
-https://bioconductor.org/packages/GSEABase
-
-あんまり更新されてないっぽい。
-
-```{r bioc, eval=FALSE}
-# source("https://bioconductor.org/biocLite.R")
-# biocLite("GSEABase")
-library(GSEABase)
-gsc = getGmt(infile, SymbolIdentifier(), BroadCollection(category="h"))
-groupnames = names(gsc) %>>% str_replace('^[^_]+_', '')
-
-## class GeneSetCollection
-showMethods('GeneSetCollection')
-geneIds(gsc)
-
-## class GeneSet
-showMethods('GeneSet')
-gsc[['HALLMARK_P53_PATHWAY']]
-details(gsc[['HALLMARK_P53_PATHWAY']])
-
-# フルの情報が欲しい場合はセットごとにまたダウンロードが必要
-broad_base = 'http://software.broadinstitute.org/gsea/msigdb/cards'
-p53 = asBroadUri('HALLMARK_P53_PATHWAY', base=broad_base) %>>% getBroadSets()
-details(p53[[1]])
+.ldata = pathdefs %>>% purrr::keep(~length(.x) < 100) %>>% purrr::map(check_pathways_pere)
+.lgp = .ldata %>>% purrr::map2(names(.), plot_included, base_size=6)
+cowplot::plot_grid(plotlist=.lgp, nrow=1, rel_widths=c(2,1,2,5,2,3))
+ggsave('pereira_consistency.png', width=14, height=6)
 ```
