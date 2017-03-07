@@ -121,33 +121,99 @@ purrr::by_row(~{
 
 (hypermutants = .counts %>>% dplyr::filter(genes > .hypermut_quantile['99%']) %>>% (sample) %>>% unique())
 
+.p = .tidy %>>%
+    dplyr::filter(cancer_type %in% .cancer_types) %>>%
+    dplyr::filter(!sample %in% hypermutants) %>>%
+    dplyr::count(definition, cancer_type, pathway) %>>%
+    dplyr::ungroup() %>>%
+    tidyr::nest(-definition) %>>%
+    dplyr::mutate(plt= purrr::map2(data, definition, ~{
+        ggplot(.x, aes(pathway, n))+
+        geom_col()+
+        facet_grid(~ cancer_type)+
+        labs(title= .y)+
+        wtl::theme_wtl(base_size=8)+
+        theme(axis.ticks=element_blank(), panel.grid.major.x=element_blank())
+    })) %>>%
+    (plt) %>>% (cowplot::plot_grid(plotlist=., ncol=1))
+.p
+ggsave('pathway_freqs.png', .p, width=18, height=9)
+
+
+.nested = .tidy %>>%
+    dplyr::filter(cancer_type %in% .cancer_types) %>>%
+    dplyr::filter(!sample %in% hypermutants) %>>%
+    dplyr::filter(pathway != 'other') %>>%
+    dplyr::count(definition, cancer_type, sample, pathway) %>>%
+    dplyr::ungroup() %>>%
+    tidyr::nest(-definition) %>>% (?.)
+
+make_poisson = function(.data) {
+    nsam = dplyr::n_distinct(.data[['sample']])
+    dplyr::count(.data, pathway, wt=n) %>>%
+    dplyr::mutate(lambda= nn / nsam) %>>%
+    purrr::by_row(~{
+        tibble(n= seq_len(40), y= dpois(n, .x$lambda) * nsam) %>>%
+        dplyr::filter(y >= 1)
+    }) %>>%
+    dplyr::select(-nn, -lambda) %>>%
+    unnest()
+}
+.nested$data[[1]] %>>% summarise(muts= sum(n))
+.nested$data[[1]] %>>% make_poisson() %>>% dplyr::summarise(muts= sum(n * y))
+
+.plot = function(.data, .title) {
+    .pois_df = make_poisson(.data)
+    ggplot(.data, aes(n))+
+    geom_bar(fill='dodgerblue', alpha=0.5)+
+    geom_col(data=.pois_df, aes(n, y), fill='tomato', alpha=0.5)+
+    facet_wrap(~ pathway)+
+    labs(title= .title)+
+    # scale_y_log10(breaks=wtl::breaks_log10, labels=wtl::labels_log10)+
+    wtl::theme_wtl(base_size=10)+
+    theme(axis.ticks=element_blank(), panel.grid.major.x=element_blank())
+}
+.plot(.nested$data[[3]], .nested$definition[[3]])
+
+.p = .nested %>>%
+    purrr::by_row(~.plot(.x$data[[1]], .x$definition)) %>>%
+    (.out) %>>% (cowplot::plot_grid(plotlist=., ncol=2))
+.p
+ggsave('poisson_pathway-pancancer.pdf', .p, width=18, height=12)
+
+
+.plot_by_cancer_type = function(.data, .title) {
+    .data %>>%
+    tidyr::nest(-cancer_type) %>>%
+    purrr::by_row(~{
+        message(.x$cancer_type)
+        .plot(.x$data[[1]], paste(.title, .x$cancer_type))
+    }) %>>% (.out)
+}
+.plot_by_cancer_type(.nested$data[[1]], .nested$definition[[1]]) %>>% (cowplot::plot_grid(plotlist=.))
+
+.nested %>>%
+    purrr::by_row(~{
+        .outfile = sprintf('poisson_pathway-%s.pdf', .x$definition)
+        message(.outfile)
+        .plot_by_cancer_type(.x$data[[1]], .x$definition) %>>%
+        (cowplot::plot_grid(plotlist=.)) %>>%
+        (ggsave(.outfile, ., width=24, height=18))
+    })
+
+
+#########1#########2#########3#########4#########5#########6#########7#########
+
 .matrices = .tidy %>>%
-    dplyr::filter(cancer_type %in% .cancer_types, !sample %in% hypermutants) %>>%
+    dplyr::filter(cancer_type %in% .cancer_types) %>>%
+    dplyr::filter(!sample %in% hypermutants) %>>%
+    dplyr::count(definition, cancer_type, sample, pathway) %>>%
+    dplyr::ungroup() %>>%
     tidyr::nest(-definition) %>>%
     dplyr::mutate(data= purrr::map(data, ~{
         .x %>>%
-        dplyr::count(cancer_type, sample, pathway) %>>%
-        dplyr::ungroup() %>>%
         tidyr::spread(pathway, n, fill=0L) %>>%
         dplyr::select(-sample) %>>%
         tidyr::nest(-cancer_type)
     })) %>>%
     tidyr::unnest() %>>% (?.)
-
-.plot = function(.data, .name='') {
-    .data %>>%
-    (tibble(pathway=names(.), s=colSums(.))) %>>%
-    ggplot(aes(pathway, s))+
-    geom_col()+
-    labs(title=.name)+
-    wtl::theme_wtl(base_size=8)+
-    theme(axis.ticks=element_blank(), panel.grid.major.x=element_blank())
-}
-.plot(.matrices$data[[1]])
-
-.p = .matrices %>>%
-    dplyr::arrange(definition, cancer_type) %>>%
-    dplyr::mutate(plt= purrr::map2(data, paste(definition, cancer_type), .plot)) %>>%
-    (plt) %>>% (cowplot::plot_grid(plotlist=., ncol=12))
-.p
-ggsave('pathway_freqs.png', .p, width=18, height=9)
