@@ -53,29 +53,37 @@ pathdefs = read_json('pathway-defs.json', simplifyVector=TRUE)
 lengths(pathdefs)
 pathdefs = pathdefs[c('vogelstein', 'vogelstein3', 'pereira', 'HALLMARK')]
 
-join_pathway = function(.genotypes, .pathdef) {
+.join = function(.genotypes, .pathdef) {
     .pd = map_df(.pathdef, ~tibble(symbol=.x), .id='pathway')
-    dplyr::left_join(.genotypes, .pd, by='symbol') %>>%
-    dplyr::mutate(pathway= dplyr::coalesce(pathway, 'other'))
+    dplyr::left_join(.genotypes, .pd, by='symbol')
 }
-join_pathway(head(maf), pathdefs[['HALLMARK']])
+.join(head(maf), pathdefs[['HALLMARK']])
 
-.joined = purrr::map_df(pathdefs, .id='definition', ~join_pathway(maf, .x))
+join_pathdefs = function(.data) {
+    purrr::map_df(pathdefs, .id='definition', ~.join(.data, .x)) %>>%
+    dplyr::arrange(cancer_type, sample, symbol)
+}
+join_pathdefs(maf)
 
-.tidy = .joined %>>%
-    dplyr::distinct(cancer_type, sample, symbol, definition, pathway) %>>%
-    dplyr::mutate(cancer_type= factor(cancer_type, levels=.ncases$cancer_type)) %>>%
-    dplyr::arrange(cancer_type, sample, symbol) %>>%
+hypermutants = maf %>>%
+  dplyr::count(cancer_type, sample) %>>%
+  dplyr::filter(n > .hypermut_quantile['99%']) %>>%
+  (unique(.$sample)) %>>% (?.)
+
+major = maf %>>%
+    dplyr::filter(cancer_type %in% .cancer_types) %>>%
+    dplyr::filter(!sample %in% hypermutants) %>>%
     (?.)
 
-.counts = dplyr::full_join(by=c('cancer_type', 'sample'),
-    maf %>>%
-      dplyr::count(cancer_type, sample) %>>%
-      dplyr::ungroup() %>>% dplyr::rename(genes=n),
-    .tidy %>>%
-      dplyr::count(cancer_type, sample, definition, pathway) %>>%
-      dplyr::count(cancer_type, sample, definition) %>>%
-      dplyr::ungroup() %>>% dplyr::rename(pathways=nn))
+shuffle = function(.data) {
+    tidyr::nest(.data, -cancer_type) %>>%
+    dplyr::mutate(data= purrr::map(data, ~{dplyr::mutate(.x, symbol= sample(symbol))})) %>>%
+    tidyr::unnest()
+}
+major %>>% shuffle() %>>% dplyr::count(cancer_type, symbol)
+major %>>% dplyr::count(cancer_type, symbol)
+
+#########1#########2#########3#########4#########5#########6#########7#########
 
 .plot = function(.data, .title='', .max_g=max(.data$genes), .max_p=max(.data$pathways)) {
     .scatter = .data %>>%
@@ -99,17 +107,32 @@ join_pathway(head(maf), pathdefs[['HALLMARK']])
     cowplot::plot_grid(.bar_g, NULL, .scatter, .bar_p, rel_widths=c(2, 1), rel_heights=c(1, 2))
 }
 
-plot_mutdist = function(.data, .definition='HALLMARK', .quantile='99%', .n=12) {
+plot_mutdist = function(.data, .definition='HALLMARK', .quantile='99%', .head=12) {
     .max_g = .hypermut_quantile[.quantile]
     .data %>>%
     dplyr::filter(definition == .definition, genes <= .max_g) %>>%
     tidyr::nest(-cancer_type, -definition) %>>%
-    head(.n) %>>%
+    head(.head) %>>%
     dplyr::mutate(plt= purrr::map2(data, paste(definition, cancer_type), .plot,
         .max_g=.max_g, .max_p=length(pathdefs[[.definition]]))) %>>%
     (cowplot::plot_grid(plotlist=.$plt, ncol=4))
 }
-plot_mutdist(.counts, .n=4)
+plot_mutdist(.counts, .head=4)
+
+.count_mutated = function(.data, na.rm=FALSE) {
+    dplyr::full_join(by=c('cancer_type', 'sample'),
+      .data %>>%
+        dplyr::distinct(cancer_type, sample, symbol) %>>%
+        dplyr::count(cancer_type, sample) %>>%
+        dplyr::ungroup() %>>% dplyr::rename(genes=n),
+      .data %>>%
+        dplyr::count(cancer_type, sample, definition, pathway) %>>%
+        dplyr::count(cancer_type, sample, definition) %>>%
+        dplyr::ungroup() %>>% dplyr::rename(pathways=nn))
+}
+
+.counts = maf %>>% join_pathdefs() %>>% .count_mutated() %>>% (?.)
+.counts.narm = maf %>>% join_pathdefs() %>>% dplyr::filter(!is.na(pathway)) %>>% .count_mutated(maf) %>>% (?.)
 
 tidyr::crossing(def= names(pathdefs), p= c('95%', '99%', '100%')) %>>%
 purrr::by_row(~{
@@ -119,11 +142,12 @@ purrr::by_row(~{
     ggsave(.outfile, .p, width=16, height=10)
 })
 
-(hypermutants = .counts %>>% dplyr::filter(genes > .hypermut_quantile['99%']) %>>% (sample) %>>% unique())
+#########1#########2#########3#########4#########5#########6#########7#########
 
-.p = .tidy %>>%
-    dplyr::filter(cancer_type %in% .cancer_types) %>>%
-    dplyr::filter(!sample %in% hypermutants) %>>%
+.p = major %>>%
+    # shuffle() %>>%
+    join_pathdefs() %>>%
+    # dplyr::filter(!is.na(pathway)) %>>%
     dplyr::count(definition, cancer_type, pathway) %>>%
     dplyr::ungroup() %>>%
     tidyr::nest(-definition) %>>%
@@ -138,20 +162,33 @@ purrr::by_row(~{
     (plt) %>>% (cowplot::plot_grid(plotlist=., ncol=1))
 .p
 ggsave('pathway_freqs.png', .p, width=18, height=9)
+# ggsave('pathway_freqs-narm.png', .p, width=18, height=9)
+# ggsave('pathway_freqs-shuffled.png', .p, width=18, height=9)
 
+#########1#########2#########3#########4#########5#########6#########7#########
 
-.nested = .tidy %>>%
-    dplyr::filter(cancer_type %in% .cancer_types) %>>%
-    dplyr::filter(!sample %in% hypermutants) %>>%
-    dplyr::filter(pathway != 'other') %>>%
+.nest_by_definition = function(.data) {
+    dplyr::filter(.data, !is.na(pathway)) %>>%
     dplyr::count(definition, cancer_type, sample, pathway) %>>%
     dplyr::ungroup() %>>%
     tidyr::nest(-definition) %>>% (?.)
+}
+
+.shuffled = major %>>%
+    shuffle() %>>%
+    join_pathdefs() %>>%
+    .nest_by_definition() %>>% (?.)
+
+.nested = major %>>%
+    join_pathdefs() %>>%
+    .nest_by_definition() %>>%
+    dplyr::left_join(.shuffled %>>% dplyr::rename(shuffled=data), by='definition') %>>%
+    (?.)
 
 make_poisson = function(.data) {
-    nsam = dplyr::n_distinct(.data[['sample']])
+    nsam = dplyr::n_distinct(.data[['sample']]) %>>% (?.)
     dplyr::count(.data, pathway, wt=n) %>>%
-    dplyr::mutate(lambda= nn / nsam) %>>%
+    dplyr::mutate(lambda= nn / nsam) %>>% (?.) %>>%
     purrr::by_row(~{
         tibble(n= seq_len(40), y= dpois(n, .x$lambda) * nsam) %>>%
         dplyr::filter(y >= 1)
@@ -159,8 +196,8 @@ make_poisson = function(.data) {
     dplyr::select(-nn, -lambda) %>>%
     unnest()
 }
-.nested$data[[1]] %>>% summarise(muts= sum(n))
 .nested$data[[1]] %>>% make_poisson() %>>% dplyr::summarise(muts= sum(n * y))
+.nested$data[[1]] %>>% summarise(muts= sum(n))
 
 .plot = function(.data, .title) {
     .pois_df = make_poisson(.data)
