@@ -182,13 +182,16 @@ ggsave('pathway_freqs.png', .p, width=18, height=9)
 .nested = major %>>%
     join_pathdefs() %>>%
     .nest_by_definition() %>>%
-    dplyr::left_join(.shuffled %>>% dplyr::rename(shuffled=data), by='definition') %>>%
+    dplyr::left_join(.shuffled %>>% dplyr::rename(shuffled=data),
+      by=c('definition')) %>>%
     (?.)
 
+## observed/shuffle vs poisson
+
 make_poisson = function(.data) {
-    nsam = dplyr::n_distinct(.data[['sample']]) %>>% (?.)
+    nsam = dplyr::n_distinct(.data[['sample']]) #%>>% (?.)
     dplyr::count(.data, pathway, wt=n) %>>%
-    dplyr::mutate(lambda= nn / nsam) %>>% (?.) %>>%
+    dplyr::mutate(lambda= nn / nsam) %>>% #(?.) %>>%
     purrr::by_row(~{
         tibble(n= seq_len(40), y= dpois(n, .x$lambda) * nsam) %>>%
         dplyr::filter(y >= 1)
@@ -214,36 +217,111 @@ make_poisson = function(.data) {
 
 .p = .nested %>>%
     purrr::by_row(~.plot(.x$data[[1]], .x$definition)) %>>%
-    (.out) %>>% (cowplot::plot_grid(plotlist=., ncol=2))
+    # purrr::by_row(~.plot(.x$shuffled[[1]], .x$definition)) %>>%
+    (cowplot::plot_grid(plotlist=.$.out))
 .p
 ggsave('poisson_pathway-pancancer.pdf', .p, width=18, height=12)
+# ggsave('poisson_pathway_shuffled-pancancer.pdf', .p, width=18, height=12)
 
-
-.plot_by_cancer_type = function(.data, .title) {
-    .data %>>%
-    tidyr::nest(-cancer_type) %>>%
-    purrr::by_row(~{
-        message(.x$cancer_type)
-        .plot(.x$data[[1]], paste(.title, .x$cancer_type))
-    }) %>>% (.out)
-}
-.plot_by_cancer_type(.nested$data[[1]], .nested$definition[[1]]) %>>% (cowplot::plot_grid(plotlist=.))
-
-.nested %>>%
-    purrr::by_row(~{
-        .outfile = sprintf('poisson_pathway-%s.pdf', .x$definition)
-        message(.outfile)
-        .plot_by_cancer_type(.x$data[[1]], .x$definition) %>>%
+.nested %>>% purrr::by_row(~{
+    .outfile = sprintf('poisson_pathway-%s.pdf', .x$definition)
+    # .outfile = sprintf('poisson_pathway_shuffled-%s.pdf', .x$definition)
+    message(.outfile)
+    .x$data[[1]] %>>%
+    # .x$shuffled[[1]] %>>%
+        tidyr::nest(-cancer_type) %>>%
+        purrr::pmap(function(cancer_type, data) {
+            .plot(data, cancer_type)
+        }) %>>%
         (cowplot::plot_grid(plotlist=.)) %>>%
         (ggsave(.outfile, ., width=24, height=18))
-    })
+})
 
+## observed vs shuffle
+
+.plot_obs_shuf = function(title, data, shuffled) {
+    message(title)
+    ggplot(data, aes(n))+
+    # geom_col(data=.pois_df, aes(n, y), fill='forestgreen', alpha=0.3)+
+    geom_bar(fill='dodgerblue', alpha=0.4)+
+    geom_bar(data=shuffled, fill='tomato', alpha=0.4)+
+    facet_wrap(~ pathway)+
+    labs(title= title)+
+    # scale_y_log10(breaks=wtl::breaks_log10, labels=wtl::labels_log10)+
+    wtl::theme_wtl(base_size=10)+
+    theme(axis.ticks=element_blank(), panel.grid.major.x=element_blank())
+}
+
+.nested %>>%
+    dplyr::rename(title= definition) %>>%
+    purrr::pmap(.plot_obs_shuf) %>>%
+    (cowplot::plot_grid(plotlist=.)) %>>%
+    (ggsave('shuffle_pathway-pancancer.pdf', ., width=24, height=18))
+
+.nested %>>% purrr::pmap(function(definition, data, shuffled) {
+    .outfile = sprintf('shuffle_pathway-%s.pdf', definition)
+    message(.outfile)
+    .data = dplyr::left_join(by='cancer_type',
+        data %>>% tidyr::nest(-cancer_type),
+        shuffled %>>% tidyr::nest(-cancer_type) %>>% dplyr::rename(shuffled= data))
+    .data %>>%
+        dplyr::mutate(cancer_type= as.character(cancer_type)) %>>%
+        dplyr::rename(title= cancer_type) %>>%
+        purrr::pmap(.plot_obs_shuf)  %>>%
+    (cowplot::plot_grid(plotlist=.)) %>>%
+    (ggsave(.outfile, ., width=24, height=18))
+})
 
 #########1#########2#########3#########4#########5#########6#########7#########
 
+.tidy = major %>>%
+    join_pathdefs() %>>%
+    dplyr::filter(!is.na(pathway)) %>>% (?.)
+
+# number of included genes
+.tidy %>>%
+    dplyr::distinct(definition, cancer_type, pathway, symbol) %>>%
+    dplyr::count(definition, cancer_type, pathway) %>>%
+    dplyr::arrange(definition, cancer_type, desc(n)) %>>%
+    less()
+
+# number of mutations
+.tidy %>>%
+    dplyr::count(definition, cancer_type, pathway) %>>%
+    dplyr::arrange(definition, cancer_type, desc(n)) %>>%
+    less()
+
+.tidy %>>%
+    dplyr::count(definition, cancer_type, pathway) %>>%
+    # dplyr::arrange(definition, cancer_type, desc(n)) %>>%
+    dplyr::top_n(8, wt=n) %>>%
+    wtl::max_print()
+
 .matrices = .tidy %>>%
-    dplyr::filter(cancer_type %in% .cancer_types) %>>%
-    dplyr::filter(!sample %in% hypermutants) %>>%
+    dplyr::count(definition, cancer_type, sample, pathway) %>>%
+    dplyr::ungroup() %>>%
+    tidyr::nest(-definition, -cancer_type) %>>%
+    dplyr::mutate(data= purrr::map(data, ~{
+        .pathways = dplyr::count(.x, pathway, wt=n) %>>%
+            dplyr::top_n(8, wt=nn) %>>%
+            (pathway)
+        .x %>>%
+        dplyr::filter(pathway %in% .pathways) %>>%
+        tidyr::spread(pathway, n, fill=0L) %>>%
+        dplyr::select(-sample)
+    })) %>>% (?.)
+
+.outdir = 'genotypes'
+.matrices %>>% purrr::by_row(~{
+    .outfile = file.path(.outdir, sprintf('genotypes-%s-%s.tsv.gz', .$definition, .$cancer_type))
+    message(.outfile)
+    wtl::write_df(.$data[[1]], .outfile, na='')
+})
+
+# preserving all pathways
+.matrices = major %>>%
+    join_pathdefs() %>>%
+    dplyr::filter(!is.na(pathway)) %>>%
     dplyr::count(definition, cancer_type, sample, pathway) %>>%
     dplyr::ungroup() %>>%
     tidyr::nest(-definition) %>>%
@@ -254,3 +332,10 @@ ggsave('poisson_pathway-pancancer.pdf', .p, width=18, height=12)
         tidyr::nest(-cancer_type)
     })) %>>%
     tidyr::unnest() %>>% (?.)
+
+.outdir = 'full-genotypes'
+.matrices %>>% purrr::by_row(~{
+    .outfile = file.path(.outdir, sprintf('genotypes-%s-%s.tsv.gz', .$definition, .$cancer_type))
+    message(.outfile)
+    wtl::write_df(.$data[[1]], .outfile, na='')
+})
