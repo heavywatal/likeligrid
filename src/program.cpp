@@ -8,6 +8,7 @@
 
 #include <cxxwtils/debug.hpp>
 #include <cxxwtils/iostr.hpp>
+#include <cxxwtils/gz.hpp>
 #include <cxxwtils/getopt.hpp>
 #include <cxxwtils/eigen.hpp>
 
@@ -95,8 +96,14 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 }
 
 void Program::run() {HERE;
-    wtl::Fin fin(GENOTYPES_FILE);
-    ExclusivityModel model(fin, MAX_SITES);
+    ExclusivityModel model;
+    if (wtl::endswith(GENOTYPES_FILE, ".gz")) {
+        wtl::igzstream ist(GENOTYPES_FILE);
+        model.read(ist, MAX_SITES);
+    } else {
+        std::ifstream ist(GENOTYPES_FILE);
+        model.read(ist, MAX_SITES);
+    }
     model.run(PREFIX);
     if (SEARCH_LIMITS) model.search_limits();
 }

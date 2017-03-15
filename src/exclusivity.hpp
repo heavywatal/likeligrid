@@ -23,8 +23,8 @@ class ExclusivityModel {
     static const std::vector<double> STEPS_;
     static const std::vector<size_t> BREAKS_;
 
-    ExclusivityModel(std::istream& genotypes, const size_t max_sites=-1);
-
+    ExclusivityModel() = default;
+    void read(std::istream& genotypes, const size_t max_sites=-1);
     void run(const std::string& infile="");
     void search_limits() const;
 
@@ -46,7 +46,7 @@ class ExclusivityModel {
     size_t read_metadata(std::istream&);
     size_t read_body(std::istream&);
 
-    const std::vector<std::string> names_;
+    std::vector<std::string> names_;
     ArrayXXu genotypes_;
     Eigen::ArrayXd w_pathway_;
     Eigen::ArrayXd a_pathway_;

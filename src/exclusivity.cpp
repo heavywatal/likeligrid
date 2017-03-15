@@ -29,11 +29,9 @@ namespace likeligrid {
 const std::vector<double> ExclusivityModel::STEPS_ = {0.4, 0.2, 0.1, 0.05, 0.02, 0.01};
 const std::vector<size_t> ExclusivityModel::BREAKS_ = {5, 5, 5, 6, 5, 5};
 
-ExclusivityModel::ExclusivityModel(std::istream& genotypes, const size_t max_sites):
-    names_(wtl::read_header(genotypes)),
-    genotypes_(wtl::eigen::read_array<size_t>(genotypes, names_.size()))
-    {HERE;
-
+void ExclusivityModel::read(std::istream& genotypes, const size_t max_sites) {HERE;
+    names_ = wtl::read_header(genotypes);
+    genotypes_ = wtl::eigen::read_array<size_t>(genotypes, names_.size());
     const ArrayXu raw_s_sample = genotypes_.rowwise().sum().array();
     nsam_with_s_.assign(raw_s_sample.maxCoeff() + 1, 0);
     for (Eigen::Index i=0; i<raw_s_sample.size(); ++i) {
@@ -295,7 +293,8 @@ size_t ExclusivityModel::read_body(std::istream& ist) {HERE;
 void ExclusivityModel::unit_test() {HERE;
     std::string geno = "A\tB\n0\t1\n1\t0\n1\t1\n0\t2\n";
     std::istringstream iss(geno);
-    ExclusivityModel model(iss);
+    ExclusivityModel model;
+    model.read(iss);
     model.write_genotypes(std::cerr);
     model.run("/dev/null");
 }
