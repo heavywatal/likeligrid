@@ -7,7 +7,7 @@ loadNamespace('cowplot')
 ggplot2::theme_set(wtl::theme_wtl())
 
 repo = '~/git/innanlab'
-cachedir = '~/Dropbox/working/cancer'
+cachedir = '~/Dropbox/working/innanlab'
 raw_maf = file.path(cachedir, 'drivers.primary.PASS.extracted.tsv.gz') %>>% read_tsv() %>>%
     dplyr::select(-txid) %>>% (?.)
 
@@ -311,9 +311,9 @@ ggsave('poisson_pathway-pancancer.pdf', .p, width=18, height=12)
         dplyr::select(-sample)
     })) %>>% (?.)
 
-.outdir = 'genotypes'
+.outdir = '~/Dropbox/working/likeligrid/genotypes'
 .matrices %>>% purrr::by_row(~{
-    .outfile = file.path(.outdir, sprintf('genotypes-%s-%s.tsv.gz', .$definition, .$cancer_type))
+    .outfile = file.path(.outdir, sprintf('TCGA-%s-%s.tsv.gz', .$cancer_type, .$definition))
     message(.outfile)
     wtl::write_df(.$data[[1]], .outfile, na='')
 })
@@ -335,7 +335,7 @@ ggsave('poisson_pathway-pancancer.pdf', .p, width=18, height=12)
 
 .outdir = 'full-genotypes'
 .matrices %>>% purrr::by_row(~{
-    .outfile = file.path(.outdir, sprintf('genotypes-%s-%s.tsv.gz', .$definition, .$cancer_type))
+    .outfile = file.path(.outdir, sprintf('TCGA-%s-%s.tsv.gz', .$cancer_type, .$definition))
     message(.outfile)
     wtl::write_df(.$data[[1]], .outfile, na='')
 })
