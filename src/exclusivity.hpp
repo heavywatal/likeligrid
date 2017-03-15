@@ -24,7 +24,10 @@ class ExclusivityModel {
     static const std::vector<size_t> BREAKS_;
 
     ExclusivityModel() = default;
-    void read(std::istream& genotypes, const size_t max_sites=-1);
+    ExclusivityModel(
+        const std::vector<std::string>& colnames,
+        const ArrayXXu& matrix,
+        const size_t max_sites=-1);
     void run(const std::string& infile="");
     void search_limits() const;
 

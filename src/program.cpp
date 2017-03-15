@@ -96,14 +96,19 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 }
 
 void Program::run() {HERE;
-    ExclusivityModel model;
+    std::vector<std::string> colnames;
+    ExclusivityModel::ArrayXXu matrix;
+
     if (wtl::endswith(GENOTYPES_FILE, ".gz")) {
         wtl::igzstream ist(GENOTYPES_FILE);
-        model.read(ist, MAX_SITES);
+        colnames = wtl::read_header(ist);
+        matrix = wtl::eigen::read_array<size_t>(ist, colnames.size());
     } else {
         std::ifstream ist(GENOTYPES_FILE);
-        model.read(ist, MAX_SITES);
+        colnames = wtl::read_header(ist);
+        matrix = wtl::eigen::read_array<size_t>(ist, colnames.size());
     }
+    ExclusivityModel model(colnames, matrix, MAX_SITES);
     model.run(PREFIX);
     if (SEARCH_LIMITS) model.search_limits();
 }
