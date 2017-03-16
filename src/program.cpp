@@ -5,6 +5,7 @@
 #include "program.hpp"
 
 #include <cstdlib>
+#include <memory>
 #include <regex>
 
 #include <cxxwtils/debug.hpp>
@@ -99,17 +100,14 @@ void Program::run() {HERE;
         std::regex_search(GENOTYPES_FILE, mobj, std::regex("([^/]+?)\\.[^/]+$"));
         prefix = mobj.str(1);
     }
-    std::vector<std::string> colnames;
-    ExclusivityModel::ArrayXXu matrix;
+    std::unique_ptr<std::istream> ifp;
     if (std::regex_search(GENOTYPES_FILE, std::regex("\\.gz$"))) {
-        wtl::igzstream ist(GENOTYPES_FILE);
-        colnames = wtl::read_header(ist);
-        matrix = wtl::eigen::read_array<size_t>(ist, colnames.size());
+        ifp = std::make_unique<wtl::igzstream>(GENOTYPES_FILE);
     } else {
-        std::ifstream ist(GENOTYPES_FILE);
-        colnames = wtl::read_header(ist);
-        matrix = wtl::eigen::read_array<size_t>(ist, colnames.size());
+        ifp = std::make_unique<std::ifstream>(GENOTYPES_FILE);
     }
+    const auto colnames = wtl::read_header(*ifp);
+    const auto matrix = wtl::eigen::read_array<size_t>(*ifp, colnames.size());
     std::ostringstream ost;
     ost << prefix << "-s" << MAX_SITES;
     const std::string outdir = ost.str();
