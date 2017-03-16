@@ -19,6 +19,7 @@
 #include <cxxwtils/eigen.hpp>
 #include <cxxwtils/itertools.hpp>
 #include <cxxwtils/gz.hpp>
+#include <cxxwtils/os.hpp>
 
 namespace {
     bool SIGINT_RAISED = false;
@@ -94,21 +95,22 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
         std::cerr << "Done: step size = " << STEPS_.back() << std::endl;
         --stage_;
         axes_.assign(names_.size(), Eigen::ArrayXd::LinSpaced(200, 2.0, 0.01));
-        run_impl(name_outfile("uniaxis"), wtl::itertools::uniaxis(axes_, mle_params_));
+        run_impl("uniaxis.tsv.gz", wtl::itertools::uniaxis(axes_, mle_params_));
         return;
     }
-    const std::string outfile = name_outfile(infile);
-    if (read_results(outfile) && start_ == 0) {
-        std::cerr << outfile << " is already completed:" << std::endl;
-        run(outfile);
-        return;
+    std::string outfile = "/dev/stdout";
+    if (infile != "/dev/null") {
+        auto oss = wtl::make_oss(2, std::ios::fixed);
+        oss << "grid-" << STEPS_.at(stage_) << ".tsv.gz";
+        outfile = oss.str();
+        read_results(outfile);
     }
     std::cerr << "Start: " << start_ << std::endl;
     for (size_t j=0; j<names_.size(); ++j) {
         std::cerr << names_[j] << ": " << axes_[j].transpose() << std::endl;
     }
     run_impl(outfile, wtl::itertools::product(axes_));
-    if (outfile != "/dev/null") {
+    if (outfile != "/dev/stdout") {
         run(outfile);
     }
 }
@@ -117,7 +119,7 @@ void ExclusivityModel::search_limits() const {HERE;
     for (const auto& p: find_intersections()) {
         std::cerr << p.first << ": " << wtl::eigen::vector(p.second) << std::endl;
         const auto axes = make_vicinity(p.second, 5, 0.02, 2.0);
-        run_impl(name_outfile("limit_" + p.first), wtl::itertools::product(axes));
+        run_impl("limit-" + p.first + ".tsv.gz", wtl::itertools::product(axes));
     }
 }
 
@@ -163,25 +165,15 @@ void ExclusivityModel::init_axes(const std::string& infile) {HERE;
     }
 }
 
-std::string ExclusivityModel::name_outfile(const std::string& infile) const {HERE;
-    std::string prefix = "output";
-    if (infile == "/dev/null") {
-        return infile;
-    } else if (!infile.empty()) {
-        prefix = wtl::split(infile, "-")[0];
-    }
-    std::ostringstream oss(prefix, std::ios::ate);
-    oss << "-s" << nsam_with_s_.size() - 1
-        << "-step" << STEPS_.at(stage_)
-        << ".tsv.gz";
-    return oss.str();
-}
-
 void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Generator<Eigen::ArrayXd>&& gen) const {HERE;
     const auto max_count = gen.max_count();
     auto buffer = wtl::make_oss();
     std::ios::openmode mode = std::ios::out;
     if (start_ == 0) {
+        if (wtl::exists(outfile) && outfile != "/dev/stdout") {
+            std::cerr << outfile << " exists." << std::endl;
+            return;
+        }
         buffer << "##max_count=" << max_count << "\n";
         buffer << "##max_sites=" << nsam_with_s_.size() - 1 << "\n";
         buffer << "##step=" << STEPS_.at(stage_) << "\n";

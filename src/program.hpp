@@ -30,8 +30,6 @@ class Program {
     //! Top level function that should be called once from main()
     void run();
 
-    std::string conf() const {return CONFIG_STRING;}
-
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
     boost::program_options::options_description options_desc();
@@ -39,12 +37,7 @@ class Program {
     void help_and_exit();
 
     size_t MAX_SITES = 3;
-    bool SEARCH_LIMITS = false;
     std::string GENOTYPES_FILE = "-";
-    std::string PREFIX = "";
-
-    std::string COMMAND_ARGS;
-    std::string CONFIG_STRING;
 };
 
 } // namespace likeligrid

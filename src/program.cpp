@@ -5,10 +5,12 @@
 #include "program.hpp"
 
 #include <cstdlib>
+#include <regex>
 
 #include <cxxwtils/debug.hpp>
 #include <cxxwtils/iostr.hpp>
 #include <cxxwtils/gz.hpp>
+#include <cxxwtils/os.hpp>
 #include <cxxwtils/getopt.hpp>
 #include <cxxwtils/eigen.hpp>
 
@@ -30,9 +32,7 @@ inline po::options_description general_desc() {HERE;
 po::options_description Program::options_desc() {HERE;
     po::options_description description("Program");
     description.add_options()
-        ("max-sites,s", po::value(&MAX_SITES)->default_value(MAX_SITES))
-        ("limits,l", po::value(&SEARCH_LIMITS)->default_value(SEARCH_LIMITS)->implicit_value(true))
-        ("prefix,p", po::value(&PREFIX)->default_value(PREFIX), "prefix or previous result");
+        ("max-sites,s", po::value(&MAX_SITES)->default_value(MAX_SITES));
     return description;
 }
 
@@ -70,7 +70,6 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
     std::cin.tie(0);
     std::cout.precision(15);
     std::cerr.precision(6);
-    COMMAND_ARGS = wtl::str_join(arguments, " ");
 
     auto description = general_desc();
     description.add(options_desc());
@@ -84,22 +83,25 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
     if (vm["help"].as<bool>()) {help_and_exit();}
     po::notify(vm);
 
-    CONFIG_STRING = wtl::flags_into_string(vm);
     if (vm["verbose"].as<bool>()) {
         std::cerr << wtl::iso8601datetime() << std::endl;
-        std::cerr << CONFIG_STRING << std::endl;
+        std::cerr << wtl::flags_into_string(vm) << std::endl;
     }
     test(vm["test"].as<int>());
-    if (GENOTYPES_FILE == "-") {
-        GENOTYPES_FILE = "/dev/stdin";
-    }
 }
 
 void Program::run() {HERE;
+    std::string prefix = "stdin";
+    if (GENOTYPES_FILE == "-") {
+        GENOTYPES_FILE = "/dev/stdin";
+    } else {
+        std::smatch mobj;
+        std::regex_search(GENOTYPES_FILE, mobj, std::regex("([^/]+?)\\.[^/]+$"));
+        prefix = mobj.str(1);
+    }
     std::vector<std::string> colnames;
     ExclusivityModel::ArrayXXu matrix;
-
-    if (wtl::endswith(GENOTYPES_FILE, ".gz")) {
+    if (std::regex_search(GENOTYPES_FILE, std::regex("\\.gz$"))) {
         wtl::igzstream ist(GENOTYPES_FILE);
         colnames = wtl::read_header(ist);
         matrix = wtl::eigen::read_array<size_t>(ist, colnames.size());
@@ -108,9 +110,14 @@ void Program::run() {HERE;
         colnames = wtl::read_header(ist);
         matrix = wtl::eigen::read_array<size_t>(ist, colnames.size());
     }
+    std::ostringstream ost;
+    ost << prefix << "-s" << MAX_SITES;
+    const std::string outdir = ost.str();
+    wtl::mkdir(outdir);
+    wtl::Pushd cd(outdir);
     ExclusivityModel model(colnames, matrix, MAX_SITES);
-    model.run(PREFIX);
-    if (SEARCH_LIMITS) model.search_limits();
+    model.run();
+    model.search_limits();
 }
 
 } // namespace likeligrid

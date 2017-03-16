@@ -36,7 +36,6 @@ class ExclusivityModel {
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
     void init_axes(const std::string&);
-    std::string name_outfile(const std::string&) const;
     void run_impl(const std::string&, wtl::itertools::Generator<Eigen::ArrayXd>&&) const;
     double calc_loglik(const Eigen::ArrayXd& params) const;
     double calc_denom(
