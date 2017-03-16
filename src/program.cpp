@@ -10,7 +10,7 @@
 
 #include <cxxwtils/debug.hpp>
 #include <cxxwtils/iostr.hpp>
-#include <cxxwtils/gz.hpp>
+#include <cxxwtils/zfstream.hpp>
 #include <cxxwtils/os.hpp>
 #include <cxxwtils/getopt.hpp>
 #include <cxxwtils/eigen.hpp>
@@ -100,14 +100,10 @@ void Program::run() {HERE;
         std::regex_search(GENOTYPES_FILE, mobj, std::regex("([^/]+?)\\.[^/]+$"));
         prefix = mobj.str(1);
     }
-    std::unique_ptr<std::istream> ifp;
-    if (std::regex_search(GENOTYPES_FILE, std::regex("\\.gz$"))) {
-        ifp = std::make_unique<wtl::igzstream>(GENOTYPES_FILE);
-    } else {
-        ifp = std::make_unique<std::ifstream>(GENOTYPES_FILE);
-    }
-    const auto colnames = wtl::read_header(*ifp);
-    const auto matrix = wtl::eigen::read_array<size_t>(*ifp, colnames.size());
+    wtl::izfstream ifs(GENOTYPES_FILE);
+    const auto colnames = wtl::read_header(ifs);
+    const auto matrix = wtl::eigen::read_array<size_t>(ifs, colnames.size());
+    ifs.close();
     std::ostringstream ost;
     ost << prefix << "-s" << MAX_SITES;
     const std::string outdir = ost.str();

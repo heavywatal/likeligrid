@@ -18,7 +18,7 @@
 #include <cxxwtils/math.hpp>
 #include <cxxwtils/eigen.hpp>
 #include <cxxwtils/itertools.hpp>
-#include <cxxwtils/gz.hpp>
+#include <cxxwtils/zfstream.hpp>
 #include <cxxwtils/os.hpp>
 
 namespace {
@@ -182,7 +182,7 @@ void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Gene
         mode |= std::ios::app;
     }
     std::cerr << "\nWriting to " << outfile << std::endl;
-    wtl::ogzstream fout(outfile, mode);
+    wtl::ozfstream fout(outfile, mode);
     for (const auto& params: gen(start_)) {
         if (gen.count() % 10000 == 0) {  // snapshot for long run
             std::cerr << "\r" << gen.count() << " in " << max_count << std::flush;
@@ -234,7 +234,7 @@ std::ostream& ExclusivityModel::write_genotypes(std::ostream& ost, const bool he
 }
 
 bool ExclusivityModel::read_results(const std::string& infile) {HERE;
-    wtl::igzstream ist(infile);
+    wtl::izfstream ist(infile);
     if (!ist || infile == "/dev/null") return false;
     std::cerr << "Reading: " << infile << std::endl;
     const size_t max_count = read_metadata(ist);
