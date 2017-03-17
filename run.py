@@ -26,5 +26,5 @@ if __name__ == '__main__':
     (args, rest) = parser.parse_known_args()
 
     range_s = range(args.begin, args.end)
-    wopt.shell.map(iter(args.infile, range_s), args.jobs, args.dry_run)
+    wopt.map_async(iter(args.infile, range_s), args.jobs, args.dry_run)
     print('End of ' + __file__)
