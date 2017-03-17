@@ -107,11 +107,15 @@ void Program::run() {HERE;
     std::ostringstream ost;
     ost << prefix << "-s" << MAX_SITES;
     const std::string outdir = ost.str();
-    wtl::mkdir(outdir);
-    wtl::Pushd cd(outdir);
-    ExclusivityModel model(colnames, matrix, MAX_SITES);
-    model.run();
-    model.search_limits();
+    try {
+        ExclusivityModel model(colnames, matrix, MAX_SITES);
+        wtl::mkdir(outdir);  // after constructor success
+        wtl::Pushd cd(outdir);
+        model.run();
+        model.search_limits();
+    } catch (const lnpnan_error& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
 }
 
 } // namespace likeligrid

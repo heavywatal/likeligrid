@@ -65,6 +65,7 @@ ExclusivityModel::ExclusivityModel(
     std::cerr << "w_pathway_: " << w_pathway_.transpose() << std::endl;
     std::cerr << "a_pathway_: " << a_pathway_.transpose() << std::endl;
     std::cerr << "lnp_const_: " << lnp_const_ << std::endl;
+    if (std::isnan(lnp_const_)) throw lnpnan_error();
 
     index_axes_.reserve(nsam_with_s_.size());
     std::vector<size_t> indices(genotypes_.cols());

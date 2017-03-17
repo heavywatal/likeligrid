@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <stdexcept>
 
 #include <Eigen/Core>
 #include <cxxwtils/itertools.hpp>
@@ -60,6 +61,14 @@ class ExclusivityModel {
     size_t stage_ = 0;
     std::vector<std::vector<std::vector<size_t>>> index_axes_;
 };
+
+
+class lnpnan_error: public std::runtime_error {
+  public:
+    lnpnan_error():
+    std::runtime_error("lnp is nan; maybe some pathways have no mutation") {}
+};
+
 
 } // namespace likeligrid
 
