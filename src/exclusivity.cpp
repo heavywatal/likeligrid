@@ -235,13 +235,19 @@ std::ostream& ExclusivityModel::write_genotypes(std::ostream& ost, const bool he
 }
 
 bool ExclusivityModel::read_results(const std::string& infile) {HERE;
-    wtl::izfstream ist(infile);
-    if (!ist || infile == "/dev/null") return false;
-    std::cerr << "Reading: " << infile << std::endl;
-    const size_t max_count = read_metadata(ist);
-    start_ = read_body(ist);
-    if (start_ == max_count) start_ = 0;
-    return true;
+    if (infile == "/dev/null")
+        return false;
+    try {
+        wtl::izfstream ist(infile);
+        std::cerr << "Reading: " << infile << std::endl;
+        const size_t max_count = read_metadata(ist);
+        start_ = read_body(ist);
+        if (start_ == max_count) start_ = 0;
+        return true;
+    } catch (std::ios::failure& e) {
+        if (errno != 2) throw;
+        return false;
+    }
 }
 
 size_t ExclusivityModel::read_metadata(std::istream& ist) {HERE;
