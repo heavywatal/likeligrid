@@ -1,0 +1,100 @@
+---
+title: "Visualization of CI"
+author: "WMI"
+output:
+  html_document:
+    css: "~/.R/rmd.css"
+    self_contained: true
+    # theme: null
+    highlight: null
+    mathjax: null
+params:
+  label: 'uniaxis'
+  infiles: c()
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+opts_chunk$set(out.width='100%')
+library(pipeR)
+library(tidyverse)
+library(wtl)
+loadNamespace('cowplot')
+ggplot2::theme_set(wtl::theme_wtl())
+```
+
+```{r render, eval=FALSE, include=FALSE}
+.datadir = '~/working/likeligrid/output'
+.dirs = list.dirs(.datadir, recursive=FALSE)
+(.groups = str_replace(.dirs, 's\\d$', '') %>>% basename() %>>% unique())
+
+..file.. = '~/git/likeligrid/uniaxis.Rmd'
+.outdir = '~/working/likeligrid/analysis'
+
+for (.label in .groups) {
+    message(.label)
+    params = list(label=.label)
+    .indirs = str_subset(.dirs, .label)
+    params$infiles = file.path(.indirs, 'uniaxis.tsv.gz')
+    .outfile = paste0(params$label, 'uniaxis.html')
+    rmarkdown::render(..file.., params=params, env=new.env(), output_file=.outfile, output_dir=.outdir)
+}
+
+system(sprintf('open %s', .outdir))
+```
+
+```{r main, include=FALSE}
+if (FALSE) {
+    .data = read_tsv(.infiles[1], comment='#')
+    .best = .extract_best(.data) %>>% (?.)
+    .filter(.data, .best, 'AKT')
+    .transform(.data)
+    .plot(.transform(.data))
+}
+
+.filter = function(.data, .best, .column) {
+    .data[.data[.column] != .best[[.column]],]
+}
+
+.extract_best = function(.data) {
+    .data[.data %>>% duplicated(),][1,]
+}
+
+.transform = function(.data, .best) {
+    tibble(pathway= names(.data)[-1]) %>>%
+    purrr::by_row(~{
+        .filter(.data, .best, .x$pathway) %>>%
+        dplyr::bind_rows(.best) %>>%
+        dplyr::arrange_(.x$pathway) %>>%
+        dplyr::transmute_(value= .x$pathway, ~loglik)
+    }) %>>%
+    tidyr::unnest()
+}
+
+.chisq = tibble(alpha=c(0.9, 0.95, 0.99), y=qchisq(alpha, 1) * 0.5)
+
+.plot = function(.data, .best, .title='') {
+    ggplot(.data, aes(value, loglik))+
+    geom_line(size=rel(1.5))+
+    geom_vline(aes(xintercept=x), data=.best %>>% tidyr::gather(pathway, x, -loglik), colour='salmon')+
+    geom_hline(aes(yintercept=.best$loglik - y, colour=alpha), data=.chisq)+
+    scale_colour_gradient(breaks=.chisq$alpha, guide='legend')+
+    scale_x_continuous(breaks=c(0, 1, 2), limits=c(0, 2), expand=c(0, 0))+
+    facet_wrap(~pathway)+
+    labs(title=.title)+
+    wtl::theme_wtl()
+}
+
+.plts = params$infiles %>>% purrr::set_names() %>>%
+    purrr::map(~{
+    .data = read_tsv(.x, comment='#')
+    .best = .extract_best(.data)
+    .data = .data %>>% dplyr::filter(loglik > .best$loglik - qchisq(0.99, 1))
+    .transform(.data, .best) %>>%
+    .plot(.best, .x)
+})
+```
+
+```{r fig, fig.width=10, fig.height=9}
+cowplot::plot_grid(plotlist=.plts)
+```
