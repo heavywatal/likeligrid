@@ -64,12 +64,8 @@ plot_uniaxis(.infiles)
     dplyr::mutate(data= purrr::map(data, flatten_chr)) %>>% (?.)
 
 .plts = .nested %>>%
+    # head(4) %>>%
     dplyr::mutate(plts= wtl::map_par(data, plot_uniaxis)) %>>%
     (plts)
-
-grid.draw.list = function(x, ...) {
-    purrr::walk(x, grid::grid.draw, ...)
-}
-# grid::grid.draw(.plts)
 
 ggsave('uniaxis.pdf', .plts, width=12, height=12)
