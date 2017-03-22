@@ -83,6 +83,8 @@ shuffle = function(.data) {
 major %>>% shuffle() %>>% dplyr::count(cancer_type, symbol)
 major %>>% dplyr::count(cancer_type, symbol)
 
+major %>>% dplyr::distinct(cancer_type, sample) %>>% dplyr::count(cancer_type)
+
 #########1#########2#########3#########4#########5#########6#########7#########
 
 .plot = function(.data, .title='', .max_g=max(.data$genes), .max_p=max(.data$pathways)) {
@@ -273,40 +275,121 @@ ggsave('poisson_pathway-pancancer.pdf', .p, width=18, height=12)
 })
 
 #########1#########2#########3#########4#########5#########6#########7#########
+# Summarize pathways and their mutations
 
 .tidy = major %>>%
     join_pathdefs() %>>%
     dplyr::filter(!is.na(pathway)) %>>% (?.)
 
-# number of included genes
-.tidy %>>%
-    dplyr::distinct(definition, cancer_type, pathway, symbol) %>>%
-    dplyr::count(definition, cancer_type, pathway) %>>%
-    dplyr::arrange(definition, cancer_type, desc(n)) %>>%
-    less()
+.mutcount = .tidy %>>%
+    dplyr::count(definition, cancer_type, pathway, symbol) %>>%
+    dplyr::ungroup() %>>%
+    dplyr::arrange(definition, cancer_type, pathway, desc(n)) %>>% (?.)
 
-# number of mutations
-.tidy %>>%
-    dplyr::count(definition, cancer_type, pathway) %>>%
-    dplyr::arrange(definition, cancer_type, desc(n)) %>>%
-    less()
+.summary_pathways = .mutcount %>>%
+    dplyr::group_by(definition, cancer_type, pathway) %>>%
+    dplyr::summarise(n_muts=sum(n), n_genes=n()) %>>%
+    dplyr::arrange(definition, cancer_type, desc(n_muts)) %>>%
+    dplyr::ungroup() %>>% (?.)
 
-.tidy %>>%
-    dplyr::count(definition, cancer_type, pathway) %>>%
-    # dplyr::arrange(definition, cancer_type, desc(n)) %>>%
-    dplyr::top_n(8, wt=n) %>>%
-    wtl::max_print()
+.usable_pathways = .summary_pathways %>>%
+    dplyr::filter(n_muts >= 10, n_genes >=5) %>>%  #TODO: condition
+    dplyr::group_by(definition, cancer_type) %>>%
+    dplyr::top_n(8L, wt=n_muts) %>>%
+    dplyr::ungroup() %>>% (?.)
+
+.dirty = .mutcount %>>%
+    dplyr::transmute(definition, cancer_type, pathway, value=sprintf('%s %4d', symbol, n)) %>>%
+    dplyr::group_by(definition, cancer_type, pathway) %>>%
+    dplyr::mutate(i=seq_along(pathway)) %>>%
+    tidyr::spread(i, value) %>>%
+    (dplyr::left_join(.summary_pathways, .)) %>>% (?.)
+
+write_tsv(.dirty, 'summary-pathways.tsv', na='')
+
+.dirty %>>%
+    tidyr::nest(-definition) %>>%
+    purrr::by_row(~{
+        .outfile = sprintf('summary-pathways-%s.tsv', .$definition)
+        message(.outfile)
+        write_tsv(.$data[[1]], .outfile, na='')
+    })
+
+####
+
+plot_pathwaypergene = function(.data, .top=0L) {
+    if (.top > 0L) {
+        .data = .data %>>%
+        dplyr::group_by(definition, cancer_type, pathway) %>>%
+        dplyr::top_n(.top, wt=sum(n)) %>>%
+        dplyr::ungroup()
+    }
+    .data %>>%
+    dplyr::count(definition, cancer_type, symbol) %>>%
+    dplyr::ungroup() %>>% (?.) %>>%
+    ggplot(aes(nn))+
+    geom_bar()+
+    facet_grid(definition ~ cancer_type)+
+    labs(x='# pathways')+
+    scale_x_continuous(breaks=c(5L, 10L))+
+    theme(axis.ticks=element_blank())
+}
+
+.p = .mutcount %>>% plot_pathwaypergene()
+.p
+ggsave('mutcount-pathways.pdf', .p, width=10, height=7)
+
+.mutcount %>>% plot_pathwaypergene(.top=8L)
+
+drivers = file.path(repo, 'driver_genes.tsv') %>>% read_tsv() %>>% (?.)
+known_drivers = drivers %>>% dplyr::filter(!is.na(role)) %>>% (?.)
+cgc_drivers = drivers %>>% dplyr::filter(!is.na(cgc_vartype)) %>>% (?.)
+
+.mutcount %>>%
+    dplyr::filter(symbol %in% known_drivers$symbol) %>>%
+    plot_pathwaypergene()
+
+.mutcount %>>%
+    dplyr::filter(symbol %in% cgc_drivers$symbol) %>>%
+    plot_pathwaypergene()
+
+.mutcount_major = dplyr::left_join(
+    .usable_pathways %>>% tidyr::nest(-definition, -cancer_type, .key=usable),
+    .mutcount %>>% tidyr::nest(-definition, -cancer_type, .key=mutcount)) %>>%
+    dplyr::mutate(data= purrr::map2(usable, mutcount, ~{
+        dplyr::filter(.y, pathway %in% .x$pathway)
+    })) %>>%
+    tidyr::unnest(data) %>>% (?.)
+
+.p = .mutcount_major %>>% plot_pathwaypergene()
+.p
+ggsave('mutcount-major-pathways.pdf', .p, width=10, height=7)
+
+.mutcount_major %>>%
+dplyr::count(definition, cancer_type, symbol) %>>%
+dplyr::filter(nn > 1L) %>>%
+dplyr::arrange(definition, cancer_type, desc(nn)) %>>%
+dplyr::filter(definition == 'vogelstein') %>>%
+dplyr::group_by(definition, cancer_type) %>>%
+dplyr::mutate(i = seq_along(symbol)) %>>%
+dplyr::ungroup() %>>%
+dplyr::transmute(definition, cancer_type, i, value = sprintf('%s %2d', symbol, nn)) %>>%
+tidyr::spread(i, value) %>>% (?.) %>>%
+write_tsv('multi-pathways.tsv', na='')
+
+#########1#########2#########3#########4#########5#########6#########7#########
+## Generate genotype matrix
 
 .matrices = .tidy %>>%
     dplyr::count(definition, cancer_type, sample, pathway) %>>%
     dplyr::ungroup() %>>%
     tidyr::nest(-definition, -cancer_type) %>>%
     dplyr::mutate(data= purrr::map(data, ~{
-        .pathways = dplyr::count(.x, pathway, wt=n) %>>%
-            dplyr::top_n(8, wt=nn) %>>%
+        .major_pathways = dplyr::count(.x, pathway, wt=n) %>>%
+            dplyr::top_n(8L, wt=nn) %>>%
             (pathway)
         .x %>>%
-        dplyr::filter(pathway %in% .pathways) %>>%
+        dplyr::filter(pathway %in% .major_pathways) %>>%
         tidyr::spread(pathway, n, fill=0L) %>>%
         dplyr::select(-sample)
     })) %>>% (?.)
