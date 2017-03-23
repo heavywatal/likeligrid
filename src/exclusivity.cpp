@@ -85,6 +85,7 @@ make_vicinity(const Eigen::ArrayXd& center, const size_t breaks, const double ra
     axes.reserve(center.size());
     for (const double x: wtl::eigen::vector(center)){
         Eigen::ArrayXd axis = Eigen::ArrayXd::LinSpaced(breaks, x + radius, x - radius);
+        axis = (axis * 100.0).round() / 100.0;  // grid precision = 0.01
         axes.push_back(wtl::eigen::filter(axis, (0.0 < axis) * (axis < max)));
     }
     return axes;
@@ -191,7 +192,8 @@ void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Gene
             fout.strict_sync();
             buffer.str("");
         }
-        buffer << calc_loglik(params) << "\t" << wtl::join(wtl::eigen::vector(params), "\t") << "\n";
+        buffer << calc_loglik(params) << "\t"
+               << params.transpose().format(wtl::eigen::tsv()) << "\n";
         if (SIGINT_RAISED) {throw wtl::ExitSuccess("KeyboardInterrupt");}
     }
     fout << buffer.str();
