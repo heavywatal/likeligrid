@@ -56,11 +56,11 @@ ExclusivityModel::ExclusivityModel(
     a_pathway_ = genotypes_.unaryExpr([](size_t x){
         if (x > 0) {return --x;} else {return x;}
     }).colwise().sum().cast<double>();
-    lnp_const_ = (s_pathway * w_pathway_.log()).sum();
     for (Eigen::Index i=0; i<genotypes_.rows(); ++i) {
         auto v = wtl::eigen::valarray(genotypes_.row(i));
-        lnp_const_ += std::log(wtl::polynomial(v));
+        lnp_const_ += std::log(wtl::multinomial(v));
     }
+    lnp_const_ += (s_pathway * w_pathway_.log()).sum();
     std::cerr << "s_pathway_: " << s_pathway.transpose() << std::endl;
     std::cerr << "w_pathway_: " << w_pathway_.transpose() << std::endl;
     std::cerr << "a_pathway_: " << a_pathway_.transpose() << std::endl;
@@ -200,9 +200,9 @@ void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Gene
 }
 
 double ExclusivityModel::calc_loglik(const Eigen::ArrayXd& params) const {
-    double loglik = 0.0;
-    loglik += (a_pathway_ * params.log()).sum();
-    for (size_t s=0; s<nsam_with_s_.size(); ++s) {
+    double loglik = (a_pathway_ * params.log()).sum();
+    // D = 1.0 when s < 2
+    for (size_t s=2; s<nsam_with_s_.size(); ++s) {
         loglik -= nsam_with_s_[s] * std::log(calc_denom(w_pathway_, params, s));
     }
     return loglik += lnp_const_;
