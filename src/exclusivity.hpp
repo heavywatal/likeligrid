@@ -57,7 +57,7 @@ class ExclusivityModel {
     double lnp_const_ = 0.0;
     Eigen::ArrayXd mle_params_;
     std::vector<Eigen::ArrayXd> axes_;
-    size_t start_ = 0;
+    size_t skip_ = 0;
     size_t stage_ = 0;
     std::vector<std::vector<std::vector<size_t>>> index_axes_;
 };

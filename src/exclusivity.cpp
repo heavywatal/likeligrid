@@ -107,7 +107,6 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
         outfile = oss.str();
         read_results(outfile);
     }
-    std::cerr << "Start: " << start_ << std::endl;
     for (size_t j=0; j<names_.size(); ++j) {
         std::cerr << names_[j] << ": " << axes_[j].transpose() << std::endl;
     }
@@ -119,7 +118,7 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
 
 void ExclusivityModel::search_limits() const {HERE;
     for (const auto& p: find_intersections()) {
-        std::cerr << p.first << ": " << wtl::eigen::vector(p.second) << std::endl;
+        std::cerr << p.first << ": " << p.second.transpose() << std::endl;
         const auto axes = make_vicinity(p.second, 5, 0.02, 2.0);
         run_impl("limit-" + p.first + ".tsv.gz", wtl::itertools::product(axes));
     }
@@ -154,10 +153,10 @@ std::unordered_map<std::string, Eigen::ArrayXd> ExclusivityModel::find_intersect
 
 void ExclusivityModel::init_axes(const std::string& infile) {HERE;
     if (read_results(infile)) {
-        std::cerr << mle_params_.transpose() << std::endl;
-        if (start_ > 0) {
+        if (skip_ > 0) {
             throw std::runtime_error("infile must be a complete result");
         }
+        std::cerr << "mle_params_: " << mle_params_.transpose() << std::endl;
         axes_ = make_vicinity(mle_params_, BREAKS_.at(stage_), STEPS_.at(stage_), 2.0);
         ++stage_;
     } else {
@@ -168,34 +167,35 @@ void ExclusivityModel::init_axes(const std::string& infile) {HERE;
 }
 
 void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Generator<Eigen::ArrayXd>&& gen) const {HERE;
-    const auto max_count = gen.max_count();
     auto buffer = wtl::make_oss();
     std::ios::openmode mode = std::ios::out;
-    if (start_ == 0) {
-        if (wtl::exists(outfile) && outfile != "/dev/stdout") {
+    if (wtl::exists(outfile)) {
+        if (skip_ == 0 && outfile != "/dev/stdout") {
             std::cerr << outfile << " exists." << std::endl;
             return;
         }
-        buffer << "##max_count=" << max_count << "\n";
+        mode |= std::ios::app;
+    } else {
+        buffer << "##max_count=" << gen.max_count() << "\n";
         buffer << "##max_sites=" << nsam_with_s_.size() - 1 << "\n";
         buffer << "##step=" << STEPS_.at(stage_) << "\n";
         buffer << "loglik\t" << wtl::join(names_, "\t") << "\n";
-    } else {
-        mode |= std::ios::app;
     }
-    std::cerr << "\nWriting to " << outfile << std::endl;
+    std::cerr << "Writing: " << outfile << std::endl;
+    std::cerr << skip_ << " to " << gen.max_count() << std::endl;
     wtl::ozfstream fout(outfile, mode);
-    for (const auto& params: gen(start_)) {
+    for (const auto& params: gen(skip_)) {
+        buffer << calc_loglik(params) << "\t"
+               << params.transpose().format(wtl::eigen::tsv()) << "\n";
         if (gen.count() % 10000 == 0) {  // snapshot for long run
-            std::cerr << "\r" << gen.count() << " in " << max_count << std::flush;
+            std::cerr << "*" << std::flush;
             fout << buffer.str();
             fout.strict_sync();
             buffer.str("");
         }
-        buffer << calc_loglik(params) << "\t"
-               << params.transpose().format(wtl::eigen::tsv()) << "\n";
         if (SIGINT_RAISED) {throw wtl::ExitSuccess("KeyboardInterrupt");}
     }
+    std::cerr << "\n";
     fout << buffer.str();
 }
 
@@ -233,7 +233,7 @@ double ExclusivityModel::calc_denom(
 
 std::ostream& ExclusivityModel::write_genotypes(std::ostream& ost, const bool header) const {HERE;
     if (header) {ost << wtl::join(names_, "\t") << "\n";}
-    return ost << genotypes_.format(wtl::eigen::tsv());
+    return ost << genotypes_.format(wtl::eigen::tsv()) << "\n";
 }
 
 bool ExclusivityModel::read_results(const std::string& infile) {HERE;
@@ -243,8 +243,8 @@ bool ExclusivityModel::read_results(const std::string& infile) {HERE;
         wtl::izfstream ist(infile);
         std::cerr << "Reading: " << infile << std::endl;
         const size_t max_count = read_metadata(ist);
-        start_ = read_body(ist);
-        if (start_ == max_count) start_ = 0;
+        skip_ = read_body(ist);
+        if (skip_ == max_count) skip_ = 0;
         return true;
     } catch (std::ios::failure& e) {
         if (errno != 2) throw;
