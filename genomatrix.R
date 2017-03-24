@@ -87,6 +87,27 @@ major %>>% dplyr::distinct(cancer_type, sample) %>>% dplyr::count(cancer_type)
 
 #########1#########2#########3#########4#########5#########6#########7#########
 
+.p = major %>>%
+    # shuffle() %>>%
+    join_pathdefs() %>>%
+    # dplyr::filter(!is.na(pathway)) %>>%
+    dplyr::count(definition, cancer_type, pathway) %>>%
+    dplyr::ungroup() %>>%
+    tidyr::nest(-definition) %>>%
+    dplyr::mutate(plt= purrr::map2(data, definition, ~{
+        ggplot(.x, aes(pathway, n))+
+        geom_col()+
+        facet_grid(~ cancer_type)+
+        labs(title= .y)+
+        wtl::theme_wtl(base_size=8)+
+        theme(axis.ticks=element_blank(), panel.grid.major.x=element_blank())
+    })) %>>%
+    (plt) %>>% (cowplot::plot_grid(plotlist=., ncol=1))
+.p
+ggsave('pathway_freqs.png', .p, width=18, height=9)
+# ggsave('pathway_freqs-narm.png', .p, width=18, height=9)
+# ggsave('pathway_freqs-shuffled.png', .p, width=18, height=9)
+
 .plot = function(.data, .title='', .max_g=max(.data$genes), .max_p=max(.data$pathways)) {
     .scatter = .data %>>%
         ggplot(aes(genes, pathways))+
@@ -119,9 +140,9 @@ plot_mutdist = function(.data, .definition='HALLMARK', .quantile='99%', .head=12
         .max_g=.max_g, .max_p=length(pathdefs[[.definition]]))) %>>%
     (cowplot::plot_grid(plotlist=.$plt, ncol=4))
 }
-plot_mutdist(.counts, .head=4)
+# plot_mutdist(.counts.narm, .head=4)
 
-.count_mutated = function(.data, na.rm=FALSE) {
+.count_mutated = function(.data) {
     dplyr::full_join(by=c('cancer_type', 'sample'),
       .data %>>%
         dplyr::distinct(cancer_type, sample, symbol) %>>%
@@ -138,36 +159,14 @@ plot_mutdist(.counts, .head=4)
 
 tidyr::crossing(def= names(pathdefs), p= c('95%', '99%', '100%')) %>>%
 purrr::by_row(~{
-    .outfile = sprintf('mutdist-%s-%03d.png', .$def, readr::parse_number(.$p))
-    message(.outfile)
-    .p = plot_mutdist(.counts, .$def, .$p)
-    ggsave(.outfile, .p, width=16, height=10)
-})
+    message(paste(.$def, .$p))
+    plot_mutdist(.counts.narm, .$def, .$p)
+}) %>>%
+(ggsave('mutdist-narm.pdf', .$.out, width=16, height=10))
+
 
 #########1#########2#########3#########4#########5#########6#########7#########
-
-.p = major %>>%
-    # shuffle() %>>%
-    join_pathdefs() %>>%
-    # dplyr::filter(!is.na(pathway)) %>>%
-    dplyr::count(definition, cancer_type, pathway) %>>%
-    dplyr::ungroup() %>>%
-    tidyr::nest(-definition) %>>%
-    dplyr::mutate(plt= purrr::map2(data, definition, ~{
-        ggplot(.x, aes(pathway, n))+
-        geom_col()+
-        facet_grid(~ cancer_type)+
-        labs(title= .y)+
-        wtl::theme_wtl(base_size=8)+
-        theme(axis.ticks=element_blank(), panel.grid.major.x=element_blank())
-    })) %>>%
-    (plt) %>>% (cowplot::plot_grid(plotlist=., ncol=1))
-.p
-ggsave('pathway_freqs.png', .p, width=18, height=9)
-# ggsave('pathway_freqs-narm.png', .p, width=18, height=9)
-# ggsave('pathway_freqs-shuffled.png', .p, width=18, height=9)
-
-#########1#########2#########3#########4#########5#########6#########7#########
+## Compare to Poisson and shuffled
 
 .nest_by_definition = function(.data) {
     dplyr::filter(.data, !is.na(pathway)) %>>%
@@ -317,17 +316,12 @@ write_tsv(.dirty, 'summary-pathways.tsv', na='')
 
 ####
 
-plot_pathwaypergene = function(.data, .top=0L) {
-    if (.top > 0L) {
-        .data = .data %>>%
-        dplyr::group_by(definition, cancer_type, pathway) %>>%
-        dplyr::top_n(.top, wt=sum(n)) %>>%
-        dplyr::ungroup()
-    }
+plot_pathwaypergene = function(.data) {
     .data %>>%
+    dplyr::distinct(definition, cancer_type, pathway, symbol) %>>%
     dplyr::count(definition, cancer_type, symbol) %>>%
     dplyr::ungroup() %>>% (?.) %>>%
-    ggplot(aes(nn))+
+    ggplot(aes(n))+
     geom_bar()+
     facet_grid(definition ~ cancer_type)+
     labs(x='# pathways')+
@@ -335,11 +329,9 @@ plot_pathwaypergene = function(.data, .top=0L) {
     theme(axis.ticks=element_blank())
 }
 
-.p = .mutcount %>>% plot_pathwaypergene()
+.p = .tidy %>>% plot_pathwaypergene()
 .p
 ggsave('mutcount-pathways.pdf', .p, width=10, height=7)
-
-.mutcount %>>% plot_pathwaypergene(.top=8L)
 
 drivers = file.path(repo, 'driver_genes.tsv') %>>% read_tsv() %>>% (?.)
 known_drivers = drivers %>>% dplyr::filter(!is.na(role)) %>>% (?.)
@@ -363,13 +355,13 @@ cgc_drivers = drivers %>>% dplyr::filter(!is.na(cgc_vartype)) %>>% (?.)
 
 .p = .mutcount_major %>>% plot_pathwaypergene()
 .p
-ggsave('mutcount-major-pathways.pdf', .p, width=10, height=7)
+ggsave('mutcount-pathways-major.pdf', .p, width=10, height=7)
 
 .mutcount_major %>>%
 dplyr::count(definition, cancer_type, symbol) %>>%
 dplyr::filter(nn > 1L) %>>%
 dplyr::arrange(definition, cancer_type, desc(nn)) %>>%
-dplyr::filter(definition == 'vogelstein') %>>%
+# dplyr::filter(definition == 'vogelstein') %>>%
 dplyr::group_by(definition, cancer_type) %>>%
 dplyr::mutate(i = seq_along(symbol)) %>>%
 dplyr::ungroup() %>>%
@@ -394,11 +386,11 @@ write_tsv('multi-pathways.tsv', na='')
         dplyr::select(-sample)
     })) %>>% (?.)
 
-.outdir = '~/Dropbox/working/likeligrid/genotypes'
+.outdir = '~/Dropbox/working/likeligrid/pathtypes'
 .matrices %>>% purrr::by_row(~{
     .outfile = file.path(.outdir, sprintf('TCGA-%s-%s.tsv.gz', .$cancer_type, .$definition))
     message(.outfile)
-    wtl::write_df(.$data[[1]], .outfile, na='')
+    write_tsv(.$data[[1]], .outfile, na='')
 })
 
 # preserving all pathways
@@ -420,5 +412,66 @@ write_tsv('multi-pathways.tsv', na='')
 .matrices %>>% purrr::by_row(~{
     .outfile = file.path(.outdir, sprintf('TCGA-%s-%s.tsv.gz', .$cancer_type, .$definition))
     message(.outfile)
-    wtl::write_df(.$data[[1]], .outfile, na='')
+    write_tsv(.$data[[1]], .outfile, na='')
 })
+
+
+#########1#########2#########3#########4#########5#########6#########7#########
+## Make small data for exact model
+
+.mutcount = .tidy %>>%
+    dplyr::count(definition, cancer_type, pathway, symbol) %>>%
+    dplyr::filter(cumsum(n) / sum(n) < 0.9) %>>%
+    dplyr::filter(n > 1) %>>%
+    dplyr::ungroup() %>>%
+    dplyr::arrange(definition, cancer_type, pathway, desc(n)) %>>% (?.)
+
+.usable_pathways = .mutcount %>>%
+    dplyr::group_by(definition, cancer_type, pathway) %>>%
+    dplyr::summarise(n_muts=sum(n), n_genes=n()) %>>%
+    dplyr::arrange(definition, cancer_type, desc(n_muts)) %>>% (?.) %>>%
+    dplyr::filter(cumsum(n_muts) / sum(n_muts) < 0.9) %>>%
+    # dplyr::filter(n_genes >=10) %>>%  #TODO: condition
+    dplyr::group_by(definition, cancer_type) %>>%
+    dplyr::top_n(4L, wt=n_muts) %>>%
+    dplyr::ungroup() %>>% (?.)
+
+.tiny = .usable_pathways %>>%
+    dplyr::select(definition, cancer_type, pathway) %>>%
+    dplyr::left_join(.mutcount %>>% dplyr::select(-n)) %>>%
+    dplyr::left_join(.tidy) %>>%
+    dplyr::arrange(definition, cancer_type, sample) %>>%
+    (?.)
+
+.tiny %>>%
+    dplyr::count(definition, cancer_type, pathway, symbol) %>>%
+    dplyr::summarise(n_muts=sum(n), n_genes=n())
+
+.p = .tiny %>>% plot_pathwaypergene()
+.p
+ggsave('mutcount-pathways-tiny.pdf', .p, width=10, height=7)
+
+.dirty = .tiny %>>%
+    dplyr::count(definition, cancer_type, pathway, symbol) %>>%
+    dplyr::ungroup() %>>%
+    dplyr::arrange(definition, cancer_type, pathway, desc(n)) %>>% (?.) %>>%
+    dplyr::transmute(definition, cancer_type, pathway, value=sprintf('%s %4d', symbol, n)) %>>%
+    dplyr::group_by(definition, cancer_type, pathway) %>>%
+    dplyr::mutate(i=seq_along(pathway)) %>>%
+    tidyr::spread(i, value) %>>%
+    (dplyr::left_join(.usable_pathways, .)) %>>% (?.)
+write_tsv(.dirty, 'usable-pathways-tiny.tsv', na='')
+
+.outdir = '~/Dropbox/working/likeligrid/genotypes'
+.tiny %>>%
+    dplyr::distinct(definition, cancer_type, sample, symbol) %>>%
+    dplyr::mutate(value = 1L) %>>%
+    tidyr::nest(-definition, -cancer_type) %>>%
+    # dplyr::filter(definition == 'vogelstein') %>>%
+    # head(4) %>>%
+    purrr::by_row(~{
+        .outfile = file.path(.outdir, sprintf('TCGA-%s-%s.tsv.gz', .$cancer_type, .$definition))
+        tidyr::spread(.x$data[[1]], symbol, value, 0L) %>>%
+        dplyr::select(-sample) %>>%
+        write_tsv(.outfile, na='')
+    })
