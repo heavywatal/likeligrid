@@ -63,7 +63,7 @@ shuffle_genotype_file = function(.infile) {
     .data = readr::read_tsv(.infile)
     .outfile = str_replace(.infile, '\\bgenotype_', 'shuffled_')
     message(.outfile)
-    shuffle_genotypes(.data) %>>% wtl::write_df(.outfile)
+    shuffle_genotypes(.data) %>>% write_tsv(.outfile, na='')
 }
 
 working_dir = '~/Dropbox/working/cancer/genotypes'
@@ -74,7 +74,7 @@ shuffle_genotype_file(.genotype_files[1])
 
 .shuffled = genotype_pereira %>>% shuffle_genotypes() %>>% (?.)
 .outfile = file.path(working_dir, sprintf('genotype_shuffled+er_%s.tsv', wtl::now()))
-wtl::write_df(.shuffled, .outfile)
+write_tsv(.shuffled, .outfile, na='')
 
 .dimensions = ncol(genotype_pereira)
 .combn = combn(.dimensions, 2)
@@ -82,14 +82,14 @@ for (i in seq_len(ncol(.combn))) {
     .df = add_interaction_term(genotype_pereira, .combn[,i])
     .term = tail(names(.df), 1)
     message(.term)
-    wtl::write_df(.df, sprintf('pereira+er_%s.tsv', .term))
+    write_tsv(.df, sprintf('pereira+er_%s.tsv', .term), na='')
 }
 
 for (i in seq_len(ncol(.combn))) {
     .df = add_interaction_term(.shuffled, .combn[,i])
     .term = tail(names(.df), 1)
     message(.term)
-    wtl::write_df(.df, sprintf('shuffled+er_%s.tsv', .term))
+    write_tsv(.df, sprintf('shuffled+er_%s.tsv', .term), na='')
 }
 
 #########1#########2#########3#########4#########5#########6#########7#########
@@ -130,7 +130,7 @@ genotypes = make_genotypes(n_obs, names(true_coefs), mu) %>>%
 .genotype_cancer = dplyr::filter(.geno_matrices, cancer)$data[[1]] %>>%
     (?as_tibble(.))
 
-.genotype_cancer %>>% wtl::write_df('genotype1.tsv')
+.genotype_cancer %>>% write_tsv('genotype1.tsv', na='')
 
 #########1#########2#########3#########4#########5#########6#########7#########
 # interaction terms
@@ -149,13 +149,13 @@ stopifnot(sum(true_coefs2, true_epsilon) == 1.0)
     dplyr::filter(cancer) %>>%
     dplyr::select(-matches('^true_|^cancer$|:')) %>>% (?.)
 
-.genotype_cancer2 %>>% wtl::write_df('genotype2.tsv')
+.genotype_cancer2 %>>% write_tsv('genotype2.tsv', na='')
 
 for (i in seq_len(ncol(.combn))) {
     .df = add_interaction_term(.genotype_cancer2, .combn[,i])
     .term = tail(names(.df), 1)
     message(.term)
-    wtl::write_df(.df, sprintf('genotype2_%s.tsv', .term))
+    write_tsv(.df, sprintf('genotype2_%s.tsv', .term), na='')
 }
 
 #########1#########2#########3#########4

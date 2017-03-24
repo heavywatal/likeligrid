@@ -76,7 +76,7 @@ mut_density %>>%
     dplyr::filter(mut_density > 0.1) %>>%
     dplyr::filter(!(role=='oncogene' & mutype=='truncating')) %>>%
     dplyr::arrange(role, gene, pos) %>>%
-    (?.) %>>% wtl::write_df('recurrent_mutations.tsv.gz')
+    (?.) %>>% write_tsv('recurrent_mutations.tsv.gz', na='')
 
 add_mudens_weight = function(.data) {
     .oncomut_density = mut_density %>>%
