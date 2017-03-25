@@ -8,12 +8,12 @@
 #include <memory>
 #include <regex>
 
-#include <cxxwtils/debug.hpp>
-#include <cxxwtils/iostr.hpp>
-#include <cxxwtils/zfstream.hpp>
-#include <cxxwtils/os.hpp>
-#include <cxxwtils/getopt.hpp>
-#include <cxxwtils/eigen.hpp>
+#include <wtl/debug.hpp>
+#include <wtl/iostr.hpp>
+#include <wtl/zfstream.hpp>
+#include <wtl/os.hpp>
+#include <wtl/getopt.hpp>
+#include <wtl/eigen.hpp>
 
 #include "exclusivity.hpp"
 

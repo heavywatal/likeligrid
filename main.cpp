@@ -2,7 +2,7 @@
 /*! @file main.cpp
     @brief Only defines tiny main()
 */
-#include <likeligrid/program.hpp>
+#include "src/program.hpp"
 
 //! Just instantiate and run Program
 int main(int argc, char* argv[]) {

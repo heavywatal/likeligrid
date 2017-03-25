@@ -13,7 +13,7 @@
 #include <stdexcept>
 
 #include <Eigen/Core>
-#include <cxxwtils/itertools.hpp>
+#include <wtl/itertools.hpp>
 
 namespace likeligrid {
 

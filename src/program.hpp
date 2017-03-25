@@ -10,7 +10,7 @@
 #include <sstream>
 #include <vector>
 
-#include <cxxwtils/exception.hpp>
+#include <wtl/exception.hpp>
 
 namespace boost {
     namespace program_options {

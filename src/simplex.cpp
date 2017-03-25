@@ -4,11 +4,11 @@
 */
 #include "simplex.hpp"
 
-#include <cxxwtils/debug.hpp>
-#include <cxxwtils/iostr.hpp>
-#include <cxxwtils/bmath.hpp>
-#include <cxxwtils/eigen.hpp>
-#include <cxxwtils/itertools.hpp>
+#include <wtl/debug.hpp>
+#include <wtl/iostr.hpp>
+#include <wtl/bmath.hpp>
+#include <wtl/eigen.hpp>
+#include <wtl/itertools.hpp>
 
 namespace likeligrid {
 

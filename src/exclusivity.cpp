@@ -11,15 +11,14 @@
 #include <boost/dynamic_bitset.hpp>
 #include <boost/math/distributions/chi_squared.hpp>
 
-#include <cxxwtils/debug.hpp>
-#include <cxxwtils/exception.hpp>
-#include <cxxwtils/iostr.hpp>
-#include <cxxwtils/numeric.hpp>
-#include <cxxwtils/math.hpp>
-#include <cxxwtils/eigen.hpp>
-#include <cxxwtils/itertools.hpp>
-#include <cxxwtils/zfstream.hpp>
-#include <cxxwtils/os.hpp>
+#include <wtl/debug.hpp>
+#include <wtl/exception.hpp>
+#include <wtl/iostr.hpp>
+#include <wtl/numeric.hpp>
+#include <wtl/math.hpp>
+#include <wtl/eigen.hpp>
+#include <wtl/zfstream.hpp>
+#include <wtl/os.hpp>
 
 namespace {
     bool SIGINT_RAISED = false;
