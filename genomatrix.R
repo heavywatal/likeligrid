@@ -472,6 +472,36 @@ write_tsv(.dirty, 'usable-pathways-tiny.tsv', na='')
     purrr::by_row(~{
         .outfile = file.path(.outdir, sprintf('TCGA-%s-%s.tsv.gz', .$cancer_type, .$definition))
         tidyr::spread(.x$data[[1]], symbol, value, 0L) %>>%
-        dplyr::select(-sample) %>>%
+        dplyr::select(-sample) %>>% #(?.)
         write_tsv(.outfile, na='')
+    })
+
+genotype2bits = function(.data) {
+    .data %>>%
+    dplyr::mutate(value=1L) %>>%
+    tidyr::spread(symbol, value, 0L) %>>%
+    tidyr::unite_('bits', names(.)[-1L], sep='')
+}
+
+.outdir = '~/Dropbox/working/likeligrid/genotypes'
+.tiny %>>%
+    tidyr::nest(-definition, -cancer_type) %>>%
+    # head(2) %>>%
+    purrr::by_row(~{
+        .outfile = file.path(.outdir, sprintf('TCGA-%s-%s.json.gz', .$cancer_type, .$definition))
+        message(.outfile)
+        .data = .x$data[[1]] %>>% dplyr::mutate(symbol=as.factor(symbol))
+        .path = .data %>>%
+            dplyr::distinct(pathway, symbol) %>>%
+            genotype2bits() #%>>% (?.)
+        .sample = .data %>>%
+            dplyr::distinct(sample, symbol) %>>%
+            genotype2bits() #%>>% (?.)
+        .con = gzfile(.outfile, 'w')
+        list(symbol= levels(.data$symbol),
+             pathway= .path$pathway,
+             annotation= .path$bits,
+             sample= .sample$bits) %>>%
+        jsonlite::write_json(.con, pretty=TRUE)
+        close(.con)
     })
