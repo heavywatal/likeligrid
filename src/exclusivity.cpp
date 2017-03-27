@@ -6,7 +6,6 @@
 
 #include <functional>
 #include <unordered_map>
-#include <csignal>
 
 #include <boost/dynamic_bitset.hpp>
 #include <boost/math/distributions/chi_squared.hpp>
@@ -20,14 +19,11 @@
 #include <wtl/zfstream.hpp>
 #include <wtl/os.hpp>
 
-namespace {
-    bool SIGINT_RAISED = false;
-}
-
 namespace likeligrid {
 
 const std::vector<double> ExclusivityModel::STEPS_ = {0.4, 0.2, 0.1, 0.05, 0.02, 0.01};
 const std::vector<size_t> ExclusivityModel::BREAKS_ = {5, 5, 5, 6, 5, 5};
+bool ExclusivityModel::SIGINT_RAISED_ = false;
 
 ExclusivityModel::ExclusivityModel(
         const std::vector<std::string>& colnames,
@@ -41,11 +37,14 @@ ExclusivityModel::ExclusivityModel(
         ++nsam_with_s_[raw_s_sample[i]];
     }
     std::cerr << "Original N_s: " << nsam_with_s_ << std::endl;
-    if (nsam_with_s_.size() - 1 < max_sites) {
-        std::cerr << "Note: -s is too large" << std::endl;
-    } else {
+    if (max_sites + 1 < nsam_with_s_.size()) {
         nsam_with_s_.resize(max_sites + 1);
         std::cerr << "Filtered N_s: " << nsam_with_s_ << std::endl;
+    } else {
+        std::cerr << "Note: -s is too large" << std::endl;
+    }
+    while (nsam_with_s_.back() == 0) {
+        nsam_with_s_.resize(nsam_with_s_.size() - 1);
     }
     const auto final_max_s = nsam_with_s_.size() - 1;
     genotypes_ = wtl::eigen::filter(genotypes_, raw_s_sample <= final_max_s);
@@ -72,10 +71,6 @@ ExclusivityModel::ExclusivityModel(
     for (size_t s=0; s<=nsam_with_s_.size(); ++s) {
         index_axes_.emplace_back(s, indices);
     }
-    std::signal(SIGINT, [](int signum){
-        if (signum == SIGINT) SIGINT_RAISED = true;
-        // TODO: how to handle other signum?
-    });
 }
 
 inline std::vector<Eigen::ArrayXd>
@@ -192,7 +187,7 @@ void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Gene
             fout.strict_sync();
             buffer.str("");
         }
-        if (SIGINT_RAISED) {throw wtl::ExitSuccess("KeyboardInterrupt");}
+        if (SIGINT_RAISED_) {throw wtl::ExitSuccess("KeyboardInterrupt");}
     }
     std::cerr << "\n";
     fout << buffer.str();

@@ -4,6 +4,7 @@
 */
 #include "program.hpp"
 
+#include <csignal>
 #include <cstdlib>
 #include <memory>
 #include <regex>
@@ -16,6 +17,7 @@
 #include <wtl/eigen.hpp>
 
 #include "exclusivity.hpp"
+#include "exact.hpp"
 
 namespace likeligrid {
 
@@ -60,6 +62,7 @@ inline void test(const int flg) {HERE;
         break;
       case 1:
         ExclusivityModel::unit_test();
+        ExactModel::unit_test();
         throw wtl::ExitSuccess();
       default:
         throw std::runtime_error("Unknown argument for --test");
@@ -89,6 +92,13 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
         std::cerr << wtl::flags_into_string(vm) << std::endl;
     }
     test(vm["test"].as<int>());
+
+    std::signal(SIGINT, [](int signum){
+        if (signum == SIGINT) {
+            ExclusivityModel::raise_sigint();
+            ExactModel::raise_sigint();
+        }
+    });
 }
 
 void Program::run() {HERE;

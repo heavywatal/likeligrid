@@ -32,6 +32,7 @@ class ExclusivityModel {
     void run(const std::string& infile="");
     void search_limits() const;
 
+    static void raise_sigint() {SIGINT_RAISED_ = true;}
     static void unit_test();
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
@@ -60,6 +61,8 @@ class ExclusivityModel {
     size_t skip_ = 0;
     size_t stage_ = 0;
     std::vector<std::vector<std::vector<size_t>>> index_axes_;
+
+    static bool SIGINT_RAISED_;
 };
 
 
