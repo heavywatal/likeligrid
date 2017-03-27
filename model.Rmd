@@ -15,10 +15,11 @@ output:
     - number of mutated genes in pathway $j$ of sample $i$ : $s_{i,j}$
     - number of non-first mutations: $a_{i,j} = \max(0, s_{i,j} - 1)$
     - number of samples with $s$ mutations: $N_s$
+    - total mutations: $S = \sum_i \sum_j s_{i,j}$
 
 - pathway (column) $j$
     - total mutations: $s_j = \sum_i s_{i,j}$
-    - weight: $w_j = \frac{s_j} {\sum_j s_j}$
+    - weight: $w_j = \frac{s_j} S$
       &nbsp;&nbsp;&nbsp; (**parameter** in the future)
     - exclusivity: $\theta_j$
       &nbsp;&nbsp;&nbsp; (**parameter**)
@@ -34,7 +35,7 @@ output:
 - constant
     - set of all the possible genotypes: $K$
     - denominator to normalize probability:
-      $D_s(\theta) = \sum_{k \in K \mid s_k = s} p_k(\theta)$ ,<br>
+      $D_s(\theta) = \sum_{k \in K \mid s_k = s} p_k(\theta)$
 
 ## Log likelihood function
 
@@ -42,12 +43,17 @@ output:
 l(\theta)
   &= \log \left(\prod_i P_i(\theta) \right) \\
   &= \sum_i \log \frac {p_i(\theta)} {D_{s_i}(\theta)} \\
-  &= \sum_i \log \left(M_j \prod_i w_j^{s_{i,j}} \theta_j^{a_{i,j}} \right)
+  &= \sum_i \log \left(M_i \prod_i w_j^{s_{i,j}} \theta_j^{a_{i,j}} \right)
    - \sum_i \log D_{s_i}(\theta) \\
   &= \sum_i \left(\log M_i + \sum_j s_{i,j} \log w_j + \sum_j a_{i,j} \log \theta_j \right)
    - \sum_i \log D_{s_i}(\theta) \\
   &= \sum_i \log M_i
    + \sum_j s_j \log w_j
+   + \sum_j a_j \log \theta_j
+   - \sum_s \left(N_s \log D_s(\theta) \right) \\
+  &= \sum_i \log M_i
+   + \sum_j s_j \log s_j
+   - S \log S
    + \sum_j a_j \log \theta_j
    - \sum_s \left(N_s \log D_s(\theta) \right) \\
 \end{split}$$</div>
