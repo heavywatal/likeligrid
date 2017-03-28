@@ -27,7 +27,7 @@ class ExclusivityModel {
     ExclusivityModel() = default;
     ExclusivityModel(
         const std::vector<std::string>& colnames,
-        const ArrayXXu& matrix,
+        ArrayXXu matrix,
         const size_t max_sites=-1);
     void run(const std::string& infile="");
     void search_limits() const;
@@ -45,13 +45,11 @@ class ExclusivityModel {
         const Eigen::ArrayXd& exclusi,
         const size_t num_mutations) const;
     std::unordered_map<std::string, Eigen::ArrayXd> find_intersections() const;
-    std::ostream& write_genotypes(std::ostream&, const bool header=true) const;
     bool read_results(const std::string&);
     size_t read_metadata(std::istream&);
     size_t read_body(std::istream&);
 
     std::vector<std::string> names_;
-    ArrayXXu genotypes_;
     Eigen::ArrayXd w_pathway_;
     Eigen::ArrayXd a_pathway_;
     std::vector<size_t> nsam_with_s_;

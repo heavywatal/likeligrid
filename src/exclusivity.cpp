@@ -27,11 +27,10 @@ bool ExclusivityModel::SIGINT_RAISED_ = false;
 
 ExclusivityModel::ExclusivityModel(
         const std::vector<std::string>& colnames,
-        const ArrayXXu& matrix,
+        ArrayXXu pathtypes,
         const size_t max_sites):
-        names_(colnames),
-        genotypes_(matrix) {HERE;
-    const ArrayXu raw_s_sample = genotypes_.rowwise().sum().array();
+        names_(colnames) {HERE;
+    const ArrayXu raw_s_sample = pathtypes.rowwise().sum().array();
     nsam_with_s_.assign(raw_s_sample.maxCoeff() + 1, 0);
     for (Eigen::Index i=0; i<raw_s_sample.size(); ++i) {
         ++nsam_with_s_[raw_s_sample[i]];
@@ -47,15 +46,15 @@ ExclusivityModel::ExclusivityModel(
         nsam_with_s_.resize(nsam_with_s_.size() - 1);
     }
     const auto final_max_s = nsam_with_s_.size() - 1;
-    genotypes_ = wtl::eigen::filter(genotypes_, raw_s_sample <= final_max_s);
+    pathtypes = wtl::eigen::filter(pathtypes, raw_s_sample <= final_max_s);
 
-    const Eigen::ArrayXd s_pathway = genotypes_.colwise().sum().cast<double>();
+    const Eigen::ArrayXd s_pathway = pathtypes.colwise().sum().cast<double>();
     w_pathway_ = s_pathway / s_pathway.sum();
-    a_pathway_ = genotypes_.unaryExpr([](size_t x){
+    a_pathway_ = pathtypes.unaryExpr([](size_t x){
         if (x > 0) {return --x;} else {return x;}
     }).colwise().sum().cast<double>();
-    for (Eigen::Index i=0; i<genotypes_.rows(); ++i) {
-        auto v = wtl::eigen::valarray(genotypes_.row(i));
+    for (Eigen::Index i=0; i<pathtypes.rows(); ++i) {
+        auto v = wtl::eigen::valarray(pathtypes.row(i));
         lnp_const_ += std::log(wtl::multinomial(v));
     }
     lnp_const_ += (s_pathway * w_pathway_.log()).sum();
@@ -66,7 +65,7 @@ ExclusivityModel::ExclusivityModel(
     if (std::isnan(lnp_const_)) throw lnpnan_error();
 
     index_axes_.reserve(nsam_with_s_.size());
-    std::vector<size_t> indices(genotypes_.cols());
+    std::vector<size_t> indices(pathtypes.cols());
     std::iota(std::begin(indices), std::end(indices), 0);
     for (size_t s=0; s<=nsam_with_s_.size(); ++s) {
         index_axes_.emplace_back(s, indices);
@@ -225,11 +224,6 @@ double ExclusivityModel::calc_denom(
     return sum_prob;
 }
 
-std::ostream& ExclusivityModel::write_genotypes(std::ostream& ost, const bool header) const {HERE;
-    if (header) {ost << wtl::join(names_, "\t") << "\n";}
-    return ost << genotypes_.format(wtl::eigen::tsv()) << "\n";
-}
-
 bool ExclusivityModel::read_results(const std::string& infile) {HERE;
     if (infile == "/dev/null")
         return false;
@@ -292,7 +286,6 @@ void ExclusivityModel::unit_test() {HERE;
     ExclusivityModel::ArrayXXu m(4, 2);
     m << 0, 1, 1, 0, 1, 1, 0, 2;
     ExclusivityModel model({"A", "B"}, m);
-    model.write_genotypes(std::cerr);
     model.run("/dev/null");
 }
 
