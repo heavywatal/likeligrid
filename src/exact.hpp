@@ -41,7 +41,6 @@ class ExactModel {
     std::vector<std::string> names_;
     std::vector<boost::dynamic_bitset<>> annot_;
     std::vector<boost::dynamic_bitset<>> genot_;
-    ArrayXXu genotypes_;
     Eigen::ArrayXd w_gene_;
     Eigen::ArrayXd a_pathway_;
     std::vector<size_t> nsam_with_s_;

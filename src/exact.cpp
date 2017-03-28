@@ -83,17 +83,17 @@ ExactModel::ExactModel(const std::string& infile, const size_t max_sites) {HERE;
         }
     }
 
-    genotypes_ = wtl::eigen::ArrayXX<uint>(jso["sample"]);
-    genotypes_ = wtl::eigen::filter(genotypes_, wtl::eigen::ArrayX(raw_s_sample) <= final_max_s);
-    const Eigen::ArrayXd s_gene = genotypes_.colwise().sum().cast<double>();
+    ArrayXXu genotypes = wtl::eigen::ArrayXX<uint>(jso["sample"]);
+    genotypes = wtl::eigen::filter(genotypes, wtl::eigen::ArrayX(raw_s_sample) <= final_max_s);
+    const Eigen::ArrayXd s_gene = genotypes.colwise().sum().cast<double>();
+    w_gene_ = s_gene / s_gene.sum();
     std::cerr << "s_gene : " << s_gene.transpose() << std::endl;
+    std::cerr << "w_gene_: " << w_gene_.transpose() << std::endl;
     for (Eigen::Index i=0; i<s_gene.size(); ++i) {
         if (s_gene[i] > 0) {
-            lnp_const_ += s_gene[i] * std::log(s_gene[i]);
+            lnp_const_ += s_gene[i] * std::log(w_gene_[i]);
         }
     }
-    const auto s_total = s_gene.sum();
-    lnp_const_ -= s_total * std::log(s_total);
     std::cerr << "lnp_const_: " << lnp_const_ << std::endl;
 }
 
