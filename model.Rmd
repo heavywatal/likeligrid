@@ -13,9 +13,10 @@ output:
 
 - genotypes ($I \times J$ matrix)
     - number of mutated genes in pathway $j$ of sample $i$ : $s_{i,j}$
-    - number of non-first mutations: $a_{i,j} = \max(0, s_{i,j} - 1)$
+    - number of non-new mutations: $a_{i,j} = \max(0, s_{i,j} - 1)$
     - number of samples with $s$ mutations: $N_s$
     - total mutations: $S = \sum_i \sum_j s_{i,j}$
+    - set of all the possible genotypes: $K$
 
 - pathway (column) $j$
     - total mutations: $s_j = \sum_i s_{i,j}$
@@ -28,16 +29,33 @@ output:
     - total mutations: $s_i = \sum_j s_{i,j}$
     - multinomial coefficient: $M_i = \frac {s_i!} {\prod_j s_{i,j}!}$
     - unnormalized probability of the configuration:
-      $p_i(\theta) = M_i \prod_j w_j^{s_{i,j}} \theta_j^{a_{i,j}}$
+      $p_i(\theta) = M_i \prod_j w_j^{s_{i,j}} \theta_j^{a_{i,j}}
+      = S^{-s_i} M_i \prod_j s_j^{s_{i,j}} \theta_j^{a_{i,j}}$
+    - denominator to normalize probability:
+      $D_s(\theta) = \sum_{k \in K \mid s_k = s} p_k(\theta)
+      = S^{-s} \sum_{k \in K \mid s_k = s} M_k \prod_j s_j^{s_{k,j}} \theta_j^{a_{k,j}}$
     - normalized probability of the configuration:
       $P_i(\theta) = \frac {p_i(\theta)} {D_{s_i}(\theta)}$
 
-- constant
-    - set of all the possible genotypes: $K$
-    - denominator to normalize probability:
-      $D_s(\theta) = \sum_{k \in K \mid s_k = s} p_k(\theta)$
-
 ## Log likelihood function
+
+### w as function of s
+
+<div>$$\begin{split}
+l(\theta)
+  &= \log \left(\prod_i P_i(\theta) \right) \\
+  &= \sum_i \log \frac {p_i(\theta)} {D_{s_i}(\theta)} \\
+  &= \sum_i \left( \log M_i \prod_i s_j^{s_{i,j}} \theta_j^{a_{i,j}} \right)
+   - \sum_i \log S^{s_i} D_{s_i}(\theta) \\
+  &= \sum_i \left(\log M_i + \sum_j s_{i,j} \log s_j + \sum_j a_{i,j} \log \theta_j \right)
+   - \sum_s N_s \log S^s D_s(\theta) \\
+  &= \sum_i \log M_i
+   + \sum_j s_j \log s_j
+   + \sum_j a_j \log \theta_j
+   - \sum_s \left(N_s \log \sum_{k \in K \mid s_k = s} M_k \prod_j s_j^{s_{k,j}} \theta_j^{a_{k,j}} \right) \\
+\end{split}$$</div>
+
+### w as parameter
 
 <div>$$\begin{split}
 l(\theta)
@@ -46,14 +64,9 @@ l(\theta)
   &= \sum_i \log \left(M_i \prod_i w_j^{s_{i,j}} \theta_j^{a_{i,j}} \right)
    - \sum_i \log D_{s_i}(\theta) \\
   &= \sum_i \left(\log M_i + \sum_j s_{i,j} \log w_j + \sum_j a_{i,j} \log \theta_j \right)
-   - \sum_i \log D_{s_i}(\theta) \\
+   - \sum_s N_s \log D_s(\theta) \\
   &= \sum_i \log M_i
    + \sum_j s_j \log w_j
    + \sum_j a_j \log \theta_j
-   - \sum_s \left(N_s \log D_s(\theta) \right) \\
-  &= \sum_i \log M_i
-   + \sum_j s_j \log s_j
-   - S \log S
-   + \sum_j a_j \log \theta_j
-   - \sum_s \left(N_s \log D_s(\theta) \right) \\
+   - \sum_s \left(N_s \log \sum_{k \in K \mid s_k = s} M_k \prod_j w_j^{s_{k,j}} \theta_j^{a_{k,j}} \right) \\
 \end{split}$$</div>
