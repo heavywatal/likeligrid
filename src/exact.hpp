@@ -19,9 +19,10 @@
 
 namespace likeligrid {
 
+typedef uint_fast32_t uint;
+
 class ExactModel {
   public:
-    typedef uint_fast32_t uint;
     typedef Eigen::Array<uint, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> ArrayXXu;
     typedef Eigen::Array<uint, Eigen::Dynamic, 1> ArrayXu;
 
@@ -37,6 +38,9 @@ class ExactModel {
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
     double calc_loglik(const Eigen::ArrayXd& params) const;
+    double calc_denom(
+        const Eigen::ArrayXd& params,
+        const size_t num_mutations) const;
 
     std::vector<std::string> names_;
     std::vector<boost::dynamic_bitset<>> annot_;

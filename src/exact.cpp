@@ -95,24 +95,23 @@ ExactModel::ExactModel(const std::string& infile, const size_t max_sites) {HERE;
 }
 
 void ExactModel::run() {HERE;
+    calc_loglik(a_pathway_ / a_pathway_.sum());
 }
 
 double ExactModel::calc_loglik(const Eigen::ArrayXd& params) const {
     double loglik = (a_pathway_ * params.log()).sum();
+    calc_denom(params, 2);
     return loglik += lnp_const_;
 }
 
-
-inline void recursive_func(const boost::dynamic_bitset<>& past, const size_t n) {
-    for (boost::dynamic_bitset<> current(past.size(), 1); current.any(); current <<= 1) {
-        if ((past & current).any()) continue;
-        auto genotype = past | current;
-        if (n > 1) {
-            recursive_func(genotype, n - 1);
-        } else {
-            std::cout << genotype << std::endl;
-        }
-    }
+double ExactModel::calc_denom(const Eigen::ArrayXd& params, const size_t s) const {
+    std::cout << params << std::endl;
+    double sum_prob = 0.0;
+    boost::dynamic_bitset<> flags(s);
+    flags.set();
+    flags.resize(w_gene_.size(), 0);
+    std::cout << flags << std::endl;
+    return sum_prob;
 }
 
 
@@ -126,13 +125,12 @@ class Bits final: public wtl::itertools::Generator<value_type> {
     explicit Bits(const size_t length, const size_t sum):
         wtl::itertools::Generator<value_type>(),
         sum_(sum),
-        value_(length, 0),
-        pos_(sum) {}
+        value_(length, 0) {}
     ~Bits() = default;
 
     void reset() {
         value_.reset();
-        pos_ = sum_;
+        s_ = 1;
         this->cnt_ = 0;
     }
     virtual size_type max_count() const override {
@@ -141,42 +139,36 @@ class Bits final: public wtl::itertools::Generator<value_type> {
 
   private:
     virtual void source(typename coro_t::push_type& yield, const size_type skip) override {
-        value_type past(value_);
+        value_type anchor(value_);
         for (value_type current(value_.size(), 1); current.any(); current <<= 1) {
             if ((value_ & current).any()) continue;
             value_ |= current;
-            if (pos_ > 1) {
-                --pos_;
+            if (s_ < sum_) {
+                ++s_;
+                yield(value_type(value_)); // intermediate genotype
                 source(yield, skip);
             } else {
                 if (++this->cnt_ > skip) {
-                    yield(value_type(value_));
+                    yield(value_type(value_));  // final genotype
                 }
             }
-            value_ = past;
+            value_ = anchor;
         }
-        ++pos_;
+        --s_;
     }
     const value_size_t sum_;
     value_type value_;
-    value_type previous_;
-    value_size_t pos_;
+    value_size_t s_ = 1;
 };
-
 
 void ExactModel::unit_test() {HERE;
     ExactModel model("test.json.gz", 3);
     model.run();
-
-    Bits<boost::dynamic_bitset<>> gen(5, 3);
+    Bits<boost::dynamic_bitset<>> gen(5, 2);
     std::cout << "max_count: " << gen.max_count() << std::endl;
     for (const auto x: gen()) {
         std::cout << x << " " << gen.count() << std::endl;
     }
-
-    HERE;
-    boost::dynamic_bitset<> init(5, 0);
-    recursive_func(init, 3);
 }
 
 } // namespace likeligrid
