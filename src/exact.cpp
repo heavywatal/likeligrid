@@ -104,6 +104,66 @@ double ExactModel::calc_loglik(const Eigen::ArrayXd& params) const {
     return loglik += lnp_const_;
 }
 
+class Denom {
+  public:
+    typedef boost::dynamic_bitset<> bits_t;
+    Denom() = delete;
+    Denom(const std::valarray<double>& w_genes,
+      const std::valarray<double>& params,
+      const std::vector<bits_t>& annot,
+      const size_t nsites):
+        w_genes_(w_genes),
+        params_(params),
+        annot_(annot),
+        genotype_(w_genes.size(), 0),
+        pathtype_(annot.size(), 0),
+        nsites_(nsites),
+        denoms_(nsites + 1, 0.0) {}
+    void mutate() {
+        const bits_t tmp_genotype = genotype_;
+        const bits_t tmp_pathtype = pathtype_;
+        const double tmp_p = p_;
+        ++s_;
+        for (bits_t new_mut(genotype_.size(), 1); new_mut.any(); new_mut <<= 1) {
+            if ((genotype_ & new_mut).any()) continue;
+            calculate(new_mut);
+            if (s_ < nsites_) {
+                mutate();
+            }
+            genotype_ = tmp_genotype;
+            pathtype_ = tmp_pathtype;
+            p_ = tmp_p;
+        }
+        --s_;
+    }
+    void calculate(const bits_t new_mut) {
+        p_ *= w_genes_[new_mut.find_first()];
+        bits_t mut_path(annot_.size(), 0);
+        for (size_t i=0; i<annot_.size(); ++i) {
+            if ((annot_[i] & new_mut).any()) {
+               if (pathtype_.test_set(i)) {
+                   p_ *= params_[i];
+               }
+            }
+        }
+        denoms_[s_] += p_;
+        genotype_ |= new_mut;
+        std::cout << genotype_ << " " << pathtype_ << " "
+                  << s_ << " " << p_ << std::endl;
+    }
+    const std::vector<double>& get() const {return denoms_;}
+  private:
+    std::valarray<double> w_genes_;
+    std::valarray<double> params_;
+    std::vector<bits_t> annot_;
+    bits_t genotype_;
+    bits_t pathtype_;
+    const size_t nsites_;
+    size_t s_ = 0;
+    double p_ = 1.0;
+    std::vector<double> denoms_;
+};
+
 double ExactModel::calc_denom(const Eigen::ArrayXd& params, const size_t s) const {
     std::cout << params << std::endl;
     double sum_prob = 0.0;
@@ -111,64 +171,17 @@ double ExactModel::calc_denom(const Eigen::ArrayXd& params, const size_t s) cons
     flags.set();
     flags.resize(w_gene_.size(), 0);
     std::cout << flags << std::endl;
+
+    // Denom d({0.2, 0.2, 0.3, 0.3}, annot_, 3);
+    Denom d(wtl::eigen::valarray(w_gene_), {0.5, 1.0, 1.0, 1.0}, annot_, s);
+    d.mutate();
+    std::cout << "D_s: " << d.get() << std::endl;
     return sum_prob;
 }
 
-
-template <class value_type>
-class Bits final: public wtl::itertools::Generator<value_type> {
-  public:
-    using typename wtl::itertools::Generator<value_type>::coro_t;
-    using typename wtl::itertools::Generator<value_type>::size_type;
-    using typename wtl::itertools::Generator<value_type>::value_size_t;
-    Bits() = delete;
-    explicit Bits(const size_t length, const size_t sum):
-        wtl::itertools::Generator<value_type>(),
-        sum_(sum),
-        value_(length, 0) {}
-    ~Bits() = default;
-
-    void reset() {
-        value_.reset();
-        s_ = 1;
-        this->cnt_ = 0;
-    }
-    virtual size_type max_count() const override {
-        return wtl::permut(value_.size(), sum_);
-    }
-
-  private:
-    virtual void source(typename coro_t::push_type& yield, const size_type skip) override {
-        value_type anchor(value_);
-        for (value_type current(value_.size(), 1); current.any(); current <<= 1) {
-            if ((value_ & current).any()) continue;
-            value_ |= current;
-            if (s_ < sum_) {
-                ++s_;
-                yield(value_type(value_)); // intermediate genotype
-                source(yield, skip);
-            } else {
-                if (++this->cnt_ > skip) {
-                    yield(value_type(value_));  // final genotype
-                }
-            }
-            value_ = anchor;
-        }
-        --s_;
-    }
-    const value_size_t sum_;
-    value_type value_;
-    value_size_t s_ = 1;
-};
-
 void ExactModel::unit_test() {HERE;
-    ExactModel model("test.json.gz", 3);
+    ExactModel model("test.json.gz", 2);
     model.run();
-    Bits<boost::dynamic_bitset<>> gen(5, 2);
-    std::cout << "max_count: " << gen.max_count() << std::endl;
-    for (const auto x: gen()) {
-        std::cout << x << " " << gen.count() << std::endl;
-    }
 }
 
 } // namespace likeligrid
