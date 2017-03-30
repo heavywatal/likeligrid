@@ -87,7 +87,7 @@ ExactModel::ExactModel(const std::string& infile, const size_t max_sites) {HERE;
 }
 
 void ExactModel::run() {HERE;
-    calc_loglik({0.5, 1.0, 1.0, 1.0});
+    calc_loglik({0.5, 0.5, 0.5, 0.5});
 }
 
 double ExactModel::calc_loglik(const std::valarray<double>& params) const {
@@ -96,71 +96,72 @@ double ExactModel::calc_loglik(const std::valarray<double>& params) const {
     return loglik += lnp_const_;
 }
 
-class Denom {
+class Denoms {
   public:
-    Denom() = delete;
-    Denom(const std::valarray<double>& w_genes,
-      const std::valarray<double>& params,
-      const std::vector<bits_t>& annot,
-      const size_t nsites):
-        w_genes_(w_genes),
-        params_(params),
+    Denoms() = delete;
+    Denoms(const std::valarray<double>& w_gene,
+        const std::valarray<double>& th_path,
+        const std::vector<bits_t>& annot,
+        const size_t max_sites):
+        w_gene_(w_gene),
+        th_path_(th_path),
         annot_(annot),
-        genotype_(w_genes.size(), 0),
-        pathtype_(annot.size(), 0),
-        nsites_(nsites),
-        denoms_(nsites + 1, 0.0) {}
-    void mutate() {
-        const bits_t tmp_genotype = genotype_;
-        const bits_t tmp_pathtype = pathtype_;
-        const double tmp_p = p_;
-        ++s_;
-        for (bits_t new_mut(genotype_.size(), 1); new_mut.any(); new_mut <<= 1) {
-            if ((genotype_ & new_mut).any()) continue;
-            calculate(new_mut);
-            if (s_ < nsites_) {
-                mutate();
-            }
-            genotype_ = tmp_genotype;
-            pathtype_ = tmp_pathtype;
-            p_ = tmp_p;
-        }
-        --s_;
-    }
-    void calculate(const bits_t new_mut) {
-        p_ *= w_genes_[new_mut.find_first()];
-        bits_t mut_path(annot_.size(), 0);
-        for (size_t i=0; i<annot_.size(); ++i) {
-            if ((annot_[i] & new_mut).any()) {
-               if (pathtype_.test_set(i)) {
-                   p_ *= params_[i];
-               }
-            }
-        }
-        denoms_[s_] += p_;
-        genotype_ |= new_mut;
-        std::cout << genotype_ << " " << pathtype_ << " "
-                  << s_ << " " << p_ << std::endl;
+        max_sites_(max_sites),
+        denoms_(max_sites_ + 1, 0.0) {
+
+        mutate(bits_t(w_gene.size(), 0), bits_t(annot.size(), 0), 1.0);
     }
     const std::vector<double>& get() const {return denoms_;}
+
   private:
-    std::valarray<double> w_genes_;
-    std::valarray<double> params_;
-    std::vector<bits_t> annot_;
-    bits_t genotype_;
-    bits_t pathtype_;
-    const size_t nsites_;
-    size_t s_ = 0;
-    double p_ = 1.0;
+    void mutate(const bits_t& genotype, const bits_t& pathtype, const double anc_p) {
+        const size_t s = genotype.count() + 1;
+        for (bits_t mut_gene(genotype.size(), 1); mut_gene.any(); mut_gene <<= 1) {
+            if ((genotype & mut_gene).any()) continue;
+            const bits_t mut_path = translate(mut_gene);
+            double p = anc_p;
+            p *= w_gene_[mut_gene.find_first()];
+            p *= discount(pathtype, mut_path);
+            // std::cout << (genotype | mut_gene) << " " << (pathtype | mut_path) << " " << p << std::endl;
+            denoms_[s] += p;
+            if (s < max_sites_) {
+                mutate(genotype | mut_gene, pathtype | mut_path, p);
+            }
+        }
+    }
+
+    double discount(const bits_t& pathtype, const bits_t& mut_path) const {
+        if (mut_path.is_subset_of(pathtype)) {
+            double p = 1.0;
+            const bits_t recurrent = mut_path & pathtype;
+            size_t j = 0;
+            while ((j = recurrent.find_next(j)) < bits_t::npos) {
+                p *= th_path_[j];
+            }
+            return p;
+        } else {return 1.0;}
+    }
+
+    // TODO: memoize
+    bits_t translate(const bits_t& mut_gene) const {
+        bits_t mut_path(annot_.size(), 0);
+        for (size_t j=0; j<annot_.size(); ++j) {
+            mut_path.set(j, (annot_[j] & mut_gene).any());
+        }
+        return mut_path;
+    }
+
+    const std::valarray<double>& w_gene_;
+    const std::valarray<double>& th_path_;
+    const std::vector<bits_t>& annot_;
+    const size_t max_sites_;
     std::vector<double> denoms_;
 };
 
-double ExactModel::calc_denom(const std::valarray<double>& params, const size_t s) const {
-    std::cout << params << std::endl;
+double ExactModel::calc_denom(const std::valarray<double>& th_path, const size_t s) const {
+    std::cout << th_path << std::endl;
     double sum_prob = 0.0;
-    Denom d(w_gene_, params, annot_, s);
-    d.mutate();
-    std::cout << "D_s: " << d.get() << std::endl;
+    std::cout << "D_s: " << Denoms(w_gene_, th_path, annot_, s).get() << std::endl;
     return sum_prob;
 }
 
