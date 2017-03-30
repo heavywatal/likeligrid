@@ -11,7 +11,6 @@
 
 #include <wtl/debug.hpp>
 #include <wtl/iostr.hpp>
-#include <wtl/zfstream.hpp>
 #include <wtl/os.hpp>
 #include <wtl/getopt.hpp>
 #include <wtl/eigen.hpp>
@@ -110,19 +109,14 @@ void Program::run() {HERE;
         std::regex_search(GENOTYPES_FILE, mobj, std::regex("([^/]+?)\\.[^/]+$"));
         prefix = mobj.str(1);
     }
-    wtl::izfstream ifs(GENOTYPES_FILE);
-    const auto colnames = wtl::read_header(ifs);
-    const auto matrix = wtl::eigen::read_array<size_t>(ifs, colnames.size());
-    ifs.close();
-    std::ostringstream ost;
-    ost << prefix << "-s" << MAX_SITES;
-    const std::string outdir = ost.str();
+    std::ostringstream oss;
+    oss << prefix << "-s" << MAX_SITES;
+    const std::string outdir = oss.str();
     try {
-        ExclusivityModel model(colnames, matrix, MAX_SITES);
+        ExclusivityModel model(GENOTYPES_FILE, MAX_SITES);
         wtl::mkdir(outdir);  // after constructor success
         wtl::Pushd cd(outdir);
         model.run();
-        model.search_limits();
     } catch (const lnpnan_error& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }

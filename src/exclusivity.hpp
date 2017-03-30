@@ -26,11 +26,9 @@ class ExclusivityModel {
 
     ExclusivityModel() = default;
     ExclusivityModel(
-        const std::vector<std::string>& colnames,
-        ArrayXXu matrix,
-        const size_t max_sites=-1);
+        const std::string& infile,
+        const size_t max_sites=255);
     void run(const std::string& infile="");
-    void search_limits() const;
 
     static void raise_sigint() {SIGINT_RAISED_ = true;}
     static void unit_test();
@@ -44,6 +42,7 @@ class ExclusivityModel {
         const Eigen::ArrayXd& weights,
         const Eigen::ArrayXd& exclusi,
         const size_t num_mutations) const;
+    void search_limits() const;
     std::unordered_map<std::string, Eigen::ArrayXd> find_intersections() const;
     bool read_results(const std::string&);
     size_t read_metadata(std::istream&);

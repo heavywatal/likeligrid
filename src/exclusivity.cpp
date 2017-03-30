@@ -25,11 +25,11 @@ const std::vector<double> ExclusivityModel::STEPS_ = {0.4, 0.2, 0.1, 0.05, 0.02,
 const std::vector<size_t> ExclusivityModel::BREAKS_ = {5, 5, 5, 6, 5, 5};
 bool ExclusivityModel::SIGINT_RAISED_ = false;
 
-ExclusivityModel::ExclusivityModel(
-        const std::vector<std::string>& colnames,
-        ArrayXXu pathtypes,
-        const size_t max_sites):
-        names_(colnames) {HERE;
+ExclusivityModel::ExclusivityModel(const std::string& infile, const size_t max_sites) {HERE;
+    wtl::izfstream ifs(infile);
+    names_ = wtl::read_header(ifs);
+    auto pathtypes = wtl::eigen::read_array<size_t>(ifs, names_.size());
+    ifs.close();
     const ArrayXu raw_s_sample = pathtypes.rowwise().sum().array();
     nsam_with_s_.assign(raw_s_sample.maxCoeff() + 1, 0);
     for (Eigen::Index i=0; i<raw_s_sample.size(); ++i) {
@@ -91,6 +91,7 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
         --stage_;
         axes_.assign(names_.size(), Eigen::ArrayXd::LinSpaced(200, 2.0, 0.01));
         run_impl("uniaxis.tsv.gz", wtl::itertools::uniaxis(axes_, mle_params_));
+        search_limits();
         return;
     }
     std::string outfile = "/dev/stdout";
@@ -251,7 +252,7 @@ size_t ExclusivityModel::read_metadata(std::istream& ist) {HERE;
     }
     std::getline(ist, buffer);
     const double step = std::stod(wtl::split(buffer, "=")[1]);
-    auto pred = std::bind(wtl::equal<double>, std::placeholders::_1, step);
+    auto pred = std::bind(wtl::approx<double>, std::placeholders::_1, step);
     const auto it = std::find_if(STEPS_.begin(), STEPS_.end(), pred);
     if (it == STEPS_.end()) throw std::runtime_error("invalid step size");
     stage_ = it - STEPS_.begin();
@@ -283,9 +284,7 @@ size_t ExclusivityModel::read_body(std::istream& ist) {HERE;
 }
 
 void ExclusivityModel::unit_test() {HERE;
-    ExclusivityModel::ArrayXXu m(4, 2);
-    m << 0, 1, 1, 0, 1, 1, 0, 2;
-    ExclusivityModel model({"A", "B"}, m);
+    ExclusivityModel model("test.tsv");
     model.run("/dev/null");
 }
 
