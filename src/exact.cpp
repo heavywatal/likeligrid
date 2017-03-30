@@ -9,10 +9,11 @@
 #include <json.hpp>
 
 #include <wtl/debug.hpp>
-#include <wtl/exception.hpp>
 #include <wtl/iostr.hpp>
 #include <wtl/zfstream.hpp>
-#include <wtl/eigen.hpp>
+#include <wtl/itertools.hpp>
+#include <wtl/algorithm.hpp>
+#include <wtl/math.hpp>
 
 namespace likeligrid {
 
@@ -39,32 +40,18 @@ ExactModel::ExactModel(const std::string& infile, const size_t max_sites) {HERE;
     }
     // std::cerr << genot_ << std::endl;
 
-    ArrayXXu pathtypes(nsam, npath);
-    for (size_t i=0; i<nsam; ++i) {
-        std::vector<uint> row;
-        row.reserve(npath);
-        const auto& g = genot_[i];
-        for (const auto& a: annot_) {
-            row.push_back((g & a).count());
-        }
-        pathtypes.row(i) = wtl::eigen::ArrayX(row);
-    }
-    a_pathway_ = pathtypes.unaryExpr([](uint x){
-        if (x > 0) {return --x;} else {return x;}
-    }).colwise().sum().cast<double>();
-    std::cerr << "s_pathway : " << pathtypes.colwise().sum() << std::endl;
-    std::cerr << "a_pathway_: " << a_pathway_.transpose() << std::endl;
-
-    std::vector<size_t> raw_s_sample;
-    raw_s_sample.reserve(nsam);
     const size_t ngene = genot_[0].size();
     nsam_with_s_.assign(ngene, 0);
+    std::valarray<double> s_gene(ngene);
     for (const auto& bits: genot_) {
         const size_t s = bits.count();
-        raw_s_sample.emplace_back(s);
         ++nsam_with_s_[s];
+        if (s > max_sites) continue;
+        for (size_t j=0; j<ngene; ++j) {
+            if (bits.test(j)) ++s_gene[j];
+        }
     }
-
+    wtl::rstrip(&nsam_with_s_);
     std::cerr << "Original N_s: " << nsam_with_s_ << std::endl;
     if (max_sites + 1 < nsam_with_s_.size()) {
         nsam_with_s_.resize(max_sites + 1);
@@ -72,41 +59,45 @@ ExactModel::ExactModel(const std::string& infile, const size_t max_sites) {HERE;
     } else {
         std::cerr << "Note: -s is too large" << std::endl;
     }
-    while (nsam_with_s_.back() == 0) {
-        nsam_with_s_.resize(nsam_with_s_.size() - 1);
-    }
     const auto final_max_s = nsam_with_s_.size() - 1;
     for (size_t s=2; s<=final_max_s; ++s) {
         lnp_const_ += nsam_with_s_[s] * std::log(wtl::factorial(s));
     }
-
-    ArrayXXu genotypes = wtl::eigen::ArrayXX<uint>(jso["sample"]);
-    genotypes = wtl::eigen::filter(genotypes, wtl::eigen::ArrayX(raw_s_sample) <= final_max_s);
-    const Eigen::ArrayXd s_gene = genotypes.colwise().sum().cast<double>();
     w_gene_ = s_gene / s_gene.sum();
-    std::cerr << "s_gene : " << s_gene.transpose() << std::endl;
-    std::cerr << "w_gene_: " << w_gene_.transpose() << std::endl;
-    for (Eigen::Index i=0; i<s_gene.size(); ++i) {
-        if (s_gene[i] > 0) {
-            lnp_const_ += s_gene[i] * std::log(w_gene_[i]);
+    std::cerr << "s_gene : " << s_gene << std::endl;
+    std::cerr << "w_gene_: " << w_gene_ << std::endl;
+    for (size_t j=0; j<s_gene.size(); ++j) {
+        if (s_gene[j] > 0) {
+            lnp_const_ += s_gene[j] * std::log(w_gene_[j]);
         }
     }
     std::cerr << "lnp_const_: " << lnp_const_ << std::endl;
+
+    // TODO
+    a_pathway_.resize(npath);
+    for (size_t j=0; j<npath; ++j) {
+        for (size_t i=0; i<nsam; ++i) {
+            size_t s = (genot_[i] & annot_[j]).count();
+            if (s > 0) {
+                a_pathway_[j] += --s;
+            }
+        }
+    }
+    std::cerr << "a_pathway_: " << a_pathway_ << std::endl;
 }
 
 void ExactModel::run() {HERE;
-    calc_loglik(a_pathway_ / a_pathway_.sum());
+    calc_loglik({0.5, 1.0, 1.0, 1.0});
 }
 
-double ExactModel::calc_loglik(const Eigen::ArrayXd& params) const {
-    double loglik = (a_pathway_ * params.log()).sum();
+double ExactModel::calc_loglik(const std::valarray<double>& params) const {
+    double loglik = (a_pathway_ * std::log(params)).sum();
     calc_denom(params, 2);
     return loglik += lnp_const_;
 }
 
 class Denom {
   public:
-    typedef boost::dynamic_bitset<> bits_t;
     Denom() = delete;
     Denom(const std::valarray<double>& w_genes,
       const std::valarray<double>& params,
@@ -164,16 +155,10 @@ class Denom {
     std::vector<double> denoms_;
 };
 
-double ExactModel::calc_denom(const Eigen::ArrayXd& params, const size_t s) const {
+double ExactModel::calc_denom(const std::valarray<double>& params, const size_t s) const {
     std::cout << params << std::endl;
     double sum_prob = 0.0;
-    boost::dynamic_bitset<> flags(s);
-    flags.set();
-    flags.resize(w_gene_.size(), 0);
-    std::cout << flags << std::endl;
-
-    // Denom d({0.2, 0.2, 0.3, 0.3}, annot_, 3);
-    Denom d(wtl::eigen::valarray(w_gene_), {0.5, 1.0, 1.0, 1.0}, annot_, s);
+    Denom d(w_gene_, params, annot_, s);
     d.mutate();
     std::cout << "D_s: " << d.get() << std::endl;
     return sum_prob;
