@@ -185,7 +185,12 @@ class Denoms {
         max_sites_(max_sites),
         denoms_(max_sites + 1)
     {
-        mutate(bits_t(w_gene.size(), 0), bits_t(annot.size(), 0), 1.0);
+        const size_t ngene = w_gene.size();
+        effects_.reserve(ngene);
+        for (bits_t mut_gene(ngene, 1); mut_gene.any(); mut_gene <<= 1) {
+            effects_.push_back(translate(mut_gene));
+        }
+        mutate(bits_t(ngene, 0), bits_t(annot.size(), 0), 1.0);
     }
     const std::valarray<double> log() const {return std::log(denoms_);}
 
@@ -194,9 +199,10 @@ class Denoms {
         const size_t s = genotype.count() + 1;
         for (bits_t mut_gene(genotype.size(), 1); mut_gene.any(); mut_gene <<= 1) {
             if ((genotype & mut_gene).any()) continue;
-            const bits_t mut_path = translate(mut_gene);
+            const size_t pos = mut_gene.find_first();
+            const bits_t& mut_path = effects_[pos];
             double p = anc_p;
-            p *= w_gene_[mut_gene.find_first()];
+            p *= w_gene_[pos];
             p *= discount(pathtype, mut_path);
             // std::cout << (genotype | mut_gene) << " " << (pathtype | mut_path) << " " << p << std::endl;
             denoms_[s] += p;
@@ -218,7 +224,6 @@ class Denoms {
         } else {return 1.0;}
     }
 
-    // TODO: memoize
     bits_t translate(const bits_t& mut_gene) const {
         bits_t mut_path(annot_.size(), 0);
         for (size_t j=0; j<annot_.size(); ++j) {
@@ -226,12 +231,12 @@ class Denoms {
         }
         return mut_path;
     }
-
     const std::valarray<double>& w_gene_;
     const std::valarray<double>& th_path_;
     const std::vector<bits_t>& annot_;
     const size_t max_sites_;
     std::valarray<double> denoms_;
+    std::vector<bits_t> effects_;
 };
 
 double ExactModel::calc_loglik(const std::valarray<double>& th_path) const {

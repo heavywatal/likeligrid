@@ -27,7 +27,7 @@ class ExactModel {
     ExactModel() = default;
     ExactModel(
         const std::string& infile,
-        const size_t max_sites=-1);
+        const size_t max_sites=255);
     void run(const std::string& infile="");
 
     static void raise_sigint() {SIGINT_RAISED_ = true;}
