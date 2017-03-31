@@ -73,6 +73,12 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
     std::cin.tie(0);
     std::cout.precision(15);
     std::cerr.precision(6);
+    std::signal(SIGINT, [](int signum){
+        if (signum == SIGINT) {
+            ExclusivityModel::raise_sigint();
+            ExactModel::raise_sigint();
+        }
+    });
 
     auto description = general_desc();
     description.add(options_desc());
@@ -91,13 +97,6 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
         std::cerr << wtl::flags_into_string(vm) << std::endl;
     }
     test(vm["test"].as<int>());
-
-    std::signal(SIGINT, [](int signum){
-        if (signum == SIGINT) {
-            ExclusivityModel::raise_sigint();
-            ExactModel::raise_sigint();
-        }
-    });
 }
 
 void Program::run() {HERE;
