@@ -92,46 +92,10 @@ ExactModel::ExactModel(const std::string& infile, const size_t max_sites) {HERE;
     std::cerr << "a_pathway_: " << a_pathway_ << std::endl;
 }
 
-inline std::vector<std::valarray<double>>
-make_vicinity(const std::valarray<double>& center, const size_t breaks, const double radius, const double max=2.0) {
-    std::vector<std::valarray<double>> axes;
-    axes.reserve(center.size());
-    for (const double x: center) {
-        Eigen::ArrayXd axis = Eigen::ArrayXd::LinSpaced(breaks, x + radius, x - radius);
-        axis = (axis * 100.0).round() / 100.0;  // grid precision = 0.01
-        axes.push_back(wtl::eigen::valarray(wtl::eigen::filter(axis, (0.0 < axis) * (axis < max))));
-    }
-    return axes;
-}
-
-std::vector<std::valarray<double>> ExactModel::init_axes(const std::string& infile) {HERE;
-    if (read_results(infile)) {
-        if (skip_ > 0) {
-            throw std::runtime_error("infile must be a complete result");
-        }
-        std::cerr << "mle_params_: " << mle_params_ << std::endl;
-        ++stage_;
-        return make_vicinity(mle_params_, BREAKS_.at(stage_), STEPS_.at(stage_), 2.0);
-    } else {
-        const double step = STEPS_[0];
-        const size_t breaks = BREAKS_[0];
-        Eigen::ArrayXd axis = Eigen::VectorXd::LinSpaced(breaks, 2.0, step).array();
-        return std::vector<std::valarray<double>>(names_.size(), wtl::eigen::valarray(axis));
-    }
-}
-
 void ExactModel::run(const std::string& infile) {HERE;
-    const auto axes = init_axes(infile);
-    if (stage_ == STEPS_.size()) {
-        return;
-    }
-    std::string outfile = "/dev/stdout";
-    if (infile != "/dev/null") {
-        auto oss = wtl::make_oss(2, std::ios::fixed);
-        oss << "grid-" << STEPS_.at(stage_) << ".tsv.gz";
-        outfile = oss.str();
-        read_results(outfile);
-    }
+    const std::string outfile = init_meta(infile);
+    if (outfile.empty()) return;
+    const auto axes = make_axes();
     for (size_t j=0; j<names_.size(); ++j) {
         std::cerr << names_[j] << ": " << axes[j] << std::endl;
     }
@@ -145,10 +109,6 @@ void ExactModel::run_impl(const std::string& outfile, wtl::itertools::Generator<
     auto buffer = wtl::make_oss();
     std::ios::openmode mode = std::ios::out;
     if (wtl::exists(outfile)) {
-        if (skip_ == 0 && outfile != "/dev/stdout") {
-            std::cerr << outfile << " exists." << std::endl;
-            return;
-        }
         mode |= std::ios::app;
     } else {
         buffer << "##max_count=" << gen.max_count() << "\n";
@@ -254,6 +214,43 @@ double ExactModel::calc_loglik(const std::valarray<double>& th_path) const {
         loglik -= nsam_with_s_[s] * lnD[s];
     }
     return loglik += lnp_const_;
+}
+
+inline std::vector<std::valarray<double>>
+make_vicinity(const std::valarray<double>& center, const size_t breaks, const double radius, const double max=2.0) {
+    std::vector<std::valarray<double>> axes;
+    axes.reserve(center.size());
+    for (const double x: center) {
+        Eigen::ArrayXd axis = Eigen::ArrayXd::LinSpaced(breaks, x + radius, x - radius);
+        axis = (axis * 100.0).round() / 100.0;  // grid precision = 0.01
+        axes.push_back(wtl::eigen::valarray(wtl::eigen::filter(axis, (0.0 < axis) * (axis < max))));
+    }
+    return axes;
+}
+
+std::vector<std::valarray<double>> ExactModel::make_axes() const {HERE;
+    if (mle_params_.size() > 0) {
+        std::cerr << "mle_params_: " << mle_params_ << std::endl;
+        return make_vicinity(mle_params_, BREAKS_.at(stage_), STEPS_.at(stage_), 2.0);
+    } else {
+        const double step = STEPS_[0];
+        const size_t breaks = BREAKS_[0];
+        Eigen::ArrayXd axis = Eigen::VectorXd::LinSpaced(breaks, 2.0, step).array();
+        return std::vector<std::valarray<double>>(names_.size(), wtl::eigen::valarray(axis));
+    }
+}
+
+std::string ExactModel::init_meta(const std::string& infile) {HERE;
+    if (infile == "/dev/null") return "/dev/stdout";
+    if (stage_ >= STEPS_.size()) return "";
+    auto oss = wtl::make_oss(2, std::ios::fixed);
+    oss << "grid-" << STEPS_.at(stage_) << ".tsv.gz";
+    std::string outfile = oss.str();
+    if (read_results(outfile) && skip_ == 0) {
+        ++stage_;
+        outfile = init_meta(outfile);
+    }
+    return outfile;
 }
 
 bool ExactModel::read_results(const std::string& infile) {HERE;

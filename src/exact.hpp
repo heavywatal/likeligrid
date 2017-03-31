@@ -35,10 +35,10 @@ class ExactModel {
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
-    std::vector<std::valarray<double>> init_axes(const std::string& infile);
     void run_impl(const std::string& outfile, wtl::itertools::Generator<std::valarray<double>>&&) const;
     double calc_loglik(const std::valarray<double>& th_path) const;
-
+    std::vector<std::valarray<double>> make_axes() const;
+    std::string init_meta(const std::string& infile);
     bool read_results(const std::string&);
     size_t read_metadata(std::istream&);
     size_t read_body(std::istream&);
