@@ -35,31 +35,33 @@ ExactModel::ExactModel(const std::string& infile, const size_t max_sites) {HERE;
     for (const std::string& s: jso["annotation"]) {
         annot_.emplace_back(s);
     }
-    std::cerr << annot_ << std::endl;
+    std::cerr << "annot_: " << annot_ << std::endl;
 
     const size_t nsam = jso["sample"].size();
     genot_.reserve(nsam);
     for (const std::string& s: jso["sample"]) {
         genot_.emplace_back(s);
     }
-    // std::cerr << genot_ << std::endl;
+    // std::cerr << "genot_: " << genot_ << std::endl;
 
     const size_t ngene = genot_[0].size();
-    nsam_with_s_.assign(ngene, 0);
+    nsam_with_s_.assign(ngene + 1, 0);  // at most
     std::valarray<double> s_gene(ngene);
     for (const auto& bits: genot_) {
         const size_t s = bits.count();
         ++nsam_with_s_[s];
         if (s > max_sites) continue;
-        for (size_t j=0; j<ngene; ++j) {
-            if (bits.test(j)) ++s_gene[j];
+        bits_t::size_type j = bits.find_first();
+        while (j < bits_t::npos) {
+            ++s_gene[j];
+            j = bits.find_next(j);
         }
     }
     wtl::rstrip(&nsam_with_s_);
     std::cerr << "Original N_s: " << nsam_with_s_ << std::endl;
     if (max_sites + 1 < nsam_with_s_.size()) {
         nsam_with_s_.resize(max_sites + 1);
-        std::cerr << "Filtered N_s: " << nsam_with_s_ << std::endl;
+        std::cerr << "Using N_s: " << nsam_with_s_ << std::endl;
     } else {
         std::cerr << "Note: -s is too large" << std::endl;
     }
@@ -188,9 +190,11 @@ class Denoms {
         const size_t ngene = w_gene.size();
         effects_.reserve(ngene);
         for (bits_t mut_gene(ngene, 1); mut_gene.any(); mut_gene <<= 1) {
-            effects_.push_back(translate(mut_gene));
+            effects_.emplace_back(translate(mut_gene));
         }
+        // std::cerr << "effects_: " << effects_ << std::endl;
         mutate(bits_t(ngene, 0), bits_t(annot.size(), 0), 1.0);
+        // std::cerr << "denoms_: " << denoms_ << std::endl;
     }
     const std::valarray<double> log() const {return std::log(denoms_);}
 
@@ -216,9 +220,10 @@ class Denoms {
         if (mut_path.is_subset_of(pathtype)) {
             double p = 1.0;
             const bits_t recurrent = mut_path & pathtype;
-            size_t j = 0;
-            while ((j = recurrent.find_next(j)) < bits_t::npos) {
+            bits_t::size_type j = recurrent.find_first();
+            while (j < bits_t::npos) {
                 p *= th_path_[j];
+                j = recurrent.find_next(j);
             }
             return p;
         } else {return 1.0;}
@@ -240,11 +245,12 @@ class Denoms {
 };
 
 double ExactModel::calc_loglik(const std::valarray<double>& th_path) const {
-    const size_t max_sites = nsam_with_s_.size();
+    const size_t max_sites = nsam_with_s_.size() - 1;
     double loglik = (a_pathway_ * std::log(th_path)).sum();
     const auto lnD = Denoms(w_gene_, th_path, annot_, max_sites).log();
     // std::cout << "lnD: " << lnD << std::endl;
-    for (size_t s=2; s<max_sites; ++s) {
+    // -inf, 0, D2, D3, ...
+    for (size_t s=2; s<=max_sites; ++s) {
         loglik -= nsam_with_s_[s] * lnD[s];
     }
     return loglik += lnp_const_;
@@ -311,7 +317,7 @@ size_t ExactModel::read_body(std::istream& ist) {HERE;
 
 void ExactModel::unit_test() {HERE;
     ExactModel model("test.json.gz", 2);
-    model.run();
+    model.run("/dev/null");
 }
 
 } // namespace likeligrid
