@@ -253,15 +253,61 @@ std::string ExactModel::init_meta(const std::string& infile) {HERE;
     return outfile;
 }
 
+inline std::tuple<size_t, size_t, double>
+read_metadata(std::istream& ist) {HERE;
+    std::string buffer;
+    std::getline(ist, buffer);
+    const size_t max_count = std::stoul(wtl::split(buffer, "=")[1]);
+    std::getline(ist, buffer);
+    const size_t max_sites = std::stoul(wtl::split(buffer, "=")[1]);
+    std::getline(ist, buffer);
+    const double step = std::stod(wtl::split(buffer, "=")[1]);
+    return std::make_tuple(max_count, max_sites, step);
+}
+
+inline std::tuple<size_t, std::vector<std::string>, std::valarray<double>>
+read_body(std::istream& ist) {HERE;
+    std::string buffer;
+    ist >> buffer; // loglik
+    std::getline(ist, buffer); // header
+    buffer.erase(0, 1); // \t
+    const std::vector<std::string> colnames = wtl::split(buffer, "\t");
+    size_t nrow = 0;
+    double max_ll = std::numeric_limits<double>::lowest();
+    std::vector<double> mle;
+    while (std::getline(ist, buffer)) {
+        ++nrow;
+        std::istringstream iss(buffer);
+        std::istream_iterator<double> it(iss);
+        if (*it > max_ll) {
+            max_ll = *it;
+            mle.assign(++it, std::istream_iterator<double>());
+        }
+    }
+    std::valarray<double> mle_params(mle.data(), mle.size());
+    return std::make_tuple(nrow, colnames, mle_params);
+}
+
 bool ExactModel::read_results(const std::string& infile) {HERE;
     if (infile == "/dev/null")
         return false;
     try {
         wtl::izfstream ist(infile);
         std::cerr << "Reading: " << infile << std::endl;
-        const size_t max_count = read_metadata(ist);
-        skip_ = read_body(ist);
+        size_t max_count;
+        double step;
+        std::vector<std::string> colnames;
+        std::tie(max_count, std::ignore, step) = read_metadata(ist);
+        stage_ = guess_stage(step);
+        std::tie(skip_, colnames, mle_params_) = read_body(ist);
         if (skip_ == max_count) skip_ = 0;
+        if (names_ != colnames) {
+            std::ostringstream oss;
+            oss << "Contradiction in column names:\n"
+                << "genotype file: " << names_ << "\n"
+                << "result file:" << colnames;
+            throw std::runtime_error(oss.str());
+        }
         return true;
     } catch (std::ios::failure& e) {
         if (errno != 2) throw;
@@ -269,47 +315,11 @@ bool ExactModel::read_results(const std::string& infile) {HERE;
     }
 }
 
-size_t ExactModel::read_metadata(std::istream& ist) {HERE;
-    std::string buffer;
-    std::getline(ist, buffer);
-    const size_t max_count = std::stoul(wtl::split(buffer, "=")[1]);
-    std::getline(ist, buffer);
-    const size_t max_sites = std::stoul(wtl::split(buffer, "=")[1]);
-    if (nsam_with_s_.size() - 1 != max_sites) {
-        std::cerr << "Note: -s is different between arg and file\n";
-    }
-    std::getline(ist, buffer);
-    const double step = std::stod(wtl::split(buffer, "=")[1]);
+size_t ExactModel::guess_stage(const double step) const {
     auto pred = std::bind(wtl::approx<double>, std::placeholders::_1, step);
     const auto it = std::find_if(STEPS_.begin(), STEPS_.end(), pred);
     if (it == STEPS_.end()) throw std::runtime_error("invalid step size");
-    stage_ = it - STEPS_.begin();
-    return max_count;
-}
-
-size_t ExactModel::read_body(std::istream& ist) {HERE;
-    std::string buffer;
-    ist >> buffer; // loglik
-    std::getline(ist, buffer); // header
-    buffer.erase(0, 1); // \t
-    if (names_ != wtl::split(buffer, "\t")) {
-        std::cerr << names_ << std::endl;
-        std::cerr << wtl::split(buffer, "\t") << std::endl;
-        throw std::runtime_error("Column names are wrong");
-    }
-    size_t i = 0;
-    double max_ll = std::numeric_limits<double>::lowest();
-    while (std::getline(ist, buffer)) {
-        ++i;
-        std::istringstream iss(buffer);
-        std::istream_iterator<double> it(iss);
-        if (*it > max_ll) {
-            max_ll = *it;
-            std::vector<double> v(++it, std::istream_iterator<double>());
-            mle_params_ = std::valarray<double>(v.data(), v.size());
-        }
-    }
-    return i;
+    return it - STEPS_.begin();
 }
 
 void ExactModel::unit_test() {HERE;
