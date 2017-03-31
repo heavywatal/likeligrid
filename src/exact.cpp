@@ -296,11 +296,15 @@ bool ExactModel::read_results(const std::string& infile) {HERE;
         std::cerr << "Reading: " << infile << std::endl;
         size_t max_count;
         double step;
-        std::vector<std::string> colnames;
         std::tie(max_count, std::ignore, step) = read_metadata(ist);
         stage_ = guess_stage(step);
-        std::tie(skip_, colnames, mle_params_) = read_body(ist);
-        if (skip_ == max_count) skip_ = 0;
+        std::vector<std::string> colnames;
+        std::valarray<double> mle_params;
+        std::tie(skip_, colnames, mle_params) = read_body(ist);
+        if (skip_ == max_count) {  // is complete file
+            skip_ = 0;
+            mle_params_.swap(mle_params);
+        }
         if (names_ != colnames) {
             std::ostringstream oss;
             oss << "Contradiction in column names:\n"
