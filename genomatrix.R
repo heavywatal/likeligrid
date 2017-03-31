@@ -505,3 +505,13 @@ genotype2bits = function(.data) {
         jsonlite::write_json(.con, pretty=TRUE)
         close(.con)
     })
+
+.testcase = list(
+    pathway= c('A', 'B'),
+    annotation= c('0011', '1100'),
+    sample= c('0011', '0101', '1010', '1100', '1001', '0110')
+)
+.testcase
+.con = gzfile('test.json.gz', 'w')
+jsonlite::write_json(.testcase, .con, pretty=TRUE)
+close(.con)
