@@ -7,6 +7,7 @@
 #define LIKELIGRID_UTIL_HPP_
 
 #include <wtl/iostr.hpp>
+#include <wtl/numeric.hpp>
 
 #include <string>
 #include <vector>
@@ -14,6 +15,12 @@
 #include <iterator>
 
 namespace likeligrid {
+
+inline size_t guess_stage(const std::vector<double>& STEPS, const double step) {
+    const auto it = std::find_if(STEPS.begin(), STEPS.end(), wtl::approx(step));
+    if (it == STEPS.end()) throw std::runtime_error("invalid step size");
+    return it - STEPS.begin();
+}
 
 inline std::tuple<size_t, size_t, double>
 read_metadata(std::istream& ist) {

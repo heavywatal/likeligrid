@@ -40,7 +40,6 @@ class ExactModel {
     std::vector<std::valarray<double>> make_axes() const;
     std::string init_meta(const std::string& infile);
     bool read_results(const std::string&);
-    size_t guess_stage(const double step) const;
 
     std::vector<std::string> names_;
     std::vector<bits_t> annot_;

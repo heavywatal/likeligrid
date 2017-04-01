@@ -3,6 +3,7 @@
     @brief Inplementation of Exclusivity class
 */
 #include "exclusivity.hpp"
+#include "util.hpp"
 
 #include <functional>
 #include <unordered_map>
@@ -252,10 +253,7 @@ size_t ExclusivityModel::read_metadata(std::istream& ist) {HERE;
     }
     std::getline(ist, buffer);
     const double step = std::stod(wtl::split(buffer, "=")[1]);
-    auto pred = std::bind(wtl::approx<double>, std::placeholders::_1, step);
-    const auto it = std::find_if(STEPS_.begin(), STEPS_.end(), pred);
-    if (it == STEPS_.end()) throw std::runtime_error("invalid step size");
-    stage_ = it - STEPS_.begin();
+    stage_ = guess_stage(STEPS_, step);
     return max_count;
 }
 

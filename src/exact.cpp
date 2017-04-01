@@ -263,7 +263,7 @@ bool ExactModel::read_results(const std::string& infile) {HERE;
         size_t max_count;
         double step;
         std::tie(max_count, std::ignore, step) = read_metadata(ist);
-        stage_ = guess_stage(step);
+        stage_ = guess_stage(STEPS_, step);
         std::vector<std::string> colnames;
         std::valarray<double> mle_params;
         std::tie(skip_, colnames, mle_params) = read_body(ist);
@@ -283,13 +283,6 @@ bool ExactModel::read_results(const std::string& infile) {HERE;
         if (errno != 2) throw;
         return false;
     }
-}
-
-size_t ExactModel::guess_stage(const double step) const {
-    auto pred = std::bind(wtl::approx<double>, std::placeholders::_1, step);
-    const auto it = std::find_if(STEPS_.begin(), STEPS_.end(), pred);
-    if (it == STEPS_.end()) throw std::runtime_error("invalid step size");
-    return it - STEPS_.begin();
 }
 
 void ExactModel::unit_test() {HERE;
