@@ -3,6 +3,7 @@
     @brief Inplementation of ExactModel class
 */
 #include "exact.hpp"
+#include "util.hpp"
 
 #include <functional>
 
@@ -251,41 +252,6 @@ std::string ExactModel::init_meta(const std::string& infile) {HERE;
         outfile = init_meta(outfile);
     }
     return outfile;
-}
-
-inline std::tuple<size_t, size_t, double>
-read_metadata(std::istream& ist) {HERE;
-    std::string buffer;
-    std::getline(ist, buffer);
-    const size_t max_count = std::stoul(wtl::split(buffer, "=")[1]);
-    std::getline(ist, buffer);
-    const size_t max_sites = std::stoul(wtl::split(buffer, "=")[1]);
-    std::getline(ist, buffer);
-    const double step = std::stod(wtl::split(buffer, "=")[1]);
-    return std::make_tuple(max_count, max_sites, step);
-}
-
-inline std::tuple<size_t, std::vector<std::string>, std::valarray<double>>
-read_body(std::istream& ist) {HERE;
-    std::string buffer;
-    ist >> buffer; // loglik
-    std::getline(ist, buffer); // header
-    buffer.erase(0, 1); // \t
-    const std::vector<std::string> colnames = wtl::split(buffer, "\t");
-    size_t nrow = 0;
-    double max_ll = std::numeric_limits<double>::lowest();
-    std::vector<double> mle;
-    while (std::getline(ist, buffer)) {
-        ++nrow;
-        std::istringstream iss(buffer);
-        std::istream_iterator<double> it(iss);
-        if (*it > max_ll) {
-            max_ll = *it;
-            mle.assign(++it, std::istream_iterator<double>());
-        }
-    }
-    std::valarray<double> mle_params(mle.data(), mle.size());
-    return std::make_tuple(nrow, colnames, mle_params);
 }
 
 bool ExactModel::read_results(const std::string& infile) {HERE;
