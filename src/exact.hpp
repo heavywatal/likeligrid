@@ -6,18 +6,15 @@
 #ifndef LIKELIGRID_EXACT_HPP_
 #define LIKELIGRID_EXACT_HPP_
 
-#include <cstdint>
+#include "typedef.hpp"
+
 #include <string>
 #include <vector>
 #include <valarray>
 
-#include <boost/dynamic_bitset.hpp>
 #include <wtl/itertools.hpp>
 
 namespace likeligrid {
-
-typedef uint_fast32_t uint;
-typedef boost::dynamic_bitset<> bits_t;
 
 class ExactModel {
   public:

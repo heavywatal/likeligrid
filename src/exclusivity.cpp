@@ -8,7 +8,6 @@
 #include <functional>
 #include <unordered_map>
 
-#include <boost/dynamic_bitset.hpp>
 #include <boost/math/distributions/chi_squared.hpp>
 
 #include <wtl/debug.hpp>
@@ -29,7 +28,7 @@ bool ExclusivityModel::SIGINT_RAISED_ = false;
 ExclusivityModel::ExclusivityModel(const std::string& infile, const size_t max_sites) {HERE;
     wtl::izfstream ifs(infile);
     names_ = wtl::read_header(ifs);
-    auto pathtypes = wtl::eigen::read_array<size_t>(ifs, names_.size());
+    auto pathtypes = wtl::eigen::read_array<ArrayXXu::value_type>(ifs, names_.size());
     ifs.close();
     const ArrayXu raw_s_sample = pathtypes.rowwise().sum().array();
     nsam_with_s_.assign(raw_s_sample.maxCoeff() + 1, 0);
@@ -211,7 +210,7 @@ double ExclusivityModel::calc_denom(
     if (num_mutations < 2) return 1.0;
     auto iter = wtl::itertools::product(index_axes_[num_mutations]);
     double sum_prob = 0.0;
-    boost::dynamic_bitset<> bits(x_pathway.size());
+    bits_t bits(x_pathway.size());
 
     for (const auto& indices: iter()) {
         double p = 1.0;

@@ -6,6 +6,8 @@
 #ifndef LIKELIGRID_EXCLUSIVITY_HPP_
 #define LIKELIGRID_EXCLUSIVITY_HPP_
 
+#include "typedef.hpp"
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -19,8 +21,8 @@ namespace likeligrid {
 
 class ExclusivityModel {
   public:
-    typedef Eigen::Array<size_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> ArrayXXu;
-    typedef Eigen::Array<size_t, Eigen::Dynamic, 1> ArrayXu;
+    typedef Eigen::Array<uint, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> ArrayXXu;
+    typedef Eigen::Array<uint, Eigen::Dynamic, 1> ArrayXu;
     static const std::vector<double> STEPS_;
     static const std::vector<size_t> BREAKS_;
 
