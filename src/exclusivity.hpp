@@ -39,7 +39,7 @@ class ExclusivityModel {
   private:
     void init_axes(const std::string&);
     void run_impl(const std::string&, wtl::itertools::Generator<Eigen::ArrayXd>&&) const;
-    double calc_loglik(const Eigen::ArrayXd& params) const;
+    double calc_loglik(const Eigen::ArrayXd& th_path) const;
     double calc_denom(
         const Eigen::ArrayXd& weights,
         const Eigen::ArrayXd& exclusi,

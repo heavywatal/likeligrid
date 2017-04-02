@@ -126,18 +126,18 @@ std::unordered_map<std::string, Eigen::ArrayXd> ExclusivityModel::find_intersect
     const double threshold = max_ll - 0.5 * bmath::quantile(bmath::complement(chisq, 0.05));
     std::unordered_map<std::string, Eigen::ArrayXd> intersections;
     for (Eigen::Index j=0; j<mle_params_.size(); ++j) {
-        auto params = mle_params_;
+        auto th_path = mle_params_;
         for (size_t i=0; i<200; ++i) {
-            params[j] -= step;
-            if (params[j] < step || calc_loglik(params) < threshold) {
-                intersections.emplace(names_[j] + "_L", params);
+            th_path[j] -= step;
+            if (th_path[j] < step || calc_loglik(th_path) < threshold) {
+                intersections.emplace(names_[j] + "_L", th_path);
                 break;
             }
         }
         for (size_t i=0; i<200; ++i) {
-            params[j] += step;
-            if (params[j] >= 2.0 || calc_loglik(params) < threshold) {
-                intersections.emplace(names_[j] + "_U", params);
+            th_path[j] += step;
+            if (th_path[j] >= 2.0 || calc_loglik(th_path) < threshold) {
+                intersections.emplace(names_[j] + "_U", th_path);
                 break;
             }
         }
@@ -178,9 +178,9 @@ void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Gene
     std::cerr << "Writing: " << outfile << std::endl;
     std::cerr << skip_ << " to " << gen.max_count() << std::endl;
     wtl::ozfstream fout(outfile, mode);
-    for (const auto& params: gen(skip_)) {
-        buffer << calc_loglik(params) << "\t"
-               << params.transpose().format(wtl::eigen::tsv()) << "\n";
+    for (const auto& th_path: gen(skip_)) {
+        buffer << calc_loglik(th_path) << "\t"
+               << th_path.transpose().format(wtl::eigen::tsv()) << "\n";
         if (gen.count() % 10000 == 0) {  // snapshot for long run
             std::cerr << "*" << std::flush;
             fout << buffer.str();
@@ -193,11 +193,11 @@ void ExclusivityModel::run_impl(const std::string& outfile, wtl::itertools::Gene
     fout << buffer.str();
 }
 
-double ExclusivityModel::calc_loglik(const Eigen::ArrayXd& params) const {
-    double loglik = (a_pathway_ * params.log()).sum();
+double ExclusivityModel::calc_loglik(const Eigen::ArrayXd& th_path) const {
+    double loglik = (a_pathway_ * th_path.log()).sum();
     // D = 1.0 when s < 2
     for (size_t s=2; s<nsam_with_s_.size(); ++s) {
-        loglik -= nsam_with_s_[s] * std::log(calc_denom(w_pathway_, params, s));
+        loglik -= nsam_with_s_[s] * std::log(calc_denom(w_pathway_, th_path, s));
     }
     return loglik += lnp_const_;
 }
