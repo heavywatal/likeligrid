@@ -1,6 +1,6 @@
 // -*- mode: c++; coding: utf-8 -*-
-/*! @file util.hpp
-    @brief Common functions
+/*! @file typedef.hpp
+    @brief Type definitions
 */
 #pragma once
 #ifndef LIKELIGRID_TYPEDEF_HPP_
