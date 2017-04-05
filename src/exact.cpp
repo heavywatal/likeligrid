@@ -21,7 +21,7 @@
 namespace likeligrid {
 
 const std::vector<double> ExactModel::STEPS_ = {0.4, 0.2, 0.1, 0.05, 0.02, 0.01};
-const std::vector<size_t> ExactModel::BREAKS_ = {5, 5, 5, 6, 5, 5};
+const std::vector<size_t> ExactModel::BREAKS_ = {5, 5, 5, 5, 6, 5};
 bool ExactModel::SIGINT_RAISED_ = false;
 
 ExactModel::ExactModel(const std::string& infile, const size_t max_sites):
@@ -232,7 +232,7 @@ make_vicinity(const std::valarray<double>& center, const size_t breaks, const do
 std::vector<std::valarray<double>> ExactModel::make_axes() const {HERE;
     if (mle_params_.size() > 0) {
         std::cerr << "mle_params_: " << mle_params_ << std::endl;
-        return make_vicinity(mle_params_, BREAKS_.at(stage_), STEPS_.at(stage_), 2.0);
+        return make_vicinity(mle_params_, BREAKS_.at(stage_), 2.0 * STEPS_.at(stage_), 2.0);
     } else {
         const double step = STEPS_[0];
         const size_t breaks = BREAKS_[0];

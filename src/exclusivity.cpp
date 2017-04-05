@@ -22,7 +22,7 @@
 namespace likeligrid {
 
 const std::vector<double> ExclusivityModel::STEPS_ = {0.4, 0.2, 0.1, 0.05, 0.02, 0.01};
-const std::vector<size_t> ExclusivityModel::BREAKS_ = {5, 5, 5, 6, 5, 5};
+const std::vector<size_t> ExclusivityModel::BREAKS_ = {5, 5, 5, 5, 6, 5};
 bool ExclusivityModel::SIGINT_RAISED_ = false;
 
 ExclusivityModel::ExclusivityModel(const std::string& infile, const size_t max_sites) {HERE;
@@ -151,7 +151,7 @@ void ExclusivityModel::init_axes(const std::string& infile) {HERE;
             throw std::runtime_error("infile must be a complete result");
         }
         std::cerr << "mle_params_: " << mle_params_.transpose() << std::endl;
-        axes_ = make_vicinity(mle_params_, BREAKS_.at(stage_), STEPS_.at(stage_), 2.0);
+        axes_ = make_vicinity(mle_params_, BREAKS_.at(stage_), 2.0 * STEPS_.at(stage_), 2.0);
         ++stage_;
     } else {
         const double step = STEPS_[0];
