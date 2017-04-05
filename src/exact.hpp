@@ -22,6 +22,7 @@ class ExactModel {
     static const std::vector<size_t> BREAKS_;
 
     ExactModel() = default;
+    ExactModel(std::istream&&, const size_t max_sites);
     ExactModel(
         const std::string& infile,
         const size_t max_sites=255);

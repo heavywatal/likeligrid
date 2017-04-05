@@ -24,12 +24,12 @@ const std::vector<double> ExactModel::STEPS_ = {0.4, 0.2, 0.1, 0.05, 0.02, 0.01}
 const std::vector<size_t> ExactModel::BREAKS_ = {5, 5, 5, 6, 5, 5};
 bool ExactModel::SIGINT_RAISED_ = false;
 
-ExactModel::ExactModel(const std::string& infile, const size_t max_sites) {HERE;
+ExactModel::ExactModel(const std::string& infile, const size_t max_sites):
+    ExactModel(wtl::izfstream(infile), max_sites) {HERE;}
+
+ExactModel::ExactModel(std::istream&& ist, const size_t max_sites) {HERE;
     nlohmann::json jso;
-    {
-        wtl::izfstream ist(infile);
-        ist >> jso;
-    }
+    ist >> jso;
     names_ = jso["pathway"].get<std::vector<std::string>>();
     const size_t npath = names_.size();
     annot_.reserve(npath);
@@ -286,7 +286,14 @@ bool ExactModel::read_results(const std::string& infile) {HERE;
 }
 
 void ExactModel::unit_test() {HERE;
-    ExactModel model("test.json.gz", 2);
+    std::stringstream sst;
+    sst <<
+R"({
+  "pathway": ["A", "B"],
+  "annotation": ["0011", "1100"],
+  "sample": ["0011", "0101", "1010", "1100", "1001", "0110"]
+})";
+    ExactModel model(std::move(sst), 2);
     model.run("/dev/null");
 }
 
