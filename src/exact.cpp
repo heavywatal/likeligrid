@@ -24,6 +24,18 @@ const std::vector<double> ExactModel::STEPS_ = {0.4, 0.2, 0.1, 0.05, 0.02, 0.01}
 const std::vector<size_t> ExactModel::BREAKS_ = {5, 5, 5, 5, 6, 5};
 bool ExactModel::SIGINT_RAISED_ = false;
 
+inline std::vector<std::valarray<double>>
+make_vicinity(const std::valarray<double>& center, const size_t breaks, const double radius, const double max=2.001) {
+    std::vector<std::valarray<double>> axes;
+    axes.reserve(center.size());
+    for (const double x: center) {
+        Eigen::ArrayXd axis = Eigen::ArrayXd::LinSpaced(breaks, x + radius, x - radius);
+        axis = (axis * 100.0).round() / 100.0;  // grid precision = 0.01
+        axes.push_back(wtl::eigen::valarray(wtl::eigen::filter(axis, (0.0 < axis) * (axis < max))));
+    }
+    return axes;
+}
+
 ExactModel::ExactModel(const std::string& infile, const size_t max_sites):
     ExactModel(wtl::izfstream(infile), max_sites) {HERE;}
 
@@ -91,12 +103,15 @@ ExactModel::ExactModel(std::istream&& ist, const size_t max_sites) {HERE;
         }
     }
     std::cerr << "a_pathway_: " << a_pathway_ << std::endl;
+    mle_params_.resize(a_pathway_.size());
+    mle_params_ = 1.2;
 }
 
 void ExactModel::run(const std::string& infile) {HERE;
     const std::string outfile = init_meta(infile);
+    std::cerr << "mle_params_: " << mle_params_ << std::endl;
     if (outfile.empty()) return;
-    const auto axes = make_axes();
+    const auto axes = make_vicinity(mle_params_, BREAKS_.at(stage_), 2.0 * STEPS_.at(stage_));
     for (size_t j=0; j<names_.size(); ++j) {
         std::cerr << names_[j] << ": " << axes[j] << std::endl;
     }
@@ -214,30 +229,6 @@ double ExactModel::calc_loglik(const std::valarray<double>& th_path) const {
         loglik -= nsam_with_s_[s] * lnD[s];
     }
     return loglik += lnp_const_;
-}
-
-inline std::vector<std::valarray<double>>
-make_vicinity(const std::valarray<double>& center, const size_t breaks, const double radius, const double max=2.0) {
-    std::vector<std::valarray<double>> axes;
-    axes.reserve(center.size());
-    for (const double x: center) {
-        Eigen::ArrayXd axis = Eigen::ArrayXd::LinSpaced(breaks, x + radius, x - radius);
-        axis = (axis * 100.0).round() / 100.0;  // grid precision = 0.01
-        axes.push_back(wtl::eigen::valarray(wtl::eigen::filter(axis, (0.0 < axis) * (axis < max))));
-    }
-    return axes;
-}
-
-std::vector<std::valarray<double>> ExactModel::make_axes() const {HERE;
-    if (mle_params_.size() > 0) {
-        std::cerr << "mle_params_: " << mle_params_ << std::endl;
-        return make_vicinity(mle_params_, BREAKS_.at(stage_), 2.0 * STEPS_.at(stage_), 2.0);
-    } else {
-        const double step = STEPS_[0];
-        const size_t breaks = BREAKS_[0];
-        Eigen::ArrayXd axis = Eigen::VectorXd::LinSpaced(breaks, 2.0, step).array();
-        return std::vector<std::valarray<double>>(names_.size(), wtl::eigen::valarray(axis));
-    }
 }
 
 std::string ExactModel::init_meta(const std::string& infile) {HERE;
