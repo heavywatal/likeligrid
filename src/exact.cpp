@@ -14,9 +14,9 @@
 #include <wtl/iostr.hpp>
 #include <wtl/zfstream.hpp>
 #include <wtl/algorithm.hpp>
+#include <wtl/numeric.hpp>
 #include <wtl/math.hpp>
 #include <wtl/os.hpp>
-#include <wtl/eigen.hpp>
 
 namespace likeligrid {
 
@@ -29,9 +29,11 @@ make_vicinity(const std::valarray<double>& center, const size_t breaks, const do
     std::vector<std::valarray<double>> axes;
     axes.reserve(center.size());
     for (const double x: center) {
-        Eigen::ArrayXd axis = Eigen::ArrayXd::LinSpaced(breaks, x + radius, x - radius);
-        axis = (axis * 100.0).round() / 100.0;  // grid precision = 0.01
-        axes.push_back(wtl::eigen::valarray(wtl::eigen::filter(axis, (0.0 < axis) * (axis < max))));
+        auto axis = wtl::lin_spaced(breaks, x + radius, x - radius);
+        // grid precision = 0.01
+        axis = (axis * 100.0).apply(std::round) / 100.0;
+        const std::valarray<bool> positive = axis > 0.0;
+        axes.emplace_back(axis[positive & (axis < max)]);
     }
     return axes;
 }
