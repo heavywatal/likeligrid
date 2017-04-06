@@ -100,39 +100,38 @@ void ExactModel::run(const std::string& infile) {HERE;
     for (size_t j=0; j<names_.size(); ++j) {
         std::cerr << names_[j] << ": " << axes[j] << std::endl;
     }
-    run_impl(outfile, wtl::itertools::product(axes));
+    {
+        wtl::ozfstream fout(outfile, std::ios::out | std::ios::app);
+        std::cerr << "Writing: " << outfile << std::endl;
+        run_impl(fout, wtl::itertools::product(axes));
+    }
     if (outfile != "/dev/stdout") {
         run(outfile);
     }
 }
 
-void ExactModel::run_impl(const std::string& outfile, wtl::itertools::Generator<std::valarray<double>>&& gen) const {HERE;
+void ExactModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::valarray<double>>&& gen) const {HERE;
     auto buffer = wtl::make_oss();
-    std::ios::openmode mode = std::ios::out;
-    if (wtl::exists(outfile)) {
-        mode |= std::ios::app;
-    } else {
+    std::cerr << skip_ << " to " << gen.max_count() << std::endl;
+    if (skip_ == 0) {
         buffer << "##max_count=" << gen.max_count() << "\n";
         buffer << "##max_sites=" << nsam_with_s_.size() - 1 << "\n";
         buffer << "##step=" << STEPS_.at(stage_) << "\n";
         buffer << "loglik\t" << wtl::join(names_, "\t") << "\n";
     }
-    std::cerr << "Writing: " << outfile << std::endl;
-    std::cerr << skip_ << " to " << gen.max_count() << std::endl;
-    wtl::ozfstream fout(outfile, mode);
     for (const auto& th_path: gen(skip_)) {
         buffer << calc_loglik(th_path) << "\t"
                << wtl::str_join(th_path, "\t") << "\n";
         if (gen.count() % 100 == 0) {  // snapshot for long run
             std::cerr << "*" << std::flush;
-            fout << buffer.str();
-            fout.strict_sync();
+            ost << buffer.str();
+            ost.flush();
             buffer.str("");
         }
         if (SIGINT_RAISED_) {throw wtl::ExitSuccess("KeyboardInterrupt");}
     }
     std::cerr << "\n";
-    fout << buffer.str();
+    ost << buffer.str();
 }
 
 class Denoms {
@@ -291,7 +290,7 @@ void ExactModel::unit_test() {HERE;
 R"({
   "pathway": ["A", "B"],
   "annotation": ["0011", "1100"],
-  "sample": ["0011", "0101", "1010", "1100", "1001", "0110"]
+  "sample": ["0011", "0101", "1001", "0110", "1010", "1100"]
 })";
     ExactModel model(std::move(sst), 2);
     model.run("/dev/null");
