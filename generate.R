@@ -39,60 +39,6 @@ make_phenotypes = function(genotypes, coefs, sd_coef, threshold, epsilon=0.1) {
 }
 
 #########1#########2#########3#########4#########5#########6#########7#########
-# Shuffle genotypes
-
-working_dir = '~/Dropbox/working/cancer/genotypes'
-.infile = file.path(working_dir, 'genotype_pereira+er.tsv')
-genotype_pereira = readr::read_tsv(.infile)
-genotype_pereira %>>% dplyr::summarise_all(mean)
-genotype_pereira %>>% as.matrix() %>>% table()
-genotype_pereira %>>% dplyr::select(-Other) %>>% as.matrix() %>>% table()
-
-genotype_pereira %>>%
-    dplyr::mutate(rm=rowMeans(.)) %>>%
-    ggplot(aes(rm))+geom_histogram()+wtl::theme_wtl()
-
-shuffle_genotypes = function(.data) {
-    .names = names(.data)
-    purrr::by_row(.data, .labels=FALSE,
-        ~{sample(.x) %>>% setNames(.names)}) %>>%
-    tidyr::unnest()
-}
-
-shuffle_genotype_file = function(.infile) {
-    .data = readr::read_tsv(.infile)
-    .outfile = str_replace(.infile, '\\bgenotype_', 'shuffled_')
-    message(.outfile)
-    shuffle_genotypes(.data) %>>% write_tsv(.outfile, na='')
-}
-
-working_dir = '~/Dropbox/working/cancer/genotypes'
-.genotype_files = list.files(working_dir, pattern='\\bgenotype_pereira', full.names=TRUE)
-shuffle_genotype_file(.genotype_files[1])
-
-.genotype_files %>>% purrr::walk(shuffle_genotype_file)
-
-.shuffled = genotype_pereira %>>% shuffle_genotypes() %>>% (?.)
-.outfile = file.path(working_dir, sprintf('genotype_shuffled+er_%s.tsv', wtl::now()))
-write_tsv(.shuffled, .outfile, na='')
-
-.dimensions = ncol(genotype_pereira)
-.combn = combn(.dimensions, 2)
-for (i in seq_len(ncol(.combn))) {
-    .df = add_interaction_term(genotype_pereira, .combn[,i])
-    .term = tail(names(.df), 1)
-    message(.term)
-    write_tsv(.df, sprintf('pereira+er_%s.tsv', .term), na='')
-}
-
-for (i in seq_len(ncol(.combn))) {
-    .df = add_interaction_term(.shuffled, .combn[,i])
-    .term = tail(names(.df), 1)
-    message(.term)
-    write_tsv(.df, sprintf('shuffled+er_%s.tsv', .term), na='')
-}
-
-#########1#########2#########3#########4#########5#########6#########7#########
 ## Make dummy data
 
 n_obs = 16000L

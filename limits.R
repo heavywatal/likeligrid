@@ -141,3 +141,39 @@ plot_limits(.indirs[15])
 
 # .out$plt[[2]]
 ggsave('confidence-simple.pdf', .out$plt, width=12, height=10)
+
+
+#########1#########2#########3#########4#########5#########6#########7#########
+# limits in detail
+
+.indirs
+.infiles = list.files(.indirs[4], 'limit.*\\.tsv\\.gz$', full.names=TRUE)
+
+.uniaxis = file.path(.indirs[4], 'uniaxis.tsv.gz') %>>% read_likeligrid() %>>% (?.)
+.mle = .extract_mle(.uniaxis)
+
+.read_limit_max(.infiles[1])
+
+.read_limit_max = function(.infile) {
+    .pathway = str_extract(.infile, '(?<=limit-)[^.]+(?=_[LU]\\.tsv)')
+    read_likeligrid(.infile) %>>%
+    dplyr::group_by_(.pathway) %>>%
+    dplyr::top_n(1, wt=loglik) %>>%
+    dplyr::ungroup() %>>%
+    dplyr::arrange_(.pathway)
+}
+.read_limit_max(.infiles[1])
+
+
+.data = read_likeligrid(.infiles[1])
+
+.data %>>%
+    dplyr::group_by(Fate) %>>%
+    dplyr::top_n(1, wt=loglik)
+
+.mle
+.data %>>% dplyr::summarise_all(max)
+.data %>>% dplyr::summarise_all(min)
+.data %>>% dplyr::arrange(desc(loglik))
+
+dplyr::top_n(1, wt = loglik)

@@ -75,6 +75,8 @@ major = maf %>>%
     dplyr::filter(!sample %in% hypermutants) %>>%
     (?.)
 
+#########1#########2#########3#########4#########5#########6#########7#########
+
 shuffle = function(.data) {
     tidyr::nest(.data, -cancer_type) %>>%
     dplyr::mutate(data= purrr::map(data, ~{dplyr::mutate(.x, symbol= sample(symbol))})) %>>%
@@ -505,13 +507,3 @@ genotype2bits = function(.data) {
         jsonlite::write_json(.con, pretty=TRUE)
         close(.con)
     })
-
-.testcase = list(
-    pathway= c('A', 'B'),
-    annotation= c('0011', '1100'),
-    sample= c('0011', '0101', '1010', '1100', '1001', '0110')
-)
-.testcase
-.con = gzfile('test.json.gz', 'w')
-jsonlite::write_json(.testcase, .con, pretty=TRUE)
-close(.con)
