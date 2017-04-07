@@ -24,20 +24,6 @@ const std::vector<double> ExactModel::STEPS_ = {0.4, 0.2, 0.1, 0.05, 0.02, 0.01}
 const std::vector<size_t> ExactModel::BREAKS_ = {5, 5, 5, 5, 6, 5};
 bool ExactModel::SIGINT_RAISED_ = false;
 
-inline std::vector<std::valarray<double>>
-make_vicinity(const std::valarray<double>& center, const size_t breaks, const double radius, const double max=2.001) {
-    std::vector<std::valarray<double>> axes;
-    axes.reserve(center.size());
-    for (const double x: center) {
-        auto axis = wtl::lin_spaced(breaks, x + radius, x - radius);
-        // grid precision = 0.01
-        axis = (axis * 100.0).apply(std::round) / 100.0;
-        const std::valarray<bool> positive = axis > 0.0;
-        axes.emplace_back(axis[positive & (axis < max)]);
-    }
-    return axes;
-}
-
 ExactModel::ExactModel(const std::string& infile, const size_t max_sites):
     ExactModel(wtl::izfstream(infile), max_sites) {HERE;}
 
