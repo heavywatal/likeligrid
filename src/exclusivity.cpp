@@ -15,7 +15,6 @@
 #include <wtl/iostr.hpp>
 #include <wtl/numeric.hpp>
 #include <wtl/math.hpp>
-#include <wtl/eigen.hpp>
 #include <wtl/zfstream.hpp>
 #include <wtl/os.hpp>
 
@@ -26,16 +25,13 @@ const std::vector<size_t> ExclusivityModel::BREAKS_ = {5, 5, 5, 5, 6, 5};
 bool ExclusivityModel::SIGINT_RAISED_ = false;
 
 ExclusivityModel::ExclusivityModel(const std::string& infile, const size_t max_sites) {HERE;
-    typedef Eigen::Array<uint, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> ArrayXXu;
-    typedef Eigen::Array<uint, Eigen::Dynamic, 1> ArrayXu;
     wtl::izfstream ifs(infile);
     names_ = wtl::read_header(ifs);
-    auto pathtypes = wtl::eigen::read_array<ArrayXXu::value_type>(ifs, names_.size());
-    ifs.close();
-    const ArrayXu raw_s_sample = pathtypes.rowwise().sum().array();
-    nsam_with_s_.assign(raw_s_sample.maxCoeff() + 1, 0);
-    for (Eigen::Index i=0; i<raw_s_sample.size(); ++i) {
-        ++nsam_with_s_[raw_s_sample[i]];
+    auto pathtypes = wtl::read_valarrays<uint>(ifs);
+    const auto raw_s_sample = wtl::row_sums(pathtypes);
+    nsam_with_s_.assign(raw_s_sample.max() + 1, 0);
+    for (const auto s: raw_s_sample) {
+        ++nsam_with_s_[s];
     }
     std::cerr << "Original N_s: " << nsam_with_s_ << std::endl;
     if (max_sites + 1 < nsam_with_s_.size()) {
@@ -45,21 +41,22 @@ ExclusivityModel::ExclusivityModel(const std::string& infile, const size_t max_s
         std::cerr << "Note: -s is too large" << std::endl;
     }
     while (nsam_with_s_.back() == 0) {
-        nsam_with_s_.resize(nsam_with_s_.size() - 1);
+        nsam_with_s_.pop_back();
     }
     const auto final_max_s = nsam_with_s_.size() - 1;
-    pathtypes = wtl::eigen::filter(pathtypes, raw_s_sample <= final_max_s);
+    pathtypes = wtl::filter(pathtypes, raw_s_sample <= final_max_s);
 
-    const Eigen::ArrayXd s_tmp = pathtypes.colwise().sum().cast<double>();
-    const Eigen::ArrayXd a_tmp = pathtypes.unaryExpr([](size_t x){
-        if (x > 0) {return --x;} else {return x;}
-    }).colwise().sum().cast<double>();
-    const auto s_pathway = wtl::eigen::valarray(s_tmp);
+    const auto s_pathway = wtl::cast<double>(wtl::col_sums(pathtypes));
     w_pathway_ = s_pathway / s_pathway.sum();
-    a_pathway_ = wtl::eigen::valarray(a_tmp);
-    for (Eigen::Index i=0; i<pathtypes.rows(); ++i) {
-        auto v = wtl::eigen::valarray(pathtypes.row(i));
-        lnp_const_ += std::log(wtl::multinomial(v));
+    auto duptypes = pathtypes;
+    for (auto& row: duptypes) {
+        for (auto& x: row) {
+            if (x > 0) --x;
+        }
+    }
+    a_pathway_ = wtl::cast<double>(wtl::col_sums(duptypes));
+    for (size_t i=0; i<pathtypes.size(); ++i) {
+        lnp_const_ += std::log(wtl::multinomial(pathtypes[i]));
     }
     lnp_const_ += (s_pathway * std::log(w_pathway_)).sum();
     std::cerr << "s_pathway_: " << s_pathway << std::endl;
@@ -69,7 +66,7 @@ ExclusivityModel::ExclusivityModel(const std::string& infile, const size_t max_s
     if (std::isnan(lnp_const_)) throw lnpnan_error();
 
     index_axes_.reserve(nsam_with_s_.size());
-    std::vector<size_t> indices(pathtypes.cols());
+    std::vector<size_t> indices(a_pathway_.size());
     std::iota(std::begin(indices), std::end(indices), 0);
     for (size_t s=0; s<=nsam_with_s_.size(); ++s) {
         index_axes_.emplace_back(s, indices);
