@@ -14,15 +14,12 @@
 #include <unordered_map>
 #include <stdexcept>
 
-#include <Eigen/Core>
 #include <wtl/itertools.hpp>
 
 namespace likeligrid {
 
 class ExclusivityModel {
   public:
-    typedef Eigen::Array<uint, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> ArrayXXu;
-    typedef Eigen::Array<uint, Eigen::Dynamic, 1> ArrayXu;
     static const std::vector<double> STEPS_;
     static const std::vector<size_t> BREAKS_;
 
@@ -37,23 +34,23 @@ class ExclusivityModel {
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
-    void run_impl(std::ostream&, wtl::itertools::Generator<Eigen::ArrayXd>&&) const;
-    double calc_loglik(const Eigen::ArrayXd& th_path) const;
+    void run_impl(std::ostream&, wtl::itertools::Generator<std::valarray<double>>&&) const;
+    double calc_loglik(const std::valarray<double>& th_path) const;
     double calc_denom(
-        const Eigen::ArrayXd& weights,
-        const Eigen::ArrayXd& exclusi,
+        const std::valarray<double>& w_pathway,
+        const std::valarray<double>& th_pathway,
         const size_t num_mutations) const;
     void search_limits() const;
-    std::unordered_map<std::string, Eigen::ArrayXd> find_intersections() const;
+    std::unordered_map<std::string, std::valarray<double>> find_intersections() const;
     std::string init_meta(const std::string& infile);
     bool read_results(const std::string&);
 
     std::vector<std::string> names_;
-    Eigen::ArrayXd w_pathway_;
-    Eigen::ArrayXd a_pathway_;
+    std::valarray<double> w_pathway_;
+    std::valarray<double> a_pathway_;
     std::vector<size_t> nsam_with_s_;
     double lnp_const_ = 0.0;
-    Eigen::ArrayXd mle_params_;
+    std::valarray<double> mle_params_;
     size_t skip_ = 0;
     size_t stage_ = 0;
     std::vector<std::vector<std::vector<size_t>>> index_axes_;

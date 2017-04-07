@@ -26,6 +26,8 @@ const std::vector<size_t> ExclusivityModel::BREAKS_ = {5, 5, 5, 5, 6, 5};
 bool ExclusivityModel::SIGINT_RAISED_ = false;
 
 ExclusivityModel::ExclusivityModel(const std::string& infile, const size_t max_sites) {HERE;
+    typedef Eigen::Array<uint, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> ArrayXXu;
+    typedef Eigen::Array<uint, Eigen::Dynamic, 1> ArrayXu;
     wtl::izfstream ifs(infile);
     names_ = wtl::read_header(ifs);
     auto pathtypes = wtl::eigen::read_array<ArrayXXu::value_type>(ifs, names_.size());
@@ -48,19 +50,21 @@ ExclusivityModel::ExclusivityModel(const std::string& infile, const size_t max_s
     const auto final_max_s = nsam_with_s_.size() - 1;
     pathtypes = wtl::eigen::filter(pathtypes, raw_s_sample <= final_max_s);
 
-    const Eigen::ArrayXd s_pathway = pathtypes.colwise().sum().cast<double>();
-    w_pathway_ = s_pathway / s_pathway.sum();
-    a_pathway_ = pathtypes.unaryExpr([](size_t x){
+    const Eigen::ArrayXd s_tmp = pathtypes.colwise().sum().cast<double>();
+    const Eigen::ArrayXd a_tmp = pathtypes.unaryExpr([](size_t x){
         if (x > 0) {return --x;} else {return x;}
     }).colwise().sum().cast<double>();
+    const auto s_pathway = wtl::eigen::valarray(s_tmp);
+    w_pathway_ = s_pathway / s_pathway.sum();
+    a_pathway_ = wtl::eigen::valarray(a_tmp);
     for (Eigen::Index i=0; i<pathtypes.rows(); ++i) {
         auto v = wtl::eigen::valarray(pathtypes.row(i));
         lnp_const_ += std::log(wtl::multinomial(v));
     }
-    lnp_const_ += (s_pathway * w_pathway_.log()).sum();
-    std::cerr << "s_pathway_: " << s_pathway.transpose() << std::endl;
-    std::cerr << "w_pathway_: " << w_pathway_.transpose() << std::endl;
-    std::cerr << "a_pathway_: " << a_pathway_.transpose() << std::endl;
+    lnp_const_ += (s_pathway * std::log(w_pathway_)).sum();
+    std::cerr << "s_pathway_: " << s_pathway << std::endl;
+    std::cerr << "w_pathway_: " << w_pathway_ << std::endl;
+    std::cerr << "a_pathway_: " << a_pathway_ << std::endl;
     std::cerr << "lnp_const_: " << lnp_const_ << std::endl;
     if (std::isnan(lnp_const_)) throw lnpnan_error();
 
@@ -74,25 +78,13 @@ ExclusivityModel::ExclusivityModel(const std::string& infile, const size_t max_s
     mle_params_ = 1.2;
 }
 
-inline std::vector<Eigen::ArrayXd>
-make_vicinity(const Eigen::ArrayXd& center, const size_t breaks, const double radius, const double max=2.0) {
-    std::vector<Eigen::ArrayXd> axes;
-    axes.reserve(center.size());
-    for (const double x: wtl::eigen::vector(center)){
-        Eigen::ArrayXd axis = Eigen::ArrayXd::LinSpaced(breaks, x + radius, x - radius);
-        axis = (axis * 100.0).round() / 100.0;  // grid precision = 0.01
-        axes.push_back(wtl::eigen::filter(axis, (0.0 < axis) * (axis < max)));
-    }
-    return axes;
-}
-
 void ExclusivityModel::run(const std::string& infile) {HERE;
     const std::string outfile = init_meta(infile);
-    std::cerr << "mle_params_: " << mle_params_.transpose() << std::endl;
+    std::cerr << "mle_params_: " << mle_params_ << std::endl;
     if (outfile == "") {
         std::cerr << "Done: step size = " << STEPS_.back() << std::endl;
         --stage_;
-        const std::vector<Eigen::ArrayXd> axes(names_.size(), Eigen::ArrayXd::LinSpaced(200, 2.0, 0.01));
+        const std::vector<std::valarray<double>> axes(names_.size(), wtl::lin_spaced(200, 2.0, 0.01));
         wtl::ozfstream fout("uniaxis.tsv.gz");
         run_impl(fout, wtl::itertools::uniaxis(axes, mle_params_));
         search_limits();
@@ -100,7 +92,7 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
     }
     const auto axes = make_vicinity(mle_params_, BREAKS_.at(stage_), 2.0 * STEPS_.at(stage_), 2.0);
     for (size_t j=0; j<names_.size(); ++j) {
-        std::cerr << names_[j] << ": " << axes[j].transpose() << std::endl;
+        std::cerr << names_[j] << ": " << axes[j] << std::endl;
     }
     {
         wtl::ozfstream fout(outfile, std::ios::out | std::ios::app);
@@ -114,7 +106,7 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
 
 void ExclusivityModel::search_limits() const {HERE;
     for (const auto& p: find_intersections()) {
-        std::cerr << p.first << ": " << p.second.transpose() << std::endl;
+        std::cerr << p.first << ": " << p.second << std::endl;
         const auto axes = make_vicinity(p.second, 5, 0.02, 2.0);
         wtl::ozfstream fout("limit-" + p.first + ".tsv.gz");
         //TODO: if exists
@@ -122,14 +114,14 @@ void ExclusivityModel::search_limits() const {HERE;
     }
 }
 
-std::unordered_map<std::string, Eigen::ArrayXd> ExclusivityModel::find_intersections() const {HERE;
+std::unordered_map<std::string, std::valarray<double>> ExclusivityModel::find_intersections() const {HERE;
     namespace bmath = boost::math;
     bmath::chi_squared_distribution<> chisq(1.0);
     const double step = 0.01;
     const double max_ll = calc_loglik(mle_params_);
     const double threshold = max_ll - 0.5 * bmath::quantile(bmath::complement(chisq, 0.05));
-    std::unordered_map<std::string, Eigen::ArrayXd> intersections;
-    for (Eigen::Index j=0; j<mle_params_.size(); ++j) {
+    std::unordered_map<std::string, std::valarray<double>> intersections;
+    for (size_t j=0; j<mle_params_.size(); ++j) {
         auto th_path = mle_params_;
         for (size_t i=0; i<200; ++i) {
             th_path[j] -= step;
@@ -149,7 +141,7 @@ std::unordered_map<std::string, Eigen::ArrayXd> ExclusivityModel::find_intersect
     return intersections;
 }
 
-void ExclusivityModel::run_impl(std::ostream& ost, wtl::itertools::Generator<Eigen::ArrayXd>&& gen) const {HERE;
+void ExclusivityModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::valarray<double>>&& gen) const {HERE;
     auto buffer = wtl::make_oss();
     if (skip_ == 0) {
         buffer << "##max_count=" << gen.max_count() << "\n";
@@ -160,7 +152,7 @@ void ExclusivityModel::run_impl(std::ostream& ost, wtl::itertools::Generator<Eig
     std::cerr << skip_ << " to " << gen.max_count() << std::endl;
     for (const auto& th_path: gen(skip_)) {
         buffer << calc_loglik(th_path) << "\t"
-               << th_path.transpose().format(wtl::eigen::tsv()) << "\n";
+               << wtl::str_join(th_path, "\t") << "\n";
         if (gen.count() % 10000 == 0) {  // snapshot for long run
             std::cerr << "*" << std::flush;
             ost << buffer.str();
@@ -169,34 +161,35 @@ void ExclusivityModel::run_impl(std::ostream& ost, wtl::itertools::Generator<Eig
         }
         if (SIGINT_RAISED_) {throw wtl::ExitSuccess("KeyboardInterrupt");}
     }
-    std::cerr << "\n";
+    std::cerr << "-\n";
     ost << buffer.str();
 }
 
-double ExclusivityModel::calc_loglik(const Eigen::ArrayXd& th_path) const {
-    double loglik = (a_pathway_ * th_path.log()).sum();
+double ExclusivityModel::calc_loglik(const std::valarray<double>& th_path) const {
+    const size_t max_sites = nsam_with_s_.size() - 1;
+    double loglik = (a_pathway_ * std::log(th_path)).sum();
     // D = 1.0 when s < 2
-    for (size_t s=2; s<nsam_with_s_.size(); ++s) {
+    for (size_t s=2; s<=max_sites; ++s) {
         loglik -= nsam_with_s_[s] * std::log(calc_denom(w_pathway_, th_path, s));
     }
     return loglik += lnp_const_;
 }
 
 double ExclusivityModel::calc_denom(
-    const Eigen::ArrayXd& w_pathway,
-    const Eigen::ArrayXd& x_pathway,
+    const std::valarray<double>& w_pathway,
+    const std::valarray<double>& th_pathway,
     const size_t num_mutations) const {
 
     if (num_mutations < 2) return 1.0;
     auto iter = wtl::itertools::product(index_axes_[num_mutations]);
     double sum_prob = 0.0;
-    bits_t bits(x_pathway.size());
+    bits_t bits(th_pathway.size());
 
     for (const auto& indices: iter()) {
         double p = 1.0;
         for (const auto j: indices) {
             p *= w_pathway[j];
-            if (bits[j]) p *= x_pathway[j];
+            if (bits[j]) p *= th_pathway[j];
             bits.set(j);
         }
         sum_prob += p;
@@ -233,8 +226,7 @@ bool ExclusivityModel::read_results(const std::string& infile) {HERE;
         std::tie(skip_, colnames, mle_params) = read_body(ist);
         if (skip_ == max_count) {  // is complete file
             skip_ = 0;
-            // mle_params_.swap(mle_params);
-            mle_params_ = wtl::eigen::ArrayX(std::vector<double>(std::begin(mle_params), std::end(mle_params)));
+            mle_params_.swap(mle_params);
         }
         if (names_ != colnames) {
             std::ostringstream oss;
