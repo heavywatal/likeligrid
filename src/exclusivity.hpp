@@ -24,6 +24,7 @@ class ExclusivityModel {
     static const std::vector<size_t> BREAKS_;
 
     ExclusivityModel() = default;
+    ExclusivityModel(std::istream&&, const size_t max_sites);
     ExclusivityModel(
         const std::string& infile,
         const size_t max_sites=255);

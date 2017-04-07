@@ -24,10 +24,12 @@ const std::vector<double> ExclusivityModel::STEPS_ = {0.4, 0.2, 0.1, 0.05, 0.02,
 const std::vector<size_t> ExclusivityModel::BREAKS_ = {5, 5, 5, 5, 6, 5};
 bool ExclusivityModel::SIGINT_RAISED_ = false;
 
-ExclusivityModel::ExclusivityModel(const std::string& infile, const size_t max_sites) {HERE;
-    wtl::izfstream ifs(infile);
-    names_ = wtl::read_header(ifs);
-    auto pathtypes = wtl::read_valarrays<uint>(ifs);
+ExclusivityModel::ExclusivityModel(const std::string& infile, const size_t max_sites):
+    ExclusivityModel(wtl::izfstream(infile), max_sites) {HERE;}
+
+ExclusivityModel::ExclusivityModel(std::istream&& ist, const size_t max_sites) {HERE;
+    names_ = wtl::read_header(ist);
+    auto pathtypes = wtl::read_valarrays<uint>(ist);
     const auto raw_s_sample = wtl::row_sums(pathtypes);
     nsam_with_s_.assign(raw_s_sample.max() + 1, 0);
     for (const auto s: raw_s_sample) {
@@ -240,7 +242,15 @@ bool ExclusivityModel::read_results(const std::string& infile) {HERE;
 }
 
 void ExclusivityModel::unit_test() {HERE;
-    ExclusivityModel model("test.tsv");
+    std::stringstream sst;
+    sst <<
+R"(A B
+0 1
+1 0
+1 1
+0 2
+)";
+    ExclusivityModel model(std::move(sst), 3);
     model.run("/dev/null");
 }
 
