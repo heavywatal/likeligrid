@@ -209,6 +209,7 @@ class Denoms {
 
 double ExactModel::calc_loglik(const std::valarray<double>& th_path) const {
     const size_t max_sites = nsam_with_s_.size() - 1;
+    // TODO
     double loglik = (a_pathway_ * std::log(th_path)).sum();
     const auto lnD = Denoms(w_gene_, th_path, annot_, max_sites).log();
     // std::cout << "lnD: " << lnD << std::endl;
