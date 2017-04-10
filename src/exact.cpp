@@ -108,9 +108,7 @@ void ExactModel::run() {HERE;
         std::cerr << "Writing: " << outfile << std::endl;
         run_impl(fout, wtl::itertools::product(axes));
     }
-    if (outfile != "/dev/stdout") {
-        run();
-    }
+    run();
 }
 
 void ExactModel::go() {HERE;
@@ -131,14 +129,14 @@ void ExactModel::go() {HERE;
 }
 
 void ExactModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::valarray<double>>&& gen) const {HERE;
-    auto buffer = wtl::make_oss();
     std::cerr << skip_ << " to " << gen.max_count() << std::endl;
     if (skip_ == 0) {
-        buffer << "##max_count=" << gen.max_count() << "\n";
-        buffer << "##max_sites=" << nsam_with_s_.size() - 1 << "\n";
-        buffer << "##step=" << STEPS_.at(stage_) << "\n";
-        buffer << "loglik\t" << wtl::join(names_, "\t") << "\n";
+        ost << "##max_count=" << gen.max_count() << "\n";
+        ost << "##max_sites=" << nsam_with_s_.size() - 1 << "\n";
+        ost << "##step=" << STEPS_.at(stage_) << "\n";
+        ost << "loglik\t" << wtl::join(names_, "\t") << "\n";
     }
+    auto buffer = wtl::make_oss();
     for (const auto& th_path: gen(skip_)) {
         buffer << calc_loglik(th_path) << "\t"
                << wtl::str_join(th_path, "\t") << "\n";
@@ -148,9 +146,9 @@ void ExactModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
             ost.flush();
             buffer.str("");
         }
-        if (SIGINT_RAISED_) {throw wtl::ExitSuccess("KeyboardInterrupt");}
+        if (SIGINT_RAISED_) {throw wtl::KeyboardInterrupt();}
     }
-    std::cerr << "\n";
+    std::cerr << "-\n";
     ost << buffer.str();
 }
 

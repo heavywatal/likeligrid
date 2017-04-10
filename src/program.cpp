@@ -59,8 +59,10 @@ inline void test(const int flg) {HERE;
       case 0:
         break;
       case 1:
-        ExclusivityModel::unit_test();
         ExactModel::unit_test();
+        throw wtl::ExitSuccess();
+      case 2:
+        ExclusivityModel::unit_test();
         throw wtl::ExitSuccess();
       default:
         throw std::runtime_error("Unknown argument for --test");
@@ -116,6 +118,8 @@ void Program::run() {HERE;
         wtl::mkdir(outdir);  // after constructor success
         wtl::Pushd cd(outdir);
         model.run();
+    } catch (const wtl::KeyboardInterrupt& e) {
+        std::cerr << e.what() << std::endl;
     } catch (const lnpnan_error& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }

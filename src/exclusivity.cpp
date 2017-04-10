@@ -141,14 +141,14 @@ std::unordered_map<std::string, std::valarray<double>> ExclusivityModel::find_in
 }
 
 void ExclusivityModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::valarray<double>>&& gen) const {HERE;
-    auto buffer = wtl::make_oss();
-    if (skip_ == 0) {
-        buffer << "##max_count=" << gen.max_count() << "\n";
-        buffer << "##max_sites=" << nsam_with_s_.size() - 1 << "\n";
-        buffer << "##step=" << STEPS_.at(stage_) << "\n";
-        buffer << "loglik\t" << wtl::join(names_, "\t") << "\n";
-    }
     std::cerr << skip_ << " to " << gen.max_count() << std::endl;
+    if (skip_ == 0) {
+        ost << "##max_count=" << gen.max_count() << "\n";
+        ost << "##max_sites=" << nsam_with_s_.size() - 1 << "\n";
+        ost << "##step=" << STEPS_.at(stage_) << "\n";
+        ost << "loglik\t" << wtl::join(names_, "\t") << "\n";
+    }
+    auto buffer = wtl::make_oss();
     for (const auto& th_path: gen(skip_)) {
         buffer << calc_loglik(th_path) << "\t"
                << wtl::str_join(th_path, "\t") << "\n";
@@ -158,7 +158,7 @@ void ExclusivityModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std
             ost.flush();
             buffer.str("");
         }
-        if (SIGINT_RAISED_) {throw wtl::ExitSuccess("KeyboardInterrupt");}
+        if (SIGINT_RAISED_) {throw wtl::KeyboardInterrupt();}
     }
     std::cerr << "-\n";
     ost << buffer.str();
