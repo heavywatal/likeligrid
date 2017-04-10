@@ -111,8 +111,8 @@ void Program::run() {HERE;
     oss << prefix << "-s" << MAX_SITES;
     const std::string outdir = oss.str();
     try {
-        ExclusivityModel model(GENOTYPES_FILE, MAX_SITES);
-        // ExactModel model(GENOTYPES_FILE, MAX_SITES);
+        // ExclusivityModel model(GENOTYPES_FILE, MAX_SITES);
+        ExactModel model(GENOTYPES_FILE, MAX_SITES);
         wtl::mkdir(outdir);  // after constructor success
         wtl::Pushd cd(outdir);
         model.run();

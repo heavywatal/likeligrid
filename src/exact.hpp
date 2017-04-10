@@ -26,7 +26,8 @@ class ExactModel {
     ExactModel(
         const std::string& infile,
         const size_t max_sites=255);
-    void run(const std::string& infile="");
+    void run();
+    void go();
 
     static void raise_sigint() {SIGINT_RAISED_ = true;}
     static void unit_test();
@@ -35,8 +36,8 @@ class ExactModel {
   private:
     void run_impl(std::ostream&, wtl::itertools::Generator<std::valarray<double>>&&) const;
     double calc_loglik(const std::valarray<double>& th_path) const;
-    std::string init_meta(const std::string& infile);
-    bool read_results(const std::string&);
+    std::string init_meta();
+    void read_results(std::istream&);
 
     std::vector<std::string> names_;
     std::vector<bits_t> annot_;

@@ -95,8 +95,8 @@ ExactModel::ExactModel(std::istream&& ist, const size_t max_sites) {HERE;
     mle_params_ = 1.2;
 }
 
-void ExactModel::run(const std::string& infile) {HERE;
-    const std::string outfile = init_meta(infile);
+void ExactModel::run() {HERE;
+    const std::string outfile = init_meta();
     std::cerr << "mle_params_: " << mle_params_ << std::endl;
     if (outfile.empty()) return;
     const auto axes = make_vicinity(mle_params_, BREAKS_.at(stage_), 2.0 * STEPS_.at(stage_));
@@ -109,8 +109,25 @@ void ExactModel::run(const std::string& infile) {HERE;
         run_impl(fout, wtl::itertools::product(axes));
     }
     if (outfile != "/dev/stdout") {
-        run(outfile);
+        run();
     }
+}
+
+void ExactModel::go() {HERE;
+    std::cerr << "mle_params_: " << mle_params_ << std::endl;
+    if (stage_ >= STEPS_.size()) return;
+    const auto axes = make_vicinity(mle_params_, BREAKS_.at(stage_), 2.0 * STEPS_.at(stage_));
+    for (size_t j=0; j<names_.size(); ++j) {
+        std::cerr << names_[j] << ": " << axes[j] << std::endl;
+    }
+    {
+        std::stringstream sst;
+        run_impl(sst, wtl::itertools::product(axes));
+        std::cout << sst.str();
+        read_results(sst);
+    }
+    ++stage_;
+    go();
 }
 
 void ExactModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::valarray<double>>&& gen) const {HERE;
@@ -220,47 +237,43 @@ double ExactModel::calc_loglik(const std::valarray<double>& th_path) const {
     return loglik += lnp_const_;
 }
 
-std::string ExactModel::init_meta(const std::string& infile) {HERE;
-    if (infile == "/dev/null") return "/dev/stdout";
+std::string ExactModel::init_meta() {HERE;
     if (stage_ >= STEPS_.size()) return "";
     auto oss = wtl::make_oss(2, std::ios::fixed);
     oss << "grid-" << STEPS_.at(stage_) << ".tsv.gz";
     std::string outfile = oss.str();
-    if (read_results(outfile) && skip_ == 0) {
-        ++stage_;
-        outfile = init_meta(outfile);
+    try {
+        wtl::izfstream ist(outfile);
+        std::cerr << "Reading: " << outfile << std::endl;
+        read_results(ist);
+        if (skip_ == 0) {
+            ++stage_;
+            outfile = init_meta();
+        }
+    } catch (std::ios::failure& e) {
+        if (errno != 2) throw;
     }
     return outfile;
 }
 
-bool ExactModel::read_results(const std::string& infile) {HERE;
-    if (infile == "/dev/null")
-        return false;
-    try {
-        wtl::izfstream ist(infile);
-        std::cerr << "Reading: " << infile << std::endl;
-        size_t max_count;
-        double step;
-        std::tie(max_count, std::ignore, step) = read_metadata(ist);
-        stage_ = guess_stage(STEPS_, step);
-        std::vector<std::string> colnames;
-        std::valarray<double> mle_params;
-        std::tie(skip_, colnames, mle_params) = read_body(ist);
-        if (skip_ == max_count) {  // is complete file
-            skip_ = 0;
-            mle_params_.swap(mle_params);
-        }
-        if (names_ != colnames) {
-            std::ostringstream oss;
-            oss << "Contradiction in column names:\n"
-                << "genotype file: " << names_ << "\n"
-                << "result file:" << colnames;
-            throw std::runtime_error(oss.str());
-        }
-        return true;
-    } catch (std::ios::failure& e) {
-        if (errno != 2) throw;
-        return false;
+void ExactModel::read_results(std::istream& ist) {HERE;
+    size_t max_count;
+    double step;
+    std::tie(max_count, std::ignore, step) = read_metadata(ist);
+    stage_ = guess_stage(STEPS_, step);
+    std::vector<std::string> colnames;
+    std::valarray<double> mle_params;
+    std::tie(skip_, colnames, mle_params) = read_body(ist);
+    if (skip_ == max_count) {  // is complete file
+        skip_ = 0;
+        mle_params_.swap(mle_params);
+    }
+    if (names_ != colnames) {
+        std::ostringstream oss;
+        oss << "Contradiction in column names:\n"
+            << "genotype file: " << names_ << "\n"
+            << "result file:" << colnames;
+        throw std::runtime_error(oss.str());
     }
 }
 
@@ -273,7 +286,7 @@ R"({
   "sample": ["0011", "0101", "1001", "0110", "1010", "1100"]
 })";
     ExactModel model(std::move(sst), 2);
-    model.run("/dev/null");
+    model.go();
 }
 
 } // namespace likeligrid
