@@ -39,19 +39,21 @@ ExactModel::ExactModel(std::istream&& ist, const size_t max_sites) {HERE;
     std::cerr << "annot_: " << annot_ << std::endl;
 
     const size_t nsam = jso["sample"].size();
-    genot_.reserve(nsam);
+    std::vector<bits_t> all_genotypes;
+    all_genotypes.reserve(nsam);
     for (const std::string& s: jso["sample"]) {
-        genot_.emplace_back(s);
+        all_genotypes.emplace_back(s);
     }
-    // std::cerr << "genot_: " << genot_ << std::endl;
 
-    const size_t ngene = genot_[0].size();
+    genot_.reserve(nsam);
+    const size_t ngene = all_genotypes[0].size();
     nsam_with_s_.assign(ngene + 1, 0);  // at most
     std::valarray<double> s_gene(ngene);
-    for (const auto& bits: genot_) {
+    for (const auto& bits: all_genotypes) {
         const size_t s = bits.count();
         ++nsam_with_s_[s];
         if (s > max_sites) continue;
+        genot_.push_back(bits);
         bits_t::size_type j = bits.find_first();
         while (j < bits_t::npos) {
             ++s_gene[j];
@@ -66,32 +68,11 @@ ExactModel::ExactModel(std::istream&& ist, const size_t max_sites) {HERE;
     } else {
         std::cerr << "Note: -s is too large" << std::endl;
     }
-    const auto final_max_s = nsam_with_s_.size() - 1;
-    for (size_t s=2; s<=final_max_s; ++s) {
-        lnp_const_ += nsam_with_s_[s] * std::log(wtl::factorial(s));
-    }
     w_gene_ = s_gene / s_gene.sum();
     std::cerr << "s_gene : " << s_gene << std::endl;
     std::cerr << "w_gene_: " << w_gene_ << std::endl;
-    for (size_t j=0; j<s_gene.size(); ++j) {
-        if (s_gene[j] > 0) {
-            lnp_const_ += s_gene[j] * std::log(w_gene_[j]);
-        }
-    }
-    std::cerr << "lnp_const_: " << lnp_const_ << std::endl;
 
-    // TODO
-    a_pathway_.resize(npath);
-    for (size_t j=0; j<npath; ++j) {
-        for (size_t i=0; i<nsam; ++i) {
-            size_t s = (genot_[i] & annot_[j]).count();
-            if (s > 0) {
-                a_pathway_[j] += --s;
-            }
-        }
-    }
-    std::cerr << "a_pathway_: " << a_pathway_ << std::endl;
-    mle_params_.resize(a_pathway_.size());
+    mle_params_.resize(annot_.size());
     mle_params_ = 1.2;
 }
 
@@ -152,6 +133,20 @@ void ExactModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
     ost << buffer.str();
 }
 
+std::vector<bits_t> breakdown(const bits_t& bits) {
+    std::vector<bits_t> singles;
+    bits_t::size_type length = bits.size();
+    singles.reserve(length);
+    bits_t::size_type i = bits.find_first();
+    while (i < bits_t::npos) {
+        bits_t x(length);
+        x.set(i);
+        singles.push_back(x);
+        i = bits.find_next(i);
+    }
+    return singles;
+}
+
 class Denoms {
   public:
     Denoms() = delete;
@@ -175,6 +170,16 @@ class Denoms {
         // std::cerr << "denoms_: " << denoms_ << std::endl;
     }
     const std::valarray<double> log() const {return std::log(denoms_);}
+
+    double lnp_sample(const bits_t& genotype) const {
+        double p = 0.0;
+        const double p_basic = prod_w(genotype);
+        auto mutations = breakdown(genotype);
+        do {
+            p += p_basic * discount(mutations);
+        } while (std::next_permutation(mutations.begin(), mutations.end()));
+        return std::log(p);
+    }
 
   private:
     void mutate(const bits_t& genotype, const bits_t& pathtype, const double anc_p) {
@@ -207,12 +212,34 @@ class Denoms {
         } else {return 1.0;}
     }
 
+    double discount(const std::vector<bits_t>& mutations) const {
+        double p = 1.0;
+        const auto npath = annot_.size();
+        bits_t pathtype(npath, 0);
+        for (const auto& mut_gene: mutations) {
+            const auto mut_path = translate(mut_gene);
+            p *= discount(pathtype, mut_path);
+            pathtype |= mut_path;
+        }
+        return p;
+    }
+
     bits_t translate(const bits_t& mut_gene) const {
         bits_t mut_path(annot_.size(), 0);
         for (size_t j=0; j<annot_.size(); ++j) {
             mut_path.set(j, (annot_[j] & mut_gene).any());
         }
         return mut_path;
+    }
+
+    double prod_w(const bits_t& genotype) const {
+        double p = 1.0;
+        bits_t::size_type j = genotype.find_first();
+        while (j < bits_t::npos) {
+            p *= w_gene_[j];
+            j = genotype.find_next(j);
+        }
+        return p;
     }
     const std::valarray<double>& w_gene_;
     const std::valarray<double>& th_path_;
@@ -224,15 +251,18 @@ class Denoms {
 
 double ExactModel::calc_loglik(const std::valarray<double>& th_path) const {
     const size_t max_sites = nsam_with_s_.size() - 1;
-    // TODO
-    double loglik = (a_pathway_ * std::log(th_path)).sum();
-    const auto lnD = Denoms(w_gene_, th_path, annot_, max_sites).log();
+    Denoms subcalc(w_gene_, th_path, annot_, max_sites);
+    double loglik = 0.0;
+    for (const auto& genotype: genot_) {
+        loglik += subcalc.lnp_sample(genotype);
+    }
+    const auto lnD = subcalc.log();
     // std::cout << "lnD: " << lnD << std::endl;
     // -inf, 0, D2, D3, ...
     for (size_t s=2; s<=max_sites; ++s) {
         loglik -= nsam_with_s_[s] * lnD[s];
     }
-    return loglik += lnp_const_;
+    return loglik;
 }
 
 std::string ExactModel::init_meta() {HERE;

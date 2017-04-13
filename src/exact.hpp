@@ -43,9 +43,7 @@ class ExactModel {
     std::vector<bits_t> annot_;
     std::vector<bits_t> genot_;
     std::valarray<double> w_gene_;
-    std::valarray<double> a_pathway_;
     std::vector<size_t> nsam_with_s_;
-    double lnp_const_ = 0.0;
 
     std::valarray<double> mle_params_;
     size_t skip_ = 0;
