@@ -54,8 +54,8 @@ ExactModel::ExactModel(std::istream&& ist, const size_t max_sites) {HERE;
         ++nsam_with_s_[s];
         if (s > max_sites) continue;
         genot_.push_back(bits);
-        for (auto j=bits.find_first(); j<bits_t::npos; j=bits.find_next(j)) {
-            ++s_gene[j];
+        for (bits_t::size_type j=0; j<bits.size(); ++j) {
+            if (bits[j]) ++s_gene[j];
         }
     }
     wtl::rstrip(&nsam_with_s_);
@@ -135,16 +135,16 @@ inline std::vector<bits_t> breakdown(const bits_t& bits) {
     std::vector<bits_t> singles;
     singles.reserve(bits.count());
     const bits_t one(bits.size(), 1);
-    for (auto d=bits.find_first(); d<bits_t::npos; d=bits.find_next(d)) {
-        singles.emplace_back(one << d);
+    for (bits_t::size_type i=0; i<bits.size(); ++i) {
+        if (bits[i]) singles.emplace_back(one << i);
     }
     return singles;
 }
 
 inline double slice_prod(const std::valarray<double>& coefs, const bits_t& bits) {
     double p = 1.0;
-    for (auto d=bits.find_first(); d<bits_t::npos; d=bits.find_next(d)) {
-        p *= coefs[d];
+    for (bits_t::size_type i=0; i<bits.size(); ++i) {
+        if (bits[i]) p *= coefs[i];
     }
     return p;
 }
@@ -185,26 +185,32 @@ class Denoms {
 
   private:
     void mutate(const bits_t& genotype, const bits_t& pathtype, const double anc_p) {
-        const size_t s = genotype.count() + 1;
-        for (bits_t mut_gene(genotype.size(), 1); mut_gene.any(); mut_gene <<= 1) {
-            if ((genotype & mut_gene).any()) continue;
-            const size_t pos = mut_gene.find_first();
-            const bits_t& mut_path = effects_[pos];
+        const auto s = genotype.count() + 1;
+        for (bits_t::size_type j=0; j<genotype.size(); ++j) {
+            if (genotype[j]) continue;
+            const bits_t& mut_path = effects_[j];
             double p = anc_p;
-            p *= w_gene_[pos];
+            p *= w_gene_[j];
             p *= discount_if_subset(pathtype, mut_path);
-            // std::cout << (genotype | mut_gene) << " " << (pathtype | mut_path) << " " << p << std::endl;
             denoms_[s] += p;
             if (s < max_sites_) {
-                mutate(genotype | mut_gene, pathtype | mut_path, p);
+                mutate(bits_t(genotype).set(j), pathtype | mut_path, p);
             }
         }
     }
 
     double discount_if_subset(const bits_t& pathtype, const bits_t& mut_path) const {
-        if (mut_path.is_subset_of(pathtype)) {
-            return slice_prod(th_path_, mut_path & pathtype);
-        } else {return 1.0;}
+        double p = 1.0;
+        for (bits_t::size_type i=0; i<mut_path.size(); ++i) {
+            if (mut_path[i]) {
+                if (pathtype[i]) {
+                    p *= th_path_[i];
+                } else {
+                    return 1.0;
+                }
+            }
+        }
+        return p;
     }
 
     double discount(const std::vector<bits_t>& mut_route) const {
