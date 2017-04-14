@@ -46,7 +46,7 @@ ExactModel::ExactModel(std::istream&& ist, const size_t max_sites) {HERE;
     }
 
     genot_.reserve(nsam);
-    const size_t ngene = all_genotypes[0].size();
+    const size_t ngene = all_genotypes.at(0).size();
     nsam_with_s_.assign(ngene + 1, 0);  // at most
     std::valarray<double> s_gene(ngene);
     for (const auto& bits: all_genotypes) {
@@ -54,10 +54,8 @@ ExactModel::ExactModel(std::istream&& ist, const size_t max_sites) {HERE;
         ++nsam_with_s_[s];
         if (s > max_sites) continue;
         genot_.push_back(bits);
-        bits_t::size_type j = bits.find_first();
-        while (j < bits_t::npos) {
+        for (auto j=bits.find_first(); j<bits_t::npos; j=bits.find_next(j)) {
             ++s_gene[j];
-            j = bits.find_next(j);
         }
     }
     wtl::rstrip(&nsam_with_s_);
@@ -133,16 +131,12 @@ void ExactModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
     ost << buffer.str();
 }
 
-std::vector<bits_t> breakdown(const bits_t& bits) {
+inline std::vector<bits_t> breakdown(const bits_t& bits) {
     std::vector<bits_t> singles;
-    bits_t::size_type length = bits.size();
-    singles.reserve(length);
-    bits_t::size_type i = bits.find_first();
-    while (i < bits_t::npos) {
-        bits_t x(length);
-        x.set(i);
-        singles.push_back(x);
-        i = bits.find_next(i);
+    singles.reserve(bits.count());
+    const bits_t one(bits.size(), 1);
+    for (auto d=bits.find_first(); d<bits_t::npos; d=bits.find_next(d)) {
+        singles.emplace_back(one << d);
     }
     return singles;
 }
@@ -203,10 +197,8 @@ class Denoms {
         if (mut_path.is_subset_of(pathtype)) {
             double p = 1.0;
             const bits_t recurrent = mut_path & pathtype;
-            bits_t::size_type j = recurrent.find_first();
-            while (j < bits_t::npos) {
+            for (auto j=recurrent.find_first(); j<bits_t::npos; j=recurrent.find_next(j)) {
                 p *= th_path_[j];
-                j = recurrent.find_next(j);
             }
             return p;
         } else {return 1.0;}
@@ -234,10 +226,8 @@ class Denoms {
 
     double prod_w(const bits_t& genotype) const {
         double p = 1.0;
-        bits_t::size_type j = genotype.find_first();
-        while (j < bits_t::npos) {
+        for (auto j=genotype.find_first(); j<bits_t::npos; j=genotype.find_next(j)) {
             p *= w_gene_[j];
-            j = genotype.find_next(j);
         }
         return p;
     }
