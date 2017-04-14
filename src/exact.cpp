@@ -141,6 +141,14 @@ inline std::vector<bits_t> breakdown(const bits_t& bits) {
     return singles;
 }
 
+inline double slice_prod(const std::valarray<double>& coefs, const bits_t& bits) {
+    double p = 1.0;
+    for (auto d=bits.find_first(); d<bits_t::npos; d=bits.find_next(d)) {
+        p *= coefs[d];
+    }
+    return p;
+}
+
 class Denoms {
   public:
     Denoms() = delete;
@@ -167,11 +175,11 @@ class Denoms {
 
     double lnp_sample(const bits_t& genotype) const {
         double p = 0.0;
-        const double p_basic = prod_w(genotype);
-        auto mutations = breakdown(genotype);
+        const double p_basic = slice_prod(w_gene_, genotype);
+        auto mut_route = breakdown(genotype);
         do {
-            p += p_basic * discount(mutations);
-        } while (std::next_permutation(mutations.begin(), mutations.end()));
+            p += p_basic * discount(mut_route);
+        } while (std::next_permutation(mut_route.begin(), mut_route.end()));
         return std::log(p);
     }
 
@@ -184,7 +192,7 @@ class Denoms {
             const bits_t& mut_path = effects_[pos];
             double p = anc_p;
             p *= w_gene_[pos];
-            p *= discount(pathtype, mut_path);
+            p *= discount_if_subset(pathtype, mut_path);
             // std::cout << (genotype | mut_gene) << " " << (pathtype | mut_path) << " " << p << std::endl;
             denoms_[s] += p;
             if (s < max_sites_) {
@@ -193,24 +201,19 @@ class Denoms {
         }
     }
 
-    double discount(const bits_t& pathtype, const bits_t& mut_path) const {
+    double discount_if_subset(const bits_t& pathtype, const bits_t& mut_path) const {
         if (mut_path.is_subset_of(pathtype)) {
-            double p = 1.0;
-            const bits_t recurrent = mut_path & pathtype;
-            for (auto j=recurrent.find_first(); j<bits_t::npos; j=recurrent.find_next(j)) {
-                p *= th_path_[j];
-            }
-            return p;
+            return slice_prod(th_path_, mut_path & pathtype);
         } else {return 1.0;}
     }
 
-    double discount(const std::vector<bits_t>& mutations) const {
+    double discount(const std::vector<bits_t>& mut_route) const {
         double p = 1.0;
         const auto npath = annot_.size();
         bits_t pathtype(npath, 0);
-        for (const auto& mut_gene: mutations) {
+        for (const auto& mut_gene: mut_route) {
             const auto mut_path = translate(mut_gene);
-            p *= discount(pathtype, mut_path);
+            p *= discount_if_subset(pathtype, mut_path);
             pathtype |= mut_path;
         }
         return p;
@@ -222,14 +225,6 @@ class Denoms {
             mut_path.set(j, (annot_[j] & mut_gene).any());
         }
         return mut_path;
-    }
-
-    double prod_w(const bits_t& genotype) const {
-        double p = 1.0;
-        for (auto j=genotype.find_first(); j<bits_t::npos; j=genotype.find_next(j)) {
-            p *= w_gene_[j];
-        }
-        return p;
     }
     const std::valarray<double>& w_gene_;
     const std::valarray<double>& th_path_;
