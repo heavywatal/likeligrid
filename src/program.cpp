@@ -101,23 +101,21 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 }
 
 void Program::run() {HERE;
-    std::string prefix = "stdin";
-    if (GENOTYPES_FILE == "-") {
-        GENOTYPES_FILE = "/dev/stdin";
-    } else {
-        std::smatch mobj;
-        std::regex_search(GENOTYPES_FILE, mobj, std::regex("([^/]+?)\\.[^/]+$"));
-        prefix = mobj.str(1);
-    }
-    std::ostringstream oss;
-    oss << prefix << "-s" << MAX_SITES;
-    const std::string outdir = oss.str();
     try {
-        // ExclusivityModel model(GENOTYPES_FILE, MAX_SITES);
-        ExactModel model(GENOTYPES_FILE, MAX_SITES);
-        wtl::mkdir(outdir);  // after constructor success
-        wtl::Pushd cd(outdir);
-        model.run();
+        if (GENOTYPES_FILE == "-") {
+            ExactModel model(std::cin, MAX_SITES);
+            model.run(false);
+        } else {
+            ExactModel model(GENOTYPES_FILE, MAX_SITES);
+            std::smatch mobj;
+            std::regex_search(GENOTYPES_FILE, mobj, std::regex("([^/]+?)\\.[^/]+$"));
+            std::ostringstream oss;
+            oss << mobj.str(1) << "-s" << MAX_SITES;
+            const std::string outdir = oss.str();
+            wtl::mkdir(outdir);  // after constructor success
+            wtl::Pushd cd(outdir);
+            model.run(true);
+        }
     } catch (const wtl::KeyboardInterrupt& e) {
         std::cerr << e.what() << std::endl;
     } catch (const lnpnan_error& e) {

@@ -22,18 +22,22 @@ class ExactModel {
     static const std::vector<size_t> BREAKS_;
 
     ExactModel() = default;
+    ExactModel(std::istream&, const size_t max_sites);
     ExactModel(std::istream&&, const size_t max_sites);
     ExactModel(
         const std::string& infile,
         const size_t max_sites=255);
-    void run();
-    void go();
+    void run(const bool writing=true) {
+        if (writing) {run_fout();} else {run_cout();}
+    }
 
     static void raise_sigint() {SIGINT_RAISED_ = true;}
     static void unit_test();
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
+    void run_fout();
+    void run_cout();
     void run_impl(std::ostream&, wtl::itertools::Generator<std::valarray<double>>&&) const;
     double calc_loglik(const std::valarray<double>& th_path) const;
     std::string init_meta();

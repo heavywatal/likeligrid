@@ -27,7 +27,10 @@ bool ExactModel::SIGINT_RAISED_ = false;
 ExactModel::ExactModel(const std::string& infile, const size_t max_sites):
     ExactModel(wtl::izfstream(infile), max_sites) {HERE;}
 
-ExactModel::ExactModel(std::istream&& ist, const size_t max_sites) {HERE;
+ExactModel::ExactModel(std::istream&& ist, const size_t max_sites):
+    ExactModel(ist, max_sites) {HERE;}
+
+ExactModel::ExactModel(std::istream& ist, const size_t max_sites) {HERE;
     nlohmann::json jso;
     ist >> jso;
     names_ = jso["pathway"].get<std::vector<std::string>>();
@@ -74,7 +77,7 @@ ExactModel::ExactModel(std::istream&& ist, const size_t max_sites) {HERE;
     mle_params_ = 1.2;
 }
 
-void ExactModel::run() {HERE;
+void ExactModel::run_fout() {HERE;
     const std::string outfile = init_meta();
     std::cerr << "mle_params_: " << mle_params_ << std::endl;
     if (outfile.empty()) return;
@@ -87,10 +90,10 @@ void ExactModel::run() {HERE;
         std::cerr << "Writing: " << outfile << std::endl;
         run_impl(fout, wtl::itertools::product(axes));
     }
-    run();
+    run_fout();
 }
 
-void ExactModel::go() {HERE;
+void ExactModel::run_cout() {HERE;
     std::cerr << "mle_params_: " << mle_params_ << std::endl;
     if (stage_ >= STEPS_.size()) return;
     const auto axes = make_vicinity(mle_params_, BREAKS_.at(stage_), 2.0 * STEPS_.at(stage_));
@@ -104,7 +107,7 @@ void ExactModel::go() {HERE;
         read_results(sst);
     }
     ++stage_;
-    go();
+    run_cout();
 }
 
 void ExactModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::valarray<double>>&& gen) const {HERE;
@@ -304,8 +307,8 @@ R"({
   "annotation": ["0011", "1100"],
   "sample": ["0011", "0101", "1001", "0110", "1010", "1100"]
 })";
-    ExactModel model(std::move(sst), 2);
-    model.go();
+    ExactModel model(sst, 4);
+    model.run(false);
 }
 
 } // namespace likeligrid
