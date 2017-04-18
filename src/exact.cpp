@@ -149,14 +149,15 @@ void ExactModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
     ost << buffer.str();
 }
 
-inline std::vector<bits_t> breakdown(const bits_t& bits) {
-    std::vector<bits_t> singles;
-    singles.reserve(bits.count());
-    const bits_t one(bits.size(), 1);
-    for (bits_t::size_type i=0; i<bits.size(); ++i) {
-        if (bits[i]) singles.emplace_back(one << i);
+inline std::valarray<size_t> to_indices(const bits_t& bits) {
+    std::valarray<size_t> indices(bits.count());
+    for (size_t i=0, j=0; j<bits.size(); ++j) {
+        if (bits[j]) {
+            indices[i] = j;
+            ++i;
+        }
     }
-    return singles;
+    return indices;
 }
 
 inline double slice_prod(const std::valarray<double>& coefs, const bits_t& bits) {
@@ -194,10 +195,10 @@ class Denoms {
     double lnp_sample(const bits_t& genotype) const {
         double p = 0.0;
         const double p_basic = slice_prod(w_gene_, genotype);
-        auto mut_route = breakdown(genotype);
+        auto mut_route = to_indices(genotype);
         do {
             p += p_basic * discount(mut_route);
-        } while (std::next_permutation(mut_route.begin(), mut_route.end()));
+        } while (std::next_permutation(std::begin(mut_route), std::end(mut_route)));
         return std::log(p);
     }
 
@@ -231,12 +232,12 @@ class Denoms {
         return p;
     }
 
-    double discount(const std::vector<bits_t>& mut_route) const {
+    double discount(const std::valarray<size_t>& mut_route) const {
         double p = 1.0;
         const auto npath = annot_.size();
         bits_t pathtype(npath, 0);
-        for (const auto& mut_gene: mut_route) {
-            const auto& mut_path = effects_[mut_gene.find_first()];
+        for (const auto j: mut_route) {
+            const auto& mut_path = effects_[j];
             p *= discount_if_subset(pathtype, mut_path);
             pathtype |= mut_path;
         }
