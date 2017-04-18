@@ -6,12 +6,15 @@
 #ifndef LIKELIGRID_UTIL_HPP_
 #define LIKELIGRID_UTIL_HPP_
 
+#include <boost/math/distributions/chi_squared.hpp>
+
 #include <wtl/iostr.hpp>
 #include <wtl/numeric.hpp>
 
 #include <string>
 #include <vector>
 #include <valarray>
+#include <map>
 #include <iterator>
 
 namespace likeligrid {
@@ -28,6 +31,36 @@ make_vicinity(const std::valarray<double>& center, const size_t breaks, const do
         axes.emplace_back(axis[positive & (axis < max)]);
     }
     return axes;
+}
+
+template <class Model> inline std::map<std::string, std::valarray<double>>
+find_intersections(const Model& model) {
+    namespace bmath = boost::math;
+    bmath::chi_squared_distribution<> chisq(1.0);
+    const auto& mle_params = model.mle_params();
+    const auto& names = model.names();
+    const double step = 0.01;
+    const double max_ll = model.calc_loglik(mle_params);
+    const double threshold = max_ll - 0.5 * bmath::quantile(bmath::complement(chisq, 0.05));
+    std::map<std::string, std::valarray<double>> intersections;
+    for (size_t j=0; j<mle_params.size(); ++j) {
+        auto th_path = mle_params;
+        for (size_t i=0; i<200; ++i) {
+            th_path[j] -= step;
+            if (th_path[j] < step || model.calc_loglik(th_path) < threshold) {
+                intersections.emplace(names[j] + "_L", th_path);
+                break;
+            }
+        }
+        for (size_t i=0; i<200; ++i) {
+            th_path[j] += step;
+            if (th_path[j] >= 2.0 || model.calc_loglik(th_path) < threshold) {
+                intersections.emplace(names[j] + "_U", th_path);
+                break;
+            }
+        }
+    }
+    return intersections;
 }
 
 inline size_t guess_stage(const std::vector<double>& STEPS, const double step) {

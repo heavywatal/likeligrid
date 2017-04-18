@@ -110,6 +110,21 @@ void ExactModel::run_cout() {HERE;
     run_cout();
 }
 
+void ExactModel::search_limits() const {HERE;
+    {
+        const std::vector<std::valarray<double>> axes(names_.size(), wtl::lin_spaced(200, 2.0, 0.01));
+        wtl::ozfstream fout("uniaxis.tsv.gz");
+        run_impl(fout, wtl::itertools::uniaxis(axes, mle_params_));
+    }
+    for (const auto& p: find_intersections(*this)) {
+        std::cerr << p.first << ": " << p.second << std::endl;
+        const auto axes = make_vicinity(p.second, 5, 0.02);
+        wtl::ozfstream fout("limit-" + p.first + ".tsv.gz");
+        //TODO: if exists
+        run_impl(fout, wtl::itertools::product(axes));
+    }
+}
+
 void ExactModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::valarray<double>>&& gen) const {HERE;
     std::cerr << skip_ << " to " << gen.max_count() << std::endl;
     if (skip_ == 0) {

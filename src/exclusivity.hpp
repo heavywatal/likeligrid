@@ -30,19 +30,21 @@ class ExclusivityModel {
         const size_t max_sites=255);
     void run(const std::string& infile="");
 
+    double calc_loglik(const std::valarray<double>& th_path) const;
+    const std::valarray<double>& mle_params() const {return mle_params_;}
+    const std::vector<std::string>& names() const {return names_;}
+
     static void raise_sigint() {SIGINT_RAISED_ = true;}
     static void unit_test();
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
     void run_impl(std::ostream&, wtl::itertools::Generator<std::valarray<double>>&&) const;
-    double calc_loglik(const std::valarray<double>& th_path) const;
     double calc_denom(
         const std::valarray<double>& w_pathway,
         const std::valarray<double>& th_pathway,
         const size_t num_mutations) const;
     void search_limits() const;
-    std::unordered_map<std::string, std::valarray<double>> find_intersections() const;
     std::string init_meta(const std::string& infile);
     bool read_results(const std::string&);
 

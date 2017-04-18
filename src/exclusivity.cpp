@@ -81,15 +81,11 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
     const std::string outfile = init_meta(infile);
     std::cerr << "mle_params_: " << mle_params_ << std::endl;
     if (outfile == "") {
-        std::cerr << "Done: step size = " << STEPS_.back() << std::endl;
-        --stage_;
-        const std::vector<std::valarray<double>> axes(names_.size(), wtl::lin_spaced(200, 2.0, 0.01));
-        wtl::ozfstream fout("uniaxis.tsv.gz");
-        run_impl(fout, wtl::itertools::uniaxis(axes, mle_params_));
+        std::cerr << "Done: step size = " << STEPS_.at(--stage_) << std::endl;
         search_limits();
         return;
     }
-    const auto axes = make_vicinity(mle_params_, BREAKS_.at(stage_), 2.0 * STEPS_.at(stage_), 2.0);
+    const auto axes = make_vicinity(mle_params_, BREAKS_.at(stage_), 2.0 * STEPS_.at(stage_));
     for (size_t j=0; j<names_.size(); ++j) {
         std::cerr << names_[j] << ": " << axes[j] << std::endl;
     }
@@ -104,40 +100,18 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
 }
 
 void ExclusivityModel::search_limits() const {HERE;
-    for (const auto& p: find_intersections()) {
+    {
+        const std::vector<std::valarray<double>> axes(names_.size(), wtl::lin_spaced(200, 2.0, 0.01));
+        wtl::ozfstream fout("uniaxis.tsv.gz");
+        run_impl(fout, wtl::itertools::uniaxis(axes, mle_params_));
+    }
+    for (const auto& p: find_intersections(*this)) {
         std::cerr << p.first << ": " << p.second << std::endl;
-        const auto axes = make_vicinity(p.second, 5, 0.02, 2.0);
+        const auto axes = make_vicinity(p.second, 5, 0.02);
         wtl::ozfstream fout("limit-" + p.first + ".tsv.gz");
         //TODO: if exists
         run_impl(fout, wtl::itertools::product(axes));
     }
-}
-
-std::unordered_map<std::string, std::valarray<double>> ExclusivityModel::find_intersections() const {HERE;
-    namespace bmath = boost::math;
-    bmath::chi_squared_distribution<> chisq(1.0);
-    const double step = 0.01;
-    const double max_ll = calc_loglik(mle_params_);
-    const double threshold = max_ll - 0.5 * bmath::quantile(bmath::complement(chisq, 0.05));
-    std::unordered_map<std::string, std::valarray<double>> intersections;
-    for (size_t j=0; j<mle_params_.size(); ++j) {
-        auto th_path = mle_params_;
-        for (size_t i=0; i<200; ++i) {
-            th_path[j] -= step;
-            if (th_path[j] < step || calc_loglik(th_path) < threshold) {
-                intersections.emplace(names_[j] + "_L", th_path);
-                break;
-            }
-        }
-        for (size_t i=0; i<200; ++i) {
-            th_path[j] += step;
-            if (th_path[j] >= 2.0 || calc_loglik(th_path) < threshold) {
-                intersections.emplace(names_[j] + "_U", th_path);
-                break;
-            }
-        }
-    }
-    return intersections;
 }
 
 void ExclusivityModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::valarray<double>>&& gen) const {HERE;
