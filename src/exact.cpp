@@ -182,8 +182,8 @@ class Denoms {
     {
         const size_t ngene = w_gene.size();
         effects_.reserve(ngene);
-        for (bits_t mut_gene(ngene, 1); mut_gene.any(); mut_gene <<= 1) {
-            effects_.emplace_back(translate(mut_gene));
+        for (bits_t::size_type j=0; j<ngene; ++j) {
+            effects_.emplace_back(translate(j));
         }
         // std::cerr << "effects_: " << effects_ << std::endl;
         mutate(bits_t(ngene, 0), bits_t(annot.size(), 0), 1.0);
@@ -236,17 +236,17 @@ class Denoms {
         const auto npath = annot_.size();
         bits_t pathtype(npath, 0);
         for (const auto& mut_gene: mut_route) {
-            const auto mut_path = translate(mut_gene);
+            const auto& mut_path = effects_[mut_gene.find_first()];
             p *= discount_if_subset(pathtype, mut_path);
             pathtype |= mut_path;
         }
         return p;
     }
 
-    bits_t translate(const bits_t& mut_gene) const {
+    bits_t translate(const bits_t::size_type& mut_idx) const {
         bits_t mut_path(annot_.size(), 0);
         for (size_t j=0; j<annot_.size(); ++j) {
-            mut_path.set(j, (annot_[j] & mut_gene).any());
+            mut_path.set(j, annot_[j][mut_idx]);
         }
         return mut_path;
     }
