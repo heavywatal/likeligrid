@@ -27,11 +27,7 @@ class ExactModel {
     ExactModel(
         const std::string& infile,
         const size_t max_sites=255);
-    void run(const bool writing=true) {
-        if (writing) {run_fout();} else {run_cout();}
-        --stage_;
-        search_limits();
-    }
+    void run(const bool writing=true);
 
     double calc_loglik(const std::valarray<double>& th_path) const;
     const std::valarray<double>& mle_params() const {return mle_params_;}
@@ -48,6 +44,9 @@ class ExactModel {
     void search_limits() const;
     std::string init_meta();
     void read_results(std::istream&);
+
+    size_t breaks() const {return BREAKS_.at(stage_);}
+    double radius() const {return (breaks() - 1) * STEPS_.at(stage_) * 0.5;}
 
     std::vector<std::string> names_;
     std::vector<bits_t> annot_;

@@ -20,8 +20,8 @@
 
 namespace likeligrid {
 
-const std::vector<double> ExactModel::STEPS_ = {0.4, 0.2, 0.1, 0.05, 0.02, 0.01};
-const std::vector<size_t> ExactModel::BREAKS_ = {5, 5, 5, 5, 6, 5};
+const std::vector<double> ExactModel::STEPS_ = {0.32, 0.16, 0.08, 0.04, 0.02, 0.01};
+const std::vector<size_t> ExactModel::BREAKS_ = {5, 5, 5, 5, 5, 5};
 bool ExactModel::SIGINT_RAISED_ = false;
 
 ExactModel::ExactModel(const std::string& infile, const size_t max_sites):
@@ -74,14 +74,22 @@ ExactModel::ExactModel(std::istream& ist, const size_t max_sites) {HERE;
     std::cerr << "w_gene_: " << w_gene_ << std::endl;
 
     mle_params_.resize(annot_.size());
-    mle_params_ = 1.2;
+    mle_params_ = 1.0;
+}
+
+void ExactModel::run(const bool writing) {HERE;
+    while (stage_ < STEPS_.size()) {
+        if (writing) {run_fout();} else {run_cout();}
+    }
+    --stage_;
+    search_limits();
 }
 
 void ExactModel::run_fout() {HERE;
     const std::string outfile = init_meta();
     std::cerr << "mle_params_: " << mle_params_ << std::endl;
     if (outfile.empty()) return;
-    const auto axes = make_vicinity(mle_params_, BREAKS_.at(stage_), 2.0 * STEPS_.at(stage_));
+    const auto axes = make_vicinity(mle_params_, breaks(), radius());
     for (size_t j=0; j<names_.size(); ++j) {
         std::cerr << names_[j] << ": " << axes[j] << std::endl;
     }
@@ -90,13 +98,10 @@ void ExactModel::run_fout() {HERE;
         std::cerr << "Writing: " << outfile << std::endl;
         run_impl(fout, wtl::itertools::product(axes));
     }
-    run_fout();
 }
 
 void ExactModel::run_cout() {HERE;
-    std::cerr << "mle_params_: " << mle_params_ << std::endl;
-    if (stage_ >= STEPS_.size()) return;
-    const auto axes = make_vicinity(mle_params_, BREAKS_.at(stage_), 2.0 * STEPS_.at(stage_));
+    const auto axes = make_vicinity(mle_params_, breaks(), radius());
     for (size_t j=0; j<names_.size(); ++j) {
         std::cerr << names_[j] << ": " << axes[j] << std::endl;
     }
@@ -106,8 +111,8 @@ void ExactModel::run_cout() {HERE;
         std::cout << sst.str();
         read_results(sst);
     }
+    std::cerr << "mle_params_: " << mle_params_ << std::endl;
     ++stage_;
-    run_cout();
 }
 
 void ExactModel::search_limits() const {HERE;
