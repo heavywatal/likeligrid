@@ -137,6 +137,7 @@ void ExactModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
         ost << "##max_sites=" << nsam_with_s_.size() - 1 << "\n";
         ost << "##step=" << STEPS_.at(stage_) << "\n";
         ost << "loglik\t" << wtl::join(names_, "\t") << "\n";
+        ost.flush();
     }
     auto buffer = wtl::make_oss();
     for (const auto& th_path: gen(skip_)) {
