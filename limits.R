@@ -57,6 +57,8 @@ plot_uniaxis = function(.infiles) {
 .datadir = '~/working/likeligrid/output'
 
 .nested = tibble(indir= list.dirs(.datadir, recursive=FALSE)) %>>%
+    dplyr::filter(file.exists(file.path(indir, 'uniaxis.tsv.gz'))) %>>%
+    dplyr::filter(file.size(file.path(indir, 'uniaxis.tsv.gz')) > 100) %>>%
     dplyr::transmute(
         infile= file.path(indir, 'uniaxis.tsv.gz'),
         group= str_replace(indir, '-s\\d$', '') %>>% basename()
