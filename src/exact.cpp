@@ -49,7 +49,7 @@ ExactModel::ExactModel(std::istream& ist, const size_t max_sites) {HERE;
     }
 
     genot_.reserve(nsam);
-    const size_t ngene = all_genotypes.at(0).size();
+    const size_t ngene = jso["sample"].at(0).get<std::string>().size();
     nsam_with_s_.assign(ngene + 1, 0);  // at most
     std::valarray<double> s_gene(ngene);
     for (const auto& bits: all_genotypes) {
@@ -57,7 +57,7 @@ ExactModel::ExactModel(std::istream& ist, const size_t max_sites) {HERE;
         ++nsam_with_s_[s];
         if (s > max_sites) continue;
         genot_.push_back(bits);
-        for (bits_t::size_type j=0; j<bits.size(); ++j) {
+        for (size_t j=0; j<ngene; ++j) {
             if (bits[j]) ++s_gene[j];
         }
     }
@@ -157,7 +157,7 @@ void ExactModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
 
 inline std::valarray<size_t> to_indices(const bits_t& bits) {
     std::valarray<size_t> indices(bits.count());
-    for (size_t i=0, j=0; j<bits.size(); ++j) {
+    for (size_t i=0, j=0; i<indices.size(); ++j) {
         if (bits[j]) {
             indices[i] = j;
             ++i;
@@ -168,7 +168,7 @@ inline std::valarray<size_t> to_indices(const bits_t& bits) {
 
 inline double slice_prod(const std::valarray<double>& coefs, const bits_t& bits) {
     double p = 1.0;
-    for (bits_t::size_type i=0; i<bits.size(); ++i) {
+    for (size_t i=0; i<coefs.size(); ++i) {
         if (bits[i]) p *= coefs[i];
     }
     return p;
@@ -189,11 +189,11 @@ class Denoms {
     {
         const size_t ngene = w_gene.size();
         effects_.reserve(ngene);
-        for (bits_t::size_type j=0; j<ngene; ++j) {
+        for (size_t j=0; j<ngene; ++j) {
             effects_.emplace_back(translate(j));
         }
         // std::cerr << "effects_: " << effects_ << std::endl;
-        mutate(bits_t(ngene, 0), bits_t(annot.size(), 0), 1.0);
+        mutate(bits_t(), bits_t(), 1.0);
         // std::cerr << "denoms_: " << denoms_ << std::endl;
     }
     const std::valarray<double> log() const {return std::log(denoms_);}
@@ -211,7 +211,7 @@ class Denoms {
   private:
     void mutate(const bits_t& genotype, const bits_t& pathtype, const double anc_p) {
         const auto s = genotype.count() + 1;
-        for (bits_t::size_type j=0; j<genotype.size(); ++j) {
+        for (size_t j=0; j<w_gene_.size(); ++j) {
             if (genotype[j]) continue;
             const bits_t& mut_path = effects_[j];
             double p = anc_p;
@@ -226,7 +226,7 @@ class Denoms {
 
     double discount_if_subset(const bits_t& pathtype, const bits_t& mut_path) const {
         double p = 1.0;
-        for (bits_t::size_type i=0; i<mut_path.size(); ++i) {
+        for (size_t i=0; i<th_path_.size(); ++i) {
             if (mut_path[i]) {
                 if (pathtype[i]) {
                     p *= th_path_[i];
@@ -240,8 +240,7 @@ class Denoms {
 
     double discount(const std::valarray<size_t>& mut_route) const {
         double p = 1.0;
-        const auto npath = annot_.size();
-        bits_t pathtype(npath, 0);
+        bits_t pathtype;
         for (const auto j: mut_route) {
             const auto& mut_path = effects_[j];
             p *= discount_if_subset(pathtype, mut_path);
@@ -250,8 +249,8 @@ class Denoms {
         return p;
     }
 
-    bits_t translate(const bits_t::size_type& mut_idx) const {
-        bits_t mut_path(annot_.size(), 0);
+    bits_t translate(const size_t& mut_idx) const {
+        bits_t mut_path;
         for (size_t j=0; j<annot_.size(); ++j) {
             mut_path.set(j, annot_[j][mut_idx]);
         }

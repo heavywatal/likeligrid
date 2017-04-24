@@ -7,13 +7,14 @@
 #define LIKELIGRID_TYPEDEF_HPP_
 
 #include <cstdint>
-#include <boost/dynamic_bitset.hpp>
+#include <bitset>
 
 namespace likeligrid {
 
 typedef uint_fast32_t uint;
 
-typedef boost::dynamic_bitset<> bits_t;
+typedef std::bitset<128> bits_t;
+// TODO: Try boost::multiprecision::uint256_t
 
 } // namespace likeligrid
 
