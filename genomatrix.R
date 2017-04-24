@@ -45,6 +45,23 @@ pathdefs = read_json('pathway-defs.json', simplifyVector=TRUE)
 lengths(pathdefs)
 pathdefs = pathdefs[c('vogelstein', 'vogelstein3', 'pereira', 'HALLMARK')]
 
+pathdefs_df = pathdefs %>>%
+    purrr::map(tibble::enframe, 'pathway', 'symbol') %>>%
+    tibble::enframe('definition') %>>%
+    tidyr::unnest() %>>%
+    dplyr::mutate(symbol= purrr::map(symbol, ~{.x[.x %in% cgc_drivers$symbol]})) %>>%
+    dplyr::filter(purrr::map_lgl(symbol, ~{length(.x) > 1})) %>>%
+    (?.)
+
+pathdefs_cancer = pathdefs_df %>>%
+    tidyr::nest(-definition) %>>%
+    dplyr::mutate(data= purrr::map(data, tibble::deframe)) %>>%
+    tibble::deframe() %>>%
+    (?.)
+
+pathdefs %>>% purrr::map(~{flatten_chr(.x) %>>% unique()}) %>>% lengths()
+pathdefs_cancer %>>% purrr::map(~{flatten_chr(.x) %>>% unique()}) %>>% lengths()
+
 .join = function(.genotypes, .pathdef) {
     .pd = map_df(.pathdef, ~tibble(symbol=.x), .id='pathway')
     dplyr::left_join(.genotypes, .pd, by='symbol')
@@ -52,13 +69,19 @@ pathdefs = pathdefs[c('vogelstein', 'vogelstein3', 'pereira', 'HALLMARK')]
 .join(head(maf), pathdefs[['HALLMARK']])
 
 join_pathdefs = function(.data) {
-    purrr::map_df(pathdefs, .id='definition', ~.join(.data, .x)) %>>%
+    purrr::map_df(pathdefs_cancer, .id='definition', ~.join(.data, .x)) %>>%
     dplyr::arrange(cancer_type, sample, symbol)
 }
 join_pathdefs(maf)
 
 #########1#########2#########3#########4#########5#########6#########7#########
 # Summarize pathways and their mutations
+
+show_ngene_per_def = function(.data) {.data %>>%
+    dplyr::distinct(cancer_type, definition, symbol) %>>%
+    dplyr::count(cancer_type, definition) %>>%
+    wtl::max_print()
+}
 
 hypermutants = maf %>>%
   dplyr::count(cancer_type, sample) %>>%
@@ -78,12 +101,16 @@ hypermutants_each = maf %>>%
     join_pathdefs() %>>%
     dplyr::filter(!is.na(pathway)) %>>% (?.)
 
+.tidy %>>% show_ngene_per_def()
+
 .mutcount = .tidy %>>%
     dplyr::count(definition, cancer_type, pathway, symbol) %>>%
     dplyr::arrange(definition, cancer_type, pathway, desc(n)) %>>%
-    dplyr::filter(cumsum(n) / sum(n) < 0.90) %>>%
+    dplyr::filter(cumsum(n) / sum(n) < 0.95) %>>%
     dplyr::ungroup() %>>%
     dplyr::filter(n > 1) %>>% (?.)
+
+.mutcount %>>% show_ngene_per_def()
 
 .summary_pathways = .mutcount %>>%
     dplyr::group_by(definition, cancer_type, pathway) %>>%
@@ -91,17 +118,17 @@ hypermutants_each = maf %>>%
     dplyr::arrange(definition, cancer_type, desc(n_muts)) %>>%
     dplyr::ungroup() %>>% (?.)
 
-.usable_pathways_mut90 = .summary_pathways %>>%
+.usable_pathways_mut95 = .summary_pathways %>>%
     dplyr::group_by(definition, cancer_type) %>>%
     dplyr::mutate(i= seq_len(n())) %>>%
-    dplyr::filter(cumsum(n_muts) / sum(n_muts) < 0.9 | i < 5) %>>%
+    dplyr::filter(cumsum(n_muts) / sum(n_muts) < 0.95 | i < 5) %>>%
     dplyr::select(-i) %>>%
-    # dplyr::filter(n_genes >=10) %>>%  #TODO: condition
+    dplyr::filter(n_genes > 1) %>>%  #TODO: condition
     dplyr::ungroup() %>>% (?.)
 
-less(.usable_pathways_mut90)
+less(.usable_pathways_mut95)
 
-.usable_pathways_tiny = .usable_pathways_mut90 %>>%
+.usable_pathways_tiny = .usable_pathways_mut95 %>>%
     dplyr::group_by(definition, cancer_type) %>>%
     dplyr::top_n(4L, wt=n_muts) %>>%
     dplyr::ungroup() %>>% (?.)
@@ -112,7 +139,7 @@ less(.usable_pathways_mut90)
     dplyr::top_n(8L, wt=n_muts) %>>%
     dplyr::ungroup() %>>% (?.)
 
-.tidy90 = .usable_pathways_mut90 %>>%
+.tidy95 = .usable_pathways_mut95 %>>%
     dplyr::select(definition, cancer_type, pathway) %>>%
     dplyr::left_join(.mutcount %>>% dplyr::select(-n)) %>>%
     dplyr::left_join(.tidy) %>>%
@@ -133,6 +160,10 @@ less(.usable_pathways_mut90)
     dplyr::arrange(definition, cancer_type, sample) %>>%
     (?.)
 
+.tidy95 %>>% show_ngene_per_def()
+.tiny %>>% show_ngene_per_def()
+.tidy_manual %>>% show_ngene_per_def()
+
 .dirty = .mutcount %>>%
     dplyr::transmute(definition, cancer_type, pathway, value=sprintf('%s %4d', symbol, n)) %>>%
     dplyr::group_by(definition, cancer_type, pathway) %>>%
@@ -149,7 +180,7 @@ write_tsv(.dirty, 'summary-pathways.tsv', na='')
         write_tsv(.$data[[1]], .outfile, na='')
     })
 
-.dirty = .tidy90 %>>%
+.dirty = .tidy95 %>>%
     dplyr::count(definition, cancer_type, pathway, symbol) %>>%
     dplyr::ungroup() %>>%
     dplyr::arrange(definition, cancer_type, pathway, desc(n)) %>>% (?.) %>>%
@@ -157,8 +188,8 @@ write_tsv(.dirty, 'summary-pathways.tsv', na='')
     dplyr::group_by(definition, cancer_type, pathway) %>>%
     dplyr::mutate(i=seq_along(pathway)) %>>%
     tidyr::spread(i, value) %>>%
-    (dplyr::left_join(.usable_pathways_mut90, .)) %>>% (?.)
-write_tsv(.dirty, 'summary-pathways-tidy90.tsv', na='')
+    (dplyr::left_join(.usable_pathways_mut95, .)) %>>% (?.)
+write_tsv(.dirty, 'summary-pathways-tidy95.tsv', na='')
 
 .dirty = .tiny %>>%
     dplyr::count(definition, cancer_type, pathway, symbol) %>>%
@@ -182,11 +213,11 @@ plot_pathwaypergene = function(.data) {
     geom_bar()+
     facet_grid(definition ~ cancer_type)+
     labs(x='# pathways')+
-    scale_x_continuous(breaks=c(5L, 10L))+
+    scale_x_continuous(breaks=seq.int(2L, 10L, 2L))+
     theme(axis.ticks=element_blank())
 }
 
-.p = .tidy90 %>>% plot_pathwaypergene()
+.p = .tidy95 %>>% plot_pathwaypergene()
 .p
 ggsave('pathwaypergene-tidy90.pdf', .p, width=10, height=7)
 
@@ -347,7 +378,7 @@ purrr::by_row(~{
 (ggsave('mutdist-narm.pdf', .$.out, width=16, height=10))
 
 # .tiny %>>%
-.tidy90 %>>%
+.tidy95 %>>%
 .count_mutated() %>>%
 tidyr::nest(-cancer_type, -definition) %>>%
 dplyr::mutate(plt= purrr::map2(data, paste(definition, cancer_type), .plot)) %>>%
@@ -357,7 +388,7 @@ purrr::by_slice(~{
     cowplot::plot_grid(plotlist=.$plt, ncol=4)
 }) %>>%
 # (ggsave('mutdist-tiny.pdf', .$.out, width=16, height=10))
-(ggsave('mutdist-mut90.pdf', .$.out, width=16, height=10))
+(ggsave('mutdist-mut95.pdf', .$.out, width=16, height=10))
 
 
 #########1#########2#########3#########4#########5#########6#########7#########
