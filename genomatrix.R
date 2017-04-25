@@ -390,6 +390,21 @@ purrr::by_slice(~{
 # (ggsave('mutdist-tiny.pdf', .$.out, width=16, height=10))
 (ggsave('mutdist-mut95.pdf', .$.out, width=16, height=10))
 
+.tidy95 %>>%
+    dplyr::count(cancer_type, definition, sample, pathway) %>>%
+    dplyr::ungroup() %>>%
+    tidyr::nest(-cancer_type, -definition) %>>%
+    dplyr::arrange(definition, cancer_type) %>>%
+    purrr::by_row(~{
+        .title = paste(.x$cancer_type, .x$definition)
+        message(.title)
+        ggplot(.x$data[[1]], aes(n))+
+        geom_bar()+
+        facet_wrap(~pathway)+
+        labs(title=.title)+
+        wtl::theme_wtl()
+    }) %>>%
+    (ggsave('hist-s-pathway-mut95.pdf', .$.out, width=12, height=12))
 
 #########1#########2#########3#########4#########5#########6#########7#########
 ## Shuffle
