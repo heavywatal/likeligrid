@@ -17,6 +17,7 @@
 #include <wtl/numeric.hpp>
 #include <wtl/math.hpp>
 #include <wtl/os.hpp>
+#include <wtl/concurrent.hpp>
 
 namespace likeligrid {
 
@@ -139,20 +140,40 @@ void ExactModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
         ost << "loglik\t" << wtl::join(names_, "\t") << "\n";
         ost.flush();
     }
-    auto buffer = wtl::make_oss();
-    for (const auto& th_path: gen(skip_)) {
+
+    const size_t concurrency = std::thread::hardware_concurrency();
+    wtl::Semaphore semaphore(concurrency);
+    auto task = [this,&semaphore](const std::valarray<double> th_path) {
+        // argument is copied for thread
+        auto buffer = wtl::make_oss();
         buffer << calc_loglik(th_path) << "\t"
                << wtl::str_join(th_path, "\t") << "\n";
+        semaphore.unlock();
+        return buffer.str();
+    };
+
+    typedef std::vector<std::future<std::string>> futures_t;
+    auto write_clear = [&ost](futures_t& futures) {
+        for (auto& ftr: futures) {
+            ost << ftr.get();
+        }
+        ost.flush();
+        futures.clear();
+    };
+    futures_t futures;
+    futures.reserve(100);
+
+    for (const auto& th_path: gen(skip_)) {
+        semaphore.lock();
+        futures.push_back(std::async(std::launch::async, task, th_path));
         if (gen.count() % 100 == 0) {  // snapshot for long run
             std::cerr << "*" << std::flush;
-            ost << buffer.str();
-            ost.flush();
-            buffer.str("");
+            write_clear(futures);
         }
         if (SIGINT_RAISED_) {throw wtl::KeyboardInterrupt();}
     }
     std::cerr << "-\n";
-    ost << buffer.str();
+    write_clear(futures);
 }
 
 inline std::valarray<size_t> to_indices(const bits_t& bits) {
