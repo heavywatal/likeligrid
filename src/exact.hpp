@@ -22,11 +22,17 @@ class ExactModel {
     static const std::vector<size_t> BREAKS_;
 
     ExactModel() = default;
-    ExactModel(std::istream&, const size_t max_sites);
-    ExactModel(std::istream&&, const size_t max_sites);
+    ExactModel(std::istream&,
+        const size_t max_sites,
+        const unsigned int concurrency=1);
+    ExactModel(std::istream&& ist,
+        const size_t max_sites,
+        const unsigned int concurrency=1)
+        : ExactModel(ist, max_sites, concurrency){}
     ExactModel(
         const std::string& infile,
-        const size_t max_sites=255);
+        const size_t max_sites=255,
+        const unsigned int concurrency=1);
     void run(const bool writing=true);
 
     double calc_loglik(const std::valarray<double>& th_path) const;
@@ -57,6 +63,7 @@ class ExactModel {
     std::valarray<double> mle_params_;
     size_t skip_ = 0;
     size_t stage_ = 0;
+    const unsigned int concurrency_;
 
     static bool SIGINT_RAISED_;
 };

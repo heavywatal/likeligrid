@@ -33,6 +33,7 @@ inline po::options_description general_desc() {HERE;
 po::options_description Program::options_desc() {HERE;
     po::options_description description("Program");
     description.add_options()
+        ("parallel,j", po::value(&CONCURRENCY)->default_value(CONCURRENCY))
         ("max-sites,s", po::value(&MAX_SITES)->default_value(MAX_SITES));
     return description;
 }
@@ -103,10 +104,10 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 void Program::run() {HERE;
     try {
         if (GENOTYPES_FILE == "-") {
-            ExactModel model(std::cin, MAX_SITES);
+            ExactModel model(std::cin, MAX_SITES, CONCURRENCY);
             model.run(false);
         } else {
-            ExactModel model(GENOTYPES_FILE, MAX_SITES);
+            ExactModel model(GENOTYPES_FILE, MAX_SITES, CONCURRENCY);
             std::smatch mobj;
             std::regex_search(GENOTYPES_FILE, mobj, std::regex("([^/]+?)\\.[^/]+$"));
             std::ostringstream oss;

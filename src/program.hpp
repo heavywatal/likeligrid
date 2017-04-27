@@ -36,6 +36,7 @@ class Program {
     boost::program_options::options_description positional_desc();
     void help_and_exit();
 
+    unsigned int CONCURRENCY = 1;
     size_t MAX_SITES = 3;
     std::string GENOTYPES_FILE = "-";
 };

@@ -6,6 +6,7 @@
 #include "util.hpp"
 
 #include <functional>
+#include <chrono>
 
 #include <json.hpp>
 
@@ -25,13 +26,17 @@ const std::vector<double> ExactModel::STEPS_ = {0.32, 0.16, 0.08, 0.04, 0.02, 0.
 const std::vector<size_t> ExactModel::BREAKS_ = {5, 5, 5, 5, 5, 5};
 bool ExactModel::SIGINT_RAISED_ = false;
 
-ExactModel::ExactModel(const std::string& infile, const size_t max_sites):
-    ExactModel(wtl::izfstream(infile), max_sites) {HERE;}
+ExactModel::ExactModel(const std::string& infile,
+    const size_t max_sites,
+    const unsigned int concurrency)
+    : ExactModel(wtl::izfstream(infile), max_sites, concurrency) {HERE;}
 
-ExactModel::ExactModel(std::istream&& ist, const size_t max_sites):
-    ExactModel(ist, max_sites) {HERE;}
+ExactModel::ExactModel(
+    std::istream& ist,
+    const size_t max_sites,
+    const unsigned int concurrency)
+    : concurrency_(concurrency) {HERE;
 
-ExactModel::ExactModel(std::istream& ist, const size_t max_sites) {HERE;
     nlohmann::json jso;
     ist >> jso;
     names_ = jso["pathway"].get<std::vector<std::string>>();
@@ -141,8 +146,7 @@ void ExactModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
         ost.flush();
     }
 
-    const size_t concurrency = std::thread::hardware_concurrency();
-    wtl::Semaphore semaphore(concurrency);
+    wtl::Semaphore semaphore(concurrency_);
     auto task = [this,&semaphore](const std::valarray<double> th_path) {
         // argument is copied for thread
         auto buffer = wtl::make_oss();
@@ -152,28 +156,37 @@ void ExactModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
         return buffer.str();
     };
 
-    typedef std::vector<std::future<std::string>> futures_t;
-    auto write_clear = [&ost](futures_t& futures) {
-        for (auto& ftr: futures) {
-            ost << ftr.get();
-        }
-        ost.flush();
-        futures.clear();
-    };
-    futures_t futures;
-    futures.reserve(100);
-
+    std::deque<std::future<std::string>> futures;
+    const auto min_interval = std::chrono::seconds(2);
+    auto next_time = std::chrono::system_clock::now() + min_interval;
+    size_t stars = 0;
     for (const auto& th_path: gen(skip_)) {
         semaphore.lock();
         futures.push_back(std::async(std::launch::async, task, th_path));
-        if (gen.count() % 100 == 0) {  // snapshot for long run
-            std::cerr << "*" << std::flush;
-            write_clear(futures);
+        auto now = std::chrono::system_clock::now();
+        if (now > next_time) {
+            next_time = now + min_interval;
+            size_t progress = 0;
+            while (wtl::is_ready(futures.front())) {
+                ost << futures.front().get();
+                futures.pop_front();
+                ++progress;
+            }
+            if (progress > 0) {
+                ost.flush();
+                for (size_t n= 0.2 * gen.percent(); stars<n; ++stars) {
+                    std::cerr << "*";
+                }
+            }
         }
         if (SIGINT_RAISED_) {throw wtl::KeyboardInterrupt();}
     }
-    std::cerr << "-\n";
-    write_clear(futures);
+    for (auto& ftr: futures) {
+        ost << ftr.get();
+    }
+    for (; stars<20U; ++stars) {
+        std::cerr << "*";
+    }
 }
 
 inline std::valarray<size_t> to_indices(const bits_t& bits) {
