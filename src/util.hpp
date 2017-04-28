@@ -33,36 +33,6 @@ make_vicinity(const std::valarray<double>& center, const size_t breaks, const do
     return axes;
 }
 
-template <class Model> inline std::map<std::string, std::valarray<double>>
-find_intersections(const Model& model) {
-    namespace bmath = boost::math;
-    bmath::chi_squared_distribution<> chisq(1.0);
-    const auto& mle_params = model.mle_params();
-    const auto& names = model.names();
-    const double step = 0.01;
-    const double max_ll = model.calc_loglik(mle_params);
-    const double threshold = max_ll - 0.5 * bmath::quantile(bmath::complement(chisq, 0.05));
-    std::map<std::string, std::valarray<double>> intersections;
-    for (size_t j=0; j<mle_params.size(); ++j) {
-        auto th_path = mle_params;
-        for (size_t i=0; i<200; ++i) {
-            th_path[j] -= step;
-            if (th_path[j] < step || model.calc_loglik(th_path) < threshold) {
-                intersections.emplace(names[j] + "_L", th_path);
-                break;
-            }
-        }
-        for (size_t i=0; i<200; ++i) {
-            th_path[j] += step;
-            if (th_path[j] >= 2.0 || model.calc_loglik(th_path) < threshold) {
-                intersections.emplace(names[j] + "_U", th_path);
-                break;
-            }
-        }
-    }
-    return intersections;
-}
-
 inline size_t guess_stage(const std::vector<double>& STEPS, const double step) {
     const auto it = std::find_if(STEPS.begin(), STEPS.end(), wtl::approx(step));
     if (it == STEPS.end()) throw std::runtime_error("invalid step size");
@@ -105,6 +75,21 @@ read_body(std::istream& ist) {
     }
     std::valarray<double> mle_params(mle.data(), mle.size());
     return std::make_tuple(nrow, colnames, mle_params);
+}
+
+inline std::valarray<double>
+read_loglik(std::istream& ist, const size_t nrow) {
+    std::valarray<double> values(nrow);
+    std::string buffer;
+    std::getline(ist, buffer);
+    std::getline(ist, buffer);
+    std::getline(ist, buffer);
+    std::getline(ist, buffer); // header
+    for (size_t l=0; l<nrow; ++l) {
+        ist >> values[l];
+        std::getline(ist, buffer);
+    }
+    return values;
 }
 
 } // namespace likeligrid

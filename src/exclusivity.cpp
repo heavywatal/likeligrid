@@ -100,15 +100,32 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
 }
 
 void ExclusivityModel::search_limits() const {HERE;
-    {
-        const std::vector<std::valarray<double>> axes(names_.size(), wtl::lin_spaced(200, 2.0, 0.01));
-        wtl::ozfstream fout("uniaxis.tsv.gz");
-        run_impl(fout, wtl::itertools::uniaxis(axes, mle_params_));
+    namespace bmath = boost::math;
+    bmath::chi_squared_distribution<> chisq(1.0);
+    const double diff95 = 0.5 * bmath::quantile(bmath::complement(chisq, 0.05));
+    auto axis = wtl::round(wtl::lin_spaced(200, 2.0, 0.01), 100);
+    axis = (axis * 100.0).apply(std::round) / 100.0;
+    std::map<std::string, std::valarray<double>> intersections;
+    for (size_t i=0; i<names_.size(); ++i) {
+        const std::string outfile = "uniaxis-" + names_[i] + ".tsv.gz";
+        std::cerr << outfile << std::endl;
+        std::stringstream sst;
+        run_impl(sst, wtl::itertools::uniaxis(axis, mle_params_, i));
+        wtl::ozfstream(outfile) << sst.str();
+        const auto logliks = read_loglik(sst, axis.size());
+        const double threshold = logliks.max() - diff95;
+        const std::valarray<double> range = axis[logliks > threshold];
+        auto bound_params = mle_params_;
+        bound_params[i] = std::max(range.min() - 0.01, 0.01);
+        intersections.emplace(names_[i] + "_L", bound_params);
+        bound_params[i] = std::min(range.max() + 0.01, 2.00);
+        intersections.emplace(names_[i] + "_U", bound_params);
     }
-    for (const auto& p: find_intersections(*this)) {
-        std::cerr << p.first << ": " << p.second << std::endl;
+    for (const auto& p: intersections) {
+        const std::string outfile = "limit-" + p.first + ".tsv.gz";
+        std::cerr << outfile << ": " << p.second << std::endl;
         const auto axes = make_vicinity(p.second, 5, 0.02);
-        wtl::ozfstream fout("limit-" + p.first + ".tsv.gz");
+        wtl::ozfstream fout(outfile);
         //TODO: if exists
         run_impl(fout, wtl::itertools::product(axes));
     }
