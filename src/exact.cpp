@@ -123,7 +123,9 @@ void ExactModel::run_cout() {HERE;
 
 void ExactModel::search_limits() const {HERE;
     {
-        const std::vector<std::valarray<double>> axes(names_.size(), wtl::lin_spaced(200, 2.0, 0.01));
+        auto axis = wtl::round(wtl::lin_spaced(200, 2.0, 0.01), 100);
+        axis = (axis * 100.0).apply(std::round) / 100.0;
+        const std::vector<std::valarray<double>> axes(names_.size(), axis);
         wtl::ozfstream fout("uniaxis.tsv.gz");
         run_impl(fout, wtl::itertools::uniaxis(axes, mle_params_));
     }
