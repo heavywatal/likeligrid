@@ -42,13 +42,13 @@ inline size_t guess_stage(const std::vector<double>& STEPS, const double step) {
 inline std::tuple<size_t, size_t, double>
 read_metadata(std::istream& ist) {
     std::string buffer;
-    std::getline(ist, buffer, '=');
+    ist.ignore(std::numeric_limits<std::streamsize>::max(), '=');
     std::getline(ist, buffer);
     const size_t max_count = std::stoul(buffer);
-    std::getline(ist, buffer, '=');
+    ist.ignore(std::numeric_limits<std::streamsize>::max(), '=');
     std::getline(ist, buffer);
     const size_t max_sites = std::stoul(buffer);
-    std::getline(ist, buffer, '=');
+    ist.ignore(std::numeric_limits<std::streamsize>::max(), '=');
     std::getline(ist, buffer);
     const double step = std::stod(buffer);
     return std::make_tuple(max_count, max_sites, step);
@@ -80,14 +80,12 @@ read_body(std::istream& ist) {
 inline std::valarray<double>
 read_loglik(std::istream& ist, const size_t nrow) {
     std::valarray<double> values(nrow);
-    std::string buffer;
-    std::getline(ist, buffer);
-    std::getline(ist, buffer);
-    std::getline(ist, buffer);
-    std::getline(ist, buffer); // header
-    for (size_t l=0; l<nrow; ++l) {
-        ist >> values[l];
-        std::getline(ist, buffer);
+    for (size_t i=0; i<4U; ++i) {
+        ist.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
+    for (size_t i=0; i<nrow; ++i) {
+        ist >> values[i];
+        ist.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
     return values;
 }
