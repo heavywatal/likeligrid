@@ -184,7 +184,7 @@ void ExactModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
         if (now > next_time) {
             next_time = now + min_interval;
             size_t progress = 0;
-            while (wtl::is_ready(futures.front())) {
+            while (!futures.empty() && wtl::is_ready(futures.front())) {
                 ost << futures.front().get();
                 futures.pop_front();
                 ++progress;
