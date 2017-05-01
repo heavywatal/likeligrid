@@ -324,7 +324,7 @@ double ExactModel::calc_loglik(const std::valarray<double>& th_path) const {
         loglik += subcalc.lnp_sample(genotype);
     }
     const auto lnD = subcalc.log();
-    // std::cout << "lnD: " << lnD << std::endl;
+    // std::cerr << "lnD: " << lnD << std::endl;
     // -inf, 0, D2, D3, ...
     for (size_t s=2; s<=max_sites; ++s) {
         loglik -= nsam_with_s_[s] * lnD[s];

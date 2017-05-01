@@ -71,6 +71,7 @@ inline void test(const int flg) {HERE;
 }
 
 Program::Program(const std::vector<std::string>& arguments) {HERE;
+    std::cout << wtl::join(arguments, " ") << std::endl;
     std::ios::sync_with_stdio(false);
     std::cin.tie(0);
     std::cout.precision(15);
@@ -88,7 +89,7 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
     po::positional_options_description positional;
     positional.add("genotypes", 1);
     po::variables_map vm;
-    po::store(po::command_line_parser(arguments).
+    po::store(po::command_line_parser({arguments.begin() + 1, arguments.end()}).
               options(description).
               positional(positional).run(), vm);
     if (vm["help"].as<bool>()) {help_and_exit();}
