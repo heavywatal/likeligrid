@@ -10,7 +10,7 @@ read_likeligrid = function(file) {
 }
 
 .extract_mle = function(.data) {
-    dplyr::top_n(.data, 1, wt=loglik) %>>% dplyr::distinct()
+    dplyr::top_n(.data, 1, wt=loglik) %>>% dplyr::distinct() %>>% head(1)
 }
 
 .transform = function(.data, .best) {
@@ -26,8 +26,8 @@ read_likeligrid = function(file) {
 
 .chisq = tibble(alpha=c(0.9, 0.95, 0.99), y=qchisq(alpha, 1) * 0.5)
 
-.plot = function(.data, .best, .title='') {
-    ggplot(.data, aes(value, loglik))+
+.plot_tidy = function(.tidy, .best, .title='') {
+    ggplot(.tidy, aes(value, loglik))+
     geom_line(size=rel(1.5))+
     geom_vline(aes(xintercept=x), data=.best %>>% tidyr::gather(pathway, x, -loglik), colour='salmon')+
     geom_hline(aes(yintercept=.best$loglik - y, colour=alpha), data=.chisq)+
@@ -38,40 +38,41 @@ read_likeligrid = function(file) {
     wtl::theme_wtl()
 }
 
-plot_uniaxis = function(.infiles) {
-    tibble(infile=.infiles, label=basename(dirname(infile))) %>>%
-    purrr::by_row(~{
-        .data = read_likeligrid(.x$infile)
-        .best = .extract_mle(.data)
-        .data = .data %>>% dplyr::filter(loglik > .best$loglik - qchisq(0.99, 1))
-        .transform(.data, .best) %>>%
-        .plot(.best, .x$label)
-    }) %>>%
-    (cowplot::plot_grid(plotlist=.$.out, nrow=2, ncol=2))
+.plot = function(.data, .title='') {
+    .best = .data %>>% .extract_mle()
+    .data %>>%
+        dplyr::filter(loglik > .best$loglik - qchisq(0.99, 1)) %>>%
+        .transform(.best) %>>%
+        .plot_tidy(.best, .title)
 }
-# plot_uniaxis(.infiles)
 
 #########1#########2#########3#########4#########5#########6#########7#########
 
 .outdir = '~/working/likeligrid/analysis'
-.datadir = '~/working/likeligrid/output'
+# .datadir = '~/working/likeligrid/output-tiny-0501'
+.datadir = '~/working/likeligrid/output-major-0501'
 
-.nested = tibble(indir= list.dirs(.datadir, recursive=FALSE)) %>>%
-    dplyr::filter(file.exists(file.path(indir, 'uniaxis.tsv.gz'))) %>>%
-    dplyr::filter(file.size(file.path(indir, 'uniaxis.tsv.gz')) > 100) %>>%
+.uniaxis = tibble(indir= list.dirs(.datadir, recursive=FALSE)) %>>%
     dplyr::transmute(
-        infile= file.path(indir, 'uniaxis.tsv.gz'),
-        group= str_replace(indir, '-s\\d$', '') %>>% basename()
-    ) %>>% tidyr::nest(-group) %>>%
-    dplyr::mutate(data= purrr::map(data, flatten_chr)) %>>% (?.)
+        label= basename(indir),
+        group= str_replace(label, '-s\\d$', ''),
+        data= purrr::map(indir, ~{
+            list.files(.x, 'uniaxis.+\\.gz', full.names=TRUE) %>>%
+            purrr::map_df(read_likeligrid)
+        })
+    ) %>>% (?.)
 
-.plts = .nested %>>%
-    # head(4) %>>%
-    dplyr::mutate(plts= wtl::map_par(data, plot_uniaxis)) %>>%
-    (plts)
+.plot(.uniaxis$data[[2]], 'test')
 
-ggsave('uniaxis.pdf', .plts, width=12, height=12)
-
+.uniaxis %>>%
+    dplyr::filter(purrr::map_int(data, nrow) > 0) %>>%
+    dplyr::group_by(group) %>>%
+    purrr::by_slice(~{
+        purrr::by_row(.x, ~.plot(.x$data[[1]], .x$label)) %>>%
+        (cowplot::plot_grid(plotlist=.$.out, nrow=2, ncol=2))
+    }) %>>%
+    # (ggsave('uniaxis-tiny-0501.pdf', .$.out, width=12, height=12))
+    (ggsave('uniaxis-major-0501.pdf', .$.out, width=12, height=12))
 
 #########1#########2#########3#########4#########5#########6#########7#########
 # Plot including limit-*.tsv.gz
