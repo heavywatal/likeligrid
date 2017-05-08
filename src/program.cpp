@@ -1,6 +1,6 @@
 // -*- mode: c++; coding: utf-8 -*-
 /*! @file program.cpp
-    @brief Inplementation of Program class
+    @brief Implementation of Program class
 */
 #include "program.hpp"
 

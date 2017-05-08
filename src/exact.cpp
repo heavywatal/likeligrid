@@ -1,6 +1,6 @@
 // -*- mode: c++; coding: utf-8 -*-
 /*! @file exact.cpp
-    @brief Inplementation of ExactModel class
+    @brief Implementation of ExactModel class
 */
 #include "exact.hpp"
 #include "util.hpp"

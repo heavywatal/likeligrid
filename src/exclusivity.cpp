@@ -1,6 +1,6 @@
 // -*- mode: c++; coding: utf-8 -*-
 /*! @file exclusivity.cpp
-    @brief Inplementation of Exclusivity class
+    @brief Implementation of Exclusivity class
 */
 #include "exclusivity.hpp"
 #include "util.hpp"
