@@ -44,7 +44,7 @@ add_executable(${PROJECT_NAME} main.cpp)
 add_library(lib${PROJECT_NAME} SHARED ${srcfiles})
 
 target_link_libraries(${PROJECT_NAME} lib${PROJECT_NAME})
-target_link_libraries(lib${PROJECT_NAME} ${Boost_LIBRARIES} sfmt)
+target_link_libraries(lib${PROJECT_NAME} ${Boost_LIBRARIES})
 set_target_properties(lib${PROJECT_NAME} PROPERTIES
   NO_SONAME TRUE
   PREFIX ""
