@@ -38,6 +38,7 @@ class ExactModel {
     double calc_loglik(const std::valarray<double>& th_path) const;
     const std::valarray<double>& mle_params() const {return mle_params_;}
     const std::vector<std::string>& names() const {return names_;}
+    size_t num_genes() const {return w_gene_.size();}
 
     static void raise_sigint() {SIGINT_RAISED_ = true;}
     static void unit_test();

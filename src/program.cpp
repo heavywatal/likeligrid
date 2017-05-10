@@ -13,6 +13,7 @@
 #include <wtl/iostr.hpp>
 #include <wtl/os.hpp>
 #include <wtl/getopt.hpp>
+#include <wtl/math.hpp>
 
 #include "exclusivity.hpp"
 #include "exact.hpp"
@@ -55,8 +56,8 @@ void Program::help_and_exit() {HERE;
 }
 
 //! Unit test for each class
-inline void test(const int flg) {HERE;
-    switch (flg) {
+void Program::test(const int flag) {HERE;
+    switch (flag) {
       case 0:
         break;
       case 1:
@@ -65,6 +66,17 @@ inline void test(const int flg) {HERE;
       case 2:
         ExclusivityModel::unit_test();
         throw wtl::ExitSuccess();
+      case 3: {
+        ExactModel model(GENOTYPES_FILE, MAX_SITES, CONCURRENCY);
+        std::cerr << "width: " << model.num_genes() << std::endl;
+        std::cerr << "depth: " << MAX_SITES << std::endl;
+        double leaves = wtl::pow(static_cast<double>(model.num_genes()), MAX_SITES);
+        std::cerr << "w ^ d: " << leaves * 1e-6 << " M" <<std::endl;
+        wtl::benchmark([&]() {
+            model.calc_loglik(model.mle_params() - 0.1);
+        }, "", CONCURRENCY);
+        throw wtl::ExitSuccess();
+      }
       default:
         throw std::runtime_error("Unknown argument for --test");
     }
