@@ -15,18 +15,26 @@ raw_maf = file.path(cachedir, 'drivers.primary.PASS.extracted.tsv.gz') %>>% read
     dplyr::count(cancer_type, sample) %>>%
     dplyr::count(cancer_type, sort=TRUE) %>>% (?.)
 
-(.cancer_types = dplyr::filter(.ncases, nn > 400L)$cancer_type)
+(.cancer_types400 = dplyr::filter(.ncases, nn > 400L)$cancer_type)
+
+# Kandoth 2013 Nature, Tamborero 2013 Sci Rep
+major_cancer_types = c('BRCA', 'LUAD', 'LUSC', 'UCEC', 'GBM', 'HNSC', 'COAD', 'READ', 'BLCA', 'KIRC', 'OV', 'LAML')
+
+.ncases %>>% dplyr::filter(cancer_type %in% major_cancer_types)
+union(.cancer_types400, major_cancer_types)
+intersect(.cancer_types400, major_cancer_types)
+
+(.cancer_types = str_replace(major_cancer_types, 'LAML', 'STAD'))
 
 ## TODO
 # Assumption of impact?
 # Count gene only once?
 maf = raw_maf %>>%
+    dplyr::filter(cancer_type %in% .cancer_types) %>>%
     dplyr::filter(impact != 'LOW') %>>%
     dplyr::distinct(cancer_type, sample, symbol) %>>%
     dplyr::mutate(cancer_type= factor(cancer_type, levels=.ncases$cancer_type)) %>>%
     dplyr::arrange(cancer_type) %>>% (?.)
-
-maf %>>% dplyr::filter(cancer_type %in% .cancer_types) %>>% dplyr::count(sample) %>>% (quantile(.$n, c(0.5, 0.95, 0.99, 1)))
 
 (.hypermut_quantile = maf %>>% dplyr::count(sample) %>>% (quantile(.$n, c(0.5, 0.95, 0.99, 1))))
 .hypermut_quantile['99%']
@@ -80,6 +88,7 @@ join_pathdefs(maf)
 show_ngene_per_def = function(.data) {.data %>>%
     dplyr::distinct(cancer_type, definition, symbol) %>>%
     dplyr::count(cancer_type, definition) %>>%
+    dplyr::arrange(definition, cancer_type) %>>%
     wtl::max_print()
 }
 
@@ -92,12 +101,12 @@ hypermutants_each = maf %>>%
     dplyr::count(cancer_type, sample) %>>%
     dplyr::arrange(cancer_type, n) %>>%
     dplyr::mutate(i = seq_len(n())) %>>%
-    dplyr::filter(i / n() > 0.80) %>>%
+    dplyr::filter(i / n() > 0.90) %>>%
     (sample) %>>% (?.)
 
 .tidy = maf %>>%
-    dplyr::filter(cancer_type %in% .cancer_types) %>>%
-    dplyr::filter(!sample %in% hypermutants_each) %>>%  # discard hypermutants
+    dplyr::filter(!sample %in% hypermutants_each) %>>%
+    ################################################## exclude hypermutants
     join_pathdefs() %>>%
     dplyr::filter(!is.na(pathway)) %>>% (?.)
 
@@ -106,9 +115,10 @@ hypermutants_each = maf %>>%
 .mutcount = .tidy %>>%
     dplyr::count(definition, cancer_type, pathway, symbol) %>>%
     dplyr::arrange(definition, cancer_type, pathway, desc(n)) %>>%
-    dplyr::filter(cumsum(n) / sum(n) < 0.95) %>>%  # discard less-mutated genes
-    dplyr::ungroup() %>>%
-    dplyr::filter(n > 1) %>>% (?.)
+    ############################################# exclude less-mutated genes
+    dplyr::filter(cumsum(n) / sum(n) < 0.95) %>>%
+    dplyr::filter(n > 1) %>>%
+    dplyr::ungroup() %>>% (?.)
 
 .mutcount %>>% show_ngene_per_def()
 
@@ -118,28 +128,39 @@ hypermutants_each = maf %>>%
     dplyr::arrange(definition, cancer_type, desc(n_muts)) %>>%
     dplyr::ungroup() %>>% (?.)
 
+.summary_pathways %>>%
+    dplyr::filter(definition == 'vogelstein') %>>%
+    dplyr::group_by(definition, cancer_type) %>>%
+    dplyr::mutate(i= seq_len(n()), csum= cumsum(n_muts) / sum(n_muts)) %>>%
+    less()
+
 .major_pathways = .summary_pathways %>>%
     dplyr::group_by(definition, cancer_type) %>>%
     dplyr::arrange(definition, cancer_type, desc(n_muts)) %>>%
     dplyr::mutate(i= seq_len(n())) %>>%
-    dplyr::filter(cumsum(n_muts) / sum(n_muts) < 0.95 | i < 5) %>>%
-    # discard less-mutated pathways
+    ################################### exclude less-mutated pathways
+    dplyr::filter(cumsum(n_muts) / sum(n_muts) < 0.95 | i < 4L) %>>%
+    dplyr::filter(n_genes > 1L) %>>%  #TODO: condition
     dplyr::select(-i) %>>%
-    dplyr::filter(n_genes > 1) %>>%  #TODO: condition
     dplyr::ungroup() %>>% (?.)
 
 less(.major_pathways)
+
+.major_pathways %>>% dplyr::filter(n_genes < 3)
 
 .major_pathways_tiny = .major_pathways %>>%
     dplyr::group_by(definition, cancer_type) %>>%
     dplyr::top_n(4L, wt=n_muts) %>>%
     dplyr::ungroup() %>>% (?.)
 
-.major_pathways_manual = .summary_pathways %>>%
-    dplyr::filter(n_muts >= 10, n_genes >=5) %>>%  #TODO: condition
+.major_pathways_manual = .major_pathways %>>%
     dplyr::group_by(definition, cancer_type) %>>%
-    dplyr::top_n(8L, wt=n_muts) %>>%
+    dplyr::top_n(6L, wt=n_muts) %>>%
     dplyr::ungroup() %>>% (?.)
+
+.major_pathways_manual %>>%
+    dplyr::group_by(definition, cancer_type) %>>%
+    dplyr::filter(n() > 6)
 
 .major = .major_pathways %>>%
     dplyr::select(definition, cancer_type, pathway) %>>%
@@ -162,9 +183,9 @@ less(.major_pathways)
     dplyr::arrange(definition, cancer_type, sample) %>>%
     (?.)
 
-.major %>>% show_ngene_per_def()
-.tiny %>>% show_ngene_per_def()
-.manual %>>% show_ngene_per_def()
+.major %>>% show_ngene_per_def() %>>% write_tsv('ngene_per_def_major.tsv')
+.tiny %>>% show_ngene_per_def() %>>% write_tsv('ngene_per_def_tiny.tsv')
+.manual %>>% show_ngene_per_def() %>>% write_tsv('ngene_per_def_manual.tsv')
 
 summarize_genes = function(.data, .def=c('vogelstein')) {.data %>>%
     dplyr::filter(definition %in% .def) %>>%
@@ -175,6 +196,7 @@ summarize_genes = function(.data, .def=c('vogelstein')) {.data %>>%
 summarize_genes(.major) %>>% less()
 summarize_genes(.tiny) %>>% less()
 summarize_genes(.major, 'HALLMARK')
+summarize_genes(.manual) %>>% less()
 
 .dirty = .mutcount %>>%
     dplyr::transmute(definition, cancer_type, pathway, value=sprintf('%s %4d', symbol, n)) %>>%
@@ -192,7 +214,8 @@ write_tsv(.dirty, 'summary-pathways.tsv', na='')
         write_tsv(.$data[[1]], .outfile, na='')
     })
 
-.dirty = .major %>>%
+.dirty = .manual %>>%
+# .dirty = .major %>>%
     dplyr::count(definition, cancer_type, pathway, symbol) %>>%
     dplyr::ungroup() %>>%
     dplyr::arrange(definition, cancer_type, pathway, desc(n)) %>>% (?.) %>>%
@@ -201,18 +224,8 @@ write_tsv(.dirty, 'summary-pathways.tsv', na='')
     dplyr::mutate(i=seq_along(pathway)) %>>%
     tidyr::spread(i, value) %>>%
     (dplyr::left_join(.major_pathways, .)) %>>% (?.)
-write_tsv(.dirty, 'summary-pathways-major.tsv', na='')
-
-.dirty = .tiny %>>%
-    dplyr::count(definition, cancer_type, pathway, symbol) %>>%
-    dplyr::ungroup() %>>%
-    dplyr::arrange(definition, cancer_type, pathway, desc(n)) %>>% (?.) %>>%
-    dplyr::transmute(definition, cancer_type, pathway, value=sprintf('%s %4d', symbol, n)) %>>%
-    dplyr::group_by(definition, cancer_type, pathway) %>>%
-    dplyr::mutate(i=seq_along(pathway)) %>>%
-    tidyr::spread(i, value) %>>%
-    (dplyr::left_join(.major_pathways_tiny, .)) %>>% (?.)
-write_tsv(.dirty, 'summary-pathways-tiny.tsv', na='')
+# write_tsv(.dirty, 'summary-pathways-major.tsv', na='')
+write_tsv(.dirty, 'summary-pathways-manual.tsv', na='')
 
 ####
 
@@ -261,9 +274,12 @@ genotype2bits = function(.data) {
 }
 
 # .outdir = sprintf('~/Dropbox/working/likeligrid/genotypes/major-%s', wtl::today())
-.outdir = sprintf('~/Dropbox/working/likeligrid/genotypes/tiny-%s', wtl::today())
+# .outdir = sprintf('~/Dropbox/working/likeligrid/genotypes/tiny-%s', wtl::today())
+.outdir = sprintf('~/Dropbox/working/likeligrid/genotypes/manual-%s', wtl::today())
 dir.create(.outdir, mode='0755')
-.tiny %>>%
+.major %>>%
+# .tiny %>>%
+# .manual %>>%
     tidyr::nest(-definition, -cancer_type) %>>%
     # head(2) %>>%
     purrr::by_row(~{
@@ -348,8 +364,9 @@ purrr::by_row(~{
 }) %>>%
 (ggsave('mutdist-narm.pdf', .$.out, width=16, height=10))
 
+# .major %>>%
 # .tiny %>>%
-.major %>>%
+.manual %>>%
 .count_mutated() %>>%
 tidyr::nest(-cancer_type, -definition) %>>%
 dplyr::mutate(plt= purrr::map2(data, paste(definition, cancer_type), .plot)) %>>%
@@ -358,10 +375,12 @@ dplyr::group_by(definition) %>>%
 purrr::by_slice(~{
     cowplot::plot_grid(plotlist=.$plt, ncol=4)
 }) %>>%
+(ggsave('mutdist-manual.pdf', .$.out, width=16, height=10))
 # (ggsave('mutdist-tiny.pdf', .$.out, width=16, height=10))
-(ggsave('mutdist-major.pdf', .$.out, width=16, height=10))
+# (ggsave('mutdist-major.pdf', .$.out, width=16, height=10))
 
 .major %>>%
+.manual %>>%
     dplyr::count(cancer_type, definition, sample, pathway) %>>%
     dplyr::ungroup() %>>%
     tidyr::nest(-cancer_type, -definition) %>>%
@@ -375,7 +394,8 @@ purrr::by_slice(~{
         labs(title=.title)+
         wtl::theme_wtl()
     }) %>>%
-    (ggsave('hist-s-pathway-major.pdf', .$.out, width=12, height=12))
+    (ggsave('hist-s-pathway-manual.pdf', .$.out, width=12, height=12))
+    # (ggsave('hist-s-pathway-major.pdf', .$.out, width=12, height=12))
 
 #########1#########2#########3#########4#########5#########6#########7#########
 ## Shuffle
