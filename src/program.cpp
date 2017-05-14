@@ -15,8 +15,8 @@
 #include <wtl/getopt.hpp>
 #include <wtl/math.hpp>
 
-#include "exclusivity.hpp"
-#include "exact.hpp"
+#include "pathtype.hpp"
+#include "genotype.hpp"
 
 namespace likeligrid {
 
@@ -61,13 +61,13 @@ void Program::test(const int flag) {HERE;
       case 0:
         break;
       case 1:
-        ExactModel::unit_test();
+        GenotypeModel::unit_test();
         throw wtl::ExitSuccess();
       case 2:
-        ExclusivityModel::unit_test();
+        PathtypeModel::unit_test();
         throw wtl::ExitSuccess();
       case 3: {
-        ExactModel model(GENOTYPES_FILE, MAX_SITES, CONCURRENCY);
+        GenotypeModel model(GENOTYPES_FILE, MAX_SITES, CONCURRENCY);
         std::cerr << "width: " << model.num_genes() << std::endl;
         std::cerr << "depth: " << MAX_SITES << std::endl;
         double leaves = wtl::pow(static_cast<double>(model.num_genes()), MAX_SITES);
@@ -90,8 +90,8 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
     std::cerr.precision(6);
     std::signal(SIGINT, [](int signum){
         if (signum == SIGINT) {
-            ExclusivityModel::raise_sigint();
-            ExactModel::raise_sigint();
+            PathtypeModel::raise_sigint();
+            GenotypeModel::raise_sigint();
         }
     });
 
@@ -117,10 +117,10 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 void Program::run() {HERE;
     try {
         if (GENOTYPES_FILE == "-") {
-            ExactModel model(std::cin, MAX_SITES, CONCURRENCY);
+            GenotypeModel model(std::cin, MAX_SITES, CONCURRENCY);
             model.run(false);
         } else {
-            ExactModel model(GENOTYPES_FILE, MAX_SITES, CONCURRENCY);
+            GenotypeModel model(GENOTYPES_FILE, MAX_SITES, CONCURRENCY);
             std::smatch mobj;
             std::regex_search(GENOTYPES_FILE, mobj, std::regex("([^/]+?)\\.[^/]+$"));
             std::ostringstream oss;

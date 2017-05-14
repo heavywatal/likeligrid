@@ -1,8 +1,8 @@
 // -*- mode: c++; coding: utf-8 -*-
-/*! @file exclusivity.cpp
-    @brief Implementation of Exclusivity class
+/*! @file pathtype.cpp
+    @brief Implementation of PathtypeModel class
 */
-#include "exclusivity.hpp"
+#include "pathtype.hpp"
 #include "util.hpp"
 
 #include <functional>
@@ -20,14 +20,14 @@
 
 namespace likeligrid {
 
-const std::vector<double> ExclusivityModel::STEPS_ = {0.4, 0.2, 0.1, 0.05, 0.02, 0.01};
-const std::vector<size_t> ExclusivityModel::BREAKS_ = {5, 5, 5, 5, 6, 5};
-bool ExclusivityModel::SIGINT_RAISED_ = false;
+const std::vector<double> PathtypeModel::STEPS_ = {0.4, 0.2, 0.1, 0.05, 0.02, 0.01};
+const std::vector<size_t> PathtypeModel::BREAKS_ = {5, 5, 5, 5, 6, 5};
+bool PathtypeModel::SIGINT_RAISED_ = false;
 
-ExclusivityModel::ExclusivityModel(const std::string& infile, const size_t max_sites):
-    ExclusivityModel(wtl::izfstream(infile), max_sites) {HERE;}
+PathtypeModel::PathtypeModel(const std::string& infile, const size_t max_sites):
+    PathtypeModel(wtl::izfstream(infile), max_sites) {HERE;}
 
-ExclusivityModel::ExclusivityModel(std::istream&& ist, const size_t max_sites) {HERE;
+PathtypeModel::PathtypeModel(std::istream&& ist, const size_t max_sites) {HERE;
     names_ = wtl::read_header(ist);
     auto pathtypes = wtl::read_valarrays<uint>(ist);
     const auto raw_s_sample = wtl::row_sums(pathtypes);
@@ -77,7 +77,7 @@ ExclusivityModel::ExclusivityModel(std::istream&& ist, const size_t max_sites) {
     mle_params_ = 1.2;
 }
 
-void ExclusivityModel::run(const std::string& infile) {HERE;
+void PathtypeModel::run(const std::string& infile) {HERE;
     const std::string outfile = init_meta(infile);
     std::cerr << "mle_params_: " << mle_params_ << std::endl;
     if (outfile == "") {
@@ -99,7 +99,7 @@ void ExclusivityModel::run(const std::string& infile) {HERE;
     }
 }
 
-void ExclusivityModel::search_limits() const {HERE;
+void PathtypeModel::search_limits() const {HERE;
     namespace bmath = boost::math;
     bmath::chi_squared_distribution<> chisq(1.0);
     const double diff95 = 0.5 * bmath::quantile(bmath::complement(chisq, 0.05));
@@ -131,7 +131,7 @@ void ExclusivityModel::search_limits() const {HERE;
     }
 }
 
-void ExclusivityModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::valarray<double>>&& gen) const {HERE;
+void PathtypeModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::valarray<double>>&& gen) const {HERE;
     std::cerr << skip_ << " to " << gen.max_count() << std::endl;
     if (skip_ == 0) {
         ost << "##max_count=" << gen.max_count() << "\n";
@@ -155,7 +155,7 @@ void ExclusivityModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std
     ost << buffer.str();
 }
 
-double ExclusivityModel::calc_loglik(const std::valarray<double>& th_path) const {
+double PathtypeModel::calc_loglik(const std::valarray<double>& th_path) const {
     const size_t max_sites = nsam_with_s_.size() - 1;
     double loglik = (a_pathway_ * std::log(th_path)).sum();
     // D = 1.0 when s < 2
@@ -165,7 +165,7 @@ double ExclusivityModel::calc_loglik(const std::valarray<double>& th_path) const
     return loglik += lnp_const_;
 }
 
-double ExclusivityModel::calc_denom(
+double PathtypeModel::calc_denom(
     const std::valarray<double>& w_pathway,
     const std::valarray<double>& th_pathway,
     const size_t num_mutations) const {
@@ -188,7 +188,7 @@ double ExclusivityModel::calc_denom(
     return sum_prob;
 }
 
-std::string ExclusivityModel::init_meta(const std::string& infile) {HERE;
+std::string PathtypeModel::init_meta(const std::string& infile) {HERE;
     if (infile == "/dev/null") return "/dev/stdout";
     if (stage_ >= STEPS_.size()) return "";
     auto oss = wtl::make_oss(2, std::ios::fixed);
@@ -201,7 +201,7 @@ std::string ExclusivityModel::init_meta(const std::string& infile) {HERE;
     return outfile;
 }
 
-bool ExclusivityModel::read_results(const std::string& infile) {HERE;
+bool PathtypeModel::read_results(const std::string& infile) {HERE;
     if (infile == "/dev/null")
         return false;
     try {
@@ -232,7 +232,7 @@ bool ExclusivityModel::read_results(const std::string& infile) {HERE;
     }
 }
 
-void ExclusivityModel::unit_test() {HERE;
+void PathtypeModel::unit_test() {HERE;
     std::stringstream sst;
     sst <<
 R"(A B
@@ -241,7 +241,7 @@ R"(A B
 1 1
 0 2
 )";
-    ExclusivityModel model(std::move(sst), 3);
+    PathtypeModel model(std::move(sst), 3);
     model.run("/dev/null");
 }
 

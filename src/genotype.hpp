@@ -1,10 +1,10 @@
 // -*- mode: c++; coding: utf-8 -*-
-/*! @file exact.hpp
-    @brief Interface of ExactModel class
+/*! @file genotype.hpp
+    @brief Interface of GenotypeModel class
 */
 #pragma once
-#ifndef LIKELIGRID_EXACT_HPP_
-#define LIKELIGRID_EXACT_HPP_
+#ifndef LIKELIGRID_GENOTYPE_HPP_
+#define LIKELIGRID_GENOTYPE_HPP_
 
 #include "typedef.hpp"
 
@@ -16,20 +16,20 @@
 
 namespace likeligrid {
 
-class ExactModel {
+class GenotypeModel {
   public:
     static const std::vector<double> STEPS_;
     static const std::vector<size_t> BREAKS_;
 
-    ExactModel() = default;
-    ExactModel(std::istream&,
+    GenotypeModel() = default;
+    GenotypeModel(std::istream&,
         const size_t max_sites,
         const unsigned int concurrency=1);
-    ExactModel(std::istream&& ist,
+    GenotypeModel(std::istream&& ist,
         const size_t max_sites,
         const unsigned int concurrency=1)
-        : ExactModel(ist, max_sites, concurrency){}
-    ExactModel(
+        : GenotypeModel(ist, max_sites, concurrency){}
+    GenotypeModel(
         const std::string& infile,
         const size_t max_sites=255,
         const unsigned int concurrency=1);
@@ -71,4 +71,4 @@ class ExactModel {
 
 } // namespace likeligrid
 
-#endif // LIKELIGRID_EXACT_HPP
+#endif // LIKELIGRID_GENOTYPE_HPP_

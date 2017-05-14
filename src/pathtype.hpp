@@ -1,10 +1,10 @@
 // -*- mode: c++; coding: utf-8 -*-
-/*! @file exclusivity.hpp
-    @brief Interface of Exclusivity class
+/*! @file pathtype.hpp
+    @brief Interface of PathtypeModel class
 */
 #pragma once
-#ifndef LIKELIGRID_EXCLUSIVITY_HPP_
-#define LIKELIGRID_EXCLUSIVITY_HPP_
+#ifndef LIKELIGRID_PATHTYPE_HPP_
+#define LIKELIGRID_PATHTYPE_HPP_
 
 #include "typedef.hpp"
 
@@ -18,14 +18,14 @@
 
 namespace likeligrid {
 
-class ExclusivityModel {
+class PathtypeModel {
   public:
     static const std::vector<double> STEPS_;
     static const std::vector<size_t> BREAKS_;
 
-    ExclusivityModel() = default;
-    ExclusivityModel(std::istream&&, const size_t max_sites);
-    ExclusivityModel(
+    PathtypeModel() = default;
+    PathtypeModel(std::istream&&, const size_t max_sites);
+    PathtypeModel(
         const std::string& infile,
         const size_t max_sites=255);
     void run(const std::string& infile="");
@@ -71,4 +71,4 @@ class lnpnan_error: public std::runtime_error {
 
 } // namespace likeligrid
 
-#endif /* LIKELIGRID_EXCLUSIVITY_HPP_ */
+#endif /* LIKELIGRID_PATHTYPE_HPP_ */

@@ -1,8 +1,8 @@
 // -*- mode: c++; coding: utf-8 -*-
-/*! @file exact.cpp
-    @brief Implementation of ExactModel class
+/*! @file genotype.cpp
+    @brief Implementation of GenotypeModel class
 */
-#include "exact.hpp"
+#include "genotype.hpp"
 #include "util.hpp"
 
 #include <functional>
@@ -22,16 +22,16 @@
 
 namespace likeligrid {
 
-const std::vector<double> ExactModel::STEPS_ = {0.32, 0.16, 0.08, 0.04, 0.02, 0.01};
-const std::vector<size_t> ExactModel::BREAKS_ = {5, 5, 5, 5, 5, 5};
-bool ExactModel::SIGINT_RAISED_ = false;
+const std::vector<double> GenotypeModel::STEPS_ = {0.32, 0.16, 0.08, 0.04, 0.02, 0.01};
+const std::vector<size_t> GenotypeModel::BREAKS_ = {5, 5, 5, 5, 5, 5};
+bool GenotypeModel::SIGINT_RAISED_ = false;
 
-ExactModel::ExactModel(const std::string& infile,
+GenotypeModel::GenotypeModel(const std::string& infile,
     const size_t max_sites,
     const unsigned int concurrency)
-    : ExactModel(wtl::izfstream(infile), max_sites, concurrency) {HERE;}
+    : GenotypeModel(wtl::izfstream(infile), max_sites, concurrency) {HERE;}
 
-ExactModel::ExactModel(
+GenotypeModel::GenotypeModel(
     std::istream& ist,
     const size_t max_sites,
     const unsigned int concurrency)
@@ -83,7 +83,7 @@ ExactModel::ExactModel(
     mle_params_ = 1.0;
 }
 
-void ExactModel::run(const bool writing) {HERE;
+void GenotypeModel::run(const bool writing) {HERE;
     while (stage_ < STEPS_.size()) {
         if (writing) {run_fout();} else {run_cout();}
     }
@@ -91,7 +91,7 @@ void ExactModel::run(const bool writing) {HERE;
     search_limits();
 }
 
-void ExactModel::run_fout() {HERE;
+void GenotypeModel::run_fout() {HERE;
     const std::string outfile = init_meta();
     std::cerr << "mle_params_: " << mle_params_ << std::endl;
     if (outfile.empty()) return;
@@ -106,7 +106,7 @@ void ExactModel::run_fout() {HERE;
     }
 }
 
-void ExactModel::run_cout() {HERE;
+void GenotypeModel::run_cout() {HERE;
     const auto axes = make_vicinity(mle_params_, breaks(), radius());
     for (size_t j=0; j<names_.size(); ++j) {
         std::cerr << names_[j] << ": " << axes[j] << std::endl;
@@ -121,7 +121,7 @@ void ExactModel::run_cout() {HERE;
     ++stage_;
 }
 
-void ExactModel::search_limits() const {HERE;
+void GenotypeModel::search_limits() const {HERE;
     namespace bmath = boost::math;
     bmath::chi_squared_distribution<> chisq(1.0);
     const double diff95 = 0.5 * bmath::quantile(bmath::complement(chisq, 0.05));
@@ -153,7 +153,7 @@ void ExactModel::search_limits() const {HERE;
     }
 }
 
-void ExactModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::valarray<double>>&& gen) const {HERE;
+void GenotypeModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::valarray<double>>&& gen) const {HERE;
     std::cerr << skip_ << " to " << gen.max_count() << std::endl;
     if (skip_ == 0) {
         ost << "##max_count=" << gen.max_count() << "\n";
@@ -316,7 +316,7 @@ class Denoms {
     std::vector<bits_t> effects_;
 };
 
-double ExactModel::calc_loglik(const std::valarray<double>& th_path) const {
+double GenotypeModel::calc_loglik(const std::valarray<double>& th_path) const {
     const size_t max_sites = nsam_with_s_.size() - 1;
     Denoms subcalc(w_gene_, th_path, annot_, max_sites);
     double loglik = 0.0;
@@ -332,7 +332,7 @@ double ExactModel::calc_loglik(const std::valarray<double>& th_path) const {
     return loglik;
 }
 
-std::string ExactModel::init_meta() {HERE;
+std::string GenotypeModel::init_meta() {HERE;
     if (stage_ >= STEPS_.size()) return "";
     auto oss = wtl::make_oss(2, std::ios::fixed);
     oss << "grid-" << STEPS_.at(stage_) << ".tsv.gz";
@@ -351,7 +351,7 @@ std::string ExactModel::init_meta() {HERE;
     return outfile;
 }
 
-void ExactModel::read_results(std::istream& ist) {HERE;
+void GenotypeModel::read_results(std::istream& ist) {HERE;
     size_t max_count;
     double step;
     std::tie(max_count, std::ignore, step) = read_metadata(ist);
@@ -372,7 +372,7 @@ void ExactModel::read_results(std::istream& ist) {HERE;
     }
 }
 
-void ExactModel::unit_test() {HERE;
+void GenotypeModel::unit_test() {HERE;
     std::stringstream sst;
     sst <<
 R"({
@@ -380,7 +380,7 @@ R"({
   "annotation": ["0011", "1100"],
   "sample": ["0011", "0101", "1001", "0110", "1010", "1100"]
 })";
-    ExactModel model(sst, 4);
+    GenotypeModel model(sst, 4);
     model.run(false);
 }
 
