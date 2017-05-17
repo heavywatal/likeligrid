@@ -2,25 +2,20 @@
 /*! @file pathtype.cpp
     @brief Implementation of PathtypeModel class
 */
+#include "typedef.hpp"
 #include "pathtype.hpp"
-#include "util.hpp"
 
 #include <functional>
-#include <unordered_map>
-
-#include <boost/math/distributions/chi_squared.hpp>
 
 #include <wtl/debug.hpp>
 #include <wtl/exception.hpp>
 #include <wtl/iostr.hpp>
+#include <wtl/zfstream.hpp>
+#include <wtl/itertools.hpp>
 #include <wtl/numeric.hpp>
 #include <wtl/math.hpp>
-#include <wtl/zfstream.hpp>
-#include <wtl/os.hpp>
 
 namespace likeligrid {
-
-bool PathtypeModel::SIGINT_RAISED_ = false;
 
 PathtypeModel::PathtypeModel(const std::string& infile, const size_t max_sites):
     PathtypeModel(wtl::izfstream(infile), max_sites) {HERE;}
@@ -71,86 +66,6 @@ PathtypeModel::PathtypeModel(std::istream&& ist, const size_t max_sites) {HERE;
     for (size_t s=0; s<=nsam_with_s_.size(); ++s) {
         index_axes_.emplace_back(s, indices);
     }
-    mle_params_.resize(a_pathway_.size());
-    mle_params_ = 1.2;
-}
-
-void PathtypeModel::run(const std::string& infile) {HERE;
-    const std::string outfile = init_meta(infile);
-    std::cerr << "mle_params_: " << mle_params_ << std::endl;
-    if (outfile == "") {
-        std::cerr << "Done: step size = " << STEPS.at(--stage_) << std::endl;
-        search_limits();
-        return;
-    }
-    const auto axes = make_vicinity(mle_params_, BREAKS.at(stage_), 2.0 * STEPS.at(stage_));
-    for (size_t j=0; j<names_.size(); ++j) {
-        std::cerr << names_[j] << ": " << axes[j] << std::endl;
-    }
-    {
-        wtl::ozfstream fout(outfile, std::ios::out | std::ios::app);
-        std::cerr << "Writing: " << outfile << std::endl;
-        run_impl(fout, wtl::itertools::product(axes));
-    }
-    if (outfile != "/dev/stdout") {
-        run(outfile);
-    }
-}
-
-void PathtypeModel::search_limits() const {HERE;
-    namespace bmath = boost::math;
-    bmath::chi_squared_distribution<> chisq(1.0);
-    const double diff95 = 0.5 * bmath::quantile(bmath::complement(chisq, 0.05));
-    auto axis = wtl::round(wtl::lin_spaced(200, 2.0, 0.01), 100);
-    axis = (axis * 100.0).apply(std::round) / 100.0;
-    std::map<std::string, std::valarray<double>> intersections;
-    for (size_t i=0; i<names_.size(); ++i) {
-        const std::string outfile = "uniaxis-" + names_[i] + ".tsv.gz";
-        std::cerr << outfile << std::endl;
-        std::stringstream sst;
-        run_impl(sst, wtl::itertools::uniaxis(axis, mle_params_, i));
-        wtl::ozfstream(outfile) << sst.str();
-        const auto logliks = read_loglik(sst, axis.size());
-        const double threshold = logliks.max() - diff95;
-        const std::valarray<double> range = axis[logliks > threshold];
-        auto bound_params = mle_params_;
-        bound_params[i] = std::max(range.min() - 0.01, 0.01);
-        intersections.emplace(names_[i] + "_L", bound_params);
-        bound_params[i] = std::min(range.max() + 0.01, 2.00);
-        intersections.emplace(names_[i] + "_U", bound_params);
-    }
-    for (const auto& p: intersections) {
-        const std::string outfile = "limit-" + p.first + ".tsv.gz";
-        std::cerr << outfile << ": " << p.second << std::endl;
-        const auto axes = make_vicinity(p.second, 5, 0.02);
-        wtl::ozfstream fout(outfile);
-        //TODO: if exists
-        run_impl(fout, wtl::itertools::product(axes));
-    }
-}
-
-void PathtypeModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::valarray<double>>&& gen) const {HERE;
-    std::cerr << skip_ << " to " << gen.max_count() << std::endl;
-    if (skip_ == 0) {
-        ost << "##max_count=" << gen.max_count() << "\n";
-        ost << "##max_sites=" << nsam_with_s_.size() - 1 << "\n";
-        ost << "##step=" << STEPS.at(stage_) << "\n";
-        ost << "loglik\t" << wtl::join(names_, "\t") << "\n";
-    }
-    auto buffer = wtl::make_oss();
-    for (const auto& th_path: gen(skip_)) {
-        buffer << calc_loglik(th_path) << "\t"
-               << wtl::str_join(th_path, "\t") << "\n";
-        if (gen.count() % 10000 == 0) {  // snapshot for long run
-            std::cerr << "*" << std::flush;
-            ost << buffer.str();
-            ost.flush();
-            buffer.str("");
-        }
-        if (SIGINT_RAISED_) {throw wtl::KeyboardInterrupt();}
-    }
-    std::cerr << "-\n";
-    ost << buffer.str();
 }
 
 double PathtypeModel::calc_loglik(const std::valarray<double>& th_path) const {
@@ -186,50 +101,6 @@ double PathtypeModel::calc_denom(
     return sum_prob;
 }
 
-std::string PathtypeModel::init_meta(const std::string& infile) {HERE;
-    if (infile == "/dev/null") return "/dev/stdout";
-    if (stage_ >= STEPS.size()) return "";
-    auto oss = wtl::make_oss(2, std::ios::fixed);
-    oss << "grid-" << STEPS.at(stage_) << ".tsv.gz";
-    std::string outfile = oss.str();
-    if (read_results(outfile) && skip_ == 0) {
-        ++stage_;
-        outfile = init_meta(outfile);
-    }
-    return outfile;
-}
-
-bool PathtypeModel::read_results(const std::string& infile) {HERE;
-    if (infile == "/dev/null")
-        return false;
-    try {
-        wtl::izfstream ist(infile);
-        std::cerr << "Reading: " << infile << std::endl;
-        size_t max_count;
-        double step;
-        std::tie(max_count, std::ignore, step) = read_metadata(ist);
-        stage_ = guess_stage(step);
-        std::vector<std::string> colnames;
-        std::valarray<double> mle_params;
-        std::tie(skip_, colnames, mle_params) = read_body(ist);
-        if (skip_ == max_count) {  // is complete file
-            skip_ = 0;
-            mle_params_.swap(mle_params);
-        }
-        if (names_ != colnames) {
-            std::ostringstream oss;
-            oss << "Contradiction in column names:\n"
-                << "genotype file: " << names_ << "\n"
-                << "result file:" << colnames;
-            throw std::runtime_error(oss.str());
-        }
-        return true;
-    } catch (std::ios::failure& e) {
-        if (errno != 2) throw;
-        return false;
-    }
-}
-
 void PathtypeModel::unit_test() {HERE;
     std::stringstream sst;
     sst <<
@@ -240,7 +111,7 @@ R"(A B
 0 2
 )";
     PathtypeModel model(std::move(sst), 3);
-    model.run("/dev/null");
+    std::cerr << model.calc_loglik({0.8, 1.2}) << std::endl;;
 }
 
 } // namespace likeligrid

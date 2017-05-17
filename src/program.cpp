@@ -91,7 +91,6 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
     std::cerr.precision(6);
     std::signal(SIGINT, [](int signum){
         if (signum == SIGINT) {
-            PathtypeModel::raise_sigint();
             GridSearch::raise_sigint();
         }
     });
