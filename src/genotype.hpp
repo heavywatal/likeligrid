@@ -12,8 +12,6 @@
 #include <vector>
 #include <valarray>
 
-#include <wtl/itertools.hpp>
-
 namespace likeligrid {
 
 inline std::valarray<size_t> to_indices(const bits_t& bits) {
@@ -35,23 +33,13 @@ inline double slice_prod(const std::valarray<double>& coefs, const bits_t& bits)
     return p;
 }
 
-class Model {
+class GenotypeModel {
   public:
-    Model(std::istream&, const size_t max_sites);
+    GenotypeModel(std::istream&, const size_t max_sites);
 
     const std::vector<std::string>& names() const {return names_;}
     size_t max_sites() const {return max_sites_;}
     size_t num_genes() const {return w_gene_.size();}
-
-    double lnp_sample(const bits_t& genotype) const {
-        double p = 0.0;
-        const double p_basic = slice_prod(w_gene_, genotype);
-        auto mut_route = to_indices(genotype);
-        do {
-            p += p_basic * discount(mut_route);
-        } while (std::next_permutation(std::begin(mut_route), std::end(mut_route)));
-        return std::log(p);
-    }
 
     double calc_loglik(const std::valarray<double>& th_path) {
         denoms_ = 0.0;
@@ -70,8 +58,19 @@ class Model {
         }
         return loglik;
     }
+    static void unit_test();
 
   private:
+    double lnp_sample(const bits_t& genotype) const {
+        double p = 0.0;
+        const double p_basic = slice_prod(w_gene_, genotype);
+        auto mut_route = to_indices(genotype);
+        do {
+            p += p_basic * discount(mut_route);
+        } while (std::next_permutation(std::begin(mut_route), std::end(mut_route)));
+        return std::log(p);
+    }
+
     void mutate(const bits_t& genotype, const bits_t& pathtype, const double anc_p) {
         const auto s = genotype.count() + 1;
         for (size_t j=0; j<w_gene_.size(); ++j) {
@@ -128,49 +127,6 @@ class Model {
     std::valarray<double> th_path_;
     std::valarray<double> denoms_;
     std::vector<bits_t> effects_;
-};
-
-class GenotypeModel {
-  public:
-    GenotypeModel() = default;
-    GenotypeModel(std::istream&,
-        const size_t max_sites,
-        const unsigned int concurrency=1);
-    GenotypeModel(std::istream&& ist,
-        const size_t max_sites,
-        const unsigned int concurrency=1)
-        : GenotypeModel(ist, max_sites, concurrency){}
-    GenotypeModel(
-        const std::string& infile,
-        const size_t max_sites=255,
-        const unsigned int concurrency=1);
-    void run(const bool writing=true);
-
-    double calc_loglik(const std::valarray<double>& th_path) {return model_.calc_loglik(th_path);}
-    const std::valarray<double>& mle_params() const {return mle_params_;}
-    const std::vector<std::string>& names() const {return names_;}
-    size_t num_genes() const {return model_.num_genes();}
-
-    static void raise_sigint() {SIGINT_RAISED_ = true;}
-    static void unit_test();
-
-    /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
-  private:
-    void run_fout();
-    void run_cout();
-    void run_impl(std::ostream&, wtl::itertools::Generator<std::valarray<double>>&&);
-    void search_limits();
-    std::string init_meta();
-    void read_results(std::istream&);
-
-    Model model_;
-    std::vector<std::string> names_;
-    std::valarray<double> mle_params_;
-    size_t skip_ = 0;
-    size_t stage_ = 0;
-    const unsigned int concurrency_;
-
-    static bool SIGINT_RAISED_;
 };
 
 } // namespace likeligrid

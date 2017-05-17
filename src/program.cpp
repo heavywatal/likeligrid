@@ -3,6 +3,9 @@
     @brief Implementation of Program class
 */
 #include "program.hpp"
+#include "pathtype.hpp"
+#include "genotype.hpp"
+#include "gridsearch.hpp"
 
 #include <csignal>
 #include <cstdlib>
@@ -14,9 +17,6 @@
 #include <wtl/os.hpp>
 #include <wtl/getopt.hpp>
 #include <wtl/math.hpp>
-
-#include "pathtype.hpp"
-#include "genotype.hpp"
 
 namespace likeligrid {
 
@@ -62,18 +62,19 @@ void Program::test(const int flag) {HERE;
         break;
       case 1:
         GenotypeModel::unit_test();
+        GridSearch::unit_test();
         throw wtl::ExitSuccess();
       case 2:
         PathtypeModel::unit_test();
         throw wtl::ExitSuccess();
       case 3: {
-        GenotypeModel model(GENOTYPES_FILE, MAX_SITES, CONCURRENCY);
-        std::cerr << "width: " << model.num_genes() << std::endl;
+        GridSearch searcher(GENOTYPES_FILE, MAX_SITES, CONCURRENCY);
+        std::cerr << "width: " << searcher.num_genes() << std::endl;
         std::cerr << "depth: " << MAX_SITES << std::endl;
-        double leaves = wtl::pow(static_cast<double>(model.num_genes()), MAX_SITES);
+        double leaves = wtl::pow(static_cast<double>(searcher.num_genes()), MAX_SITES);
         std::cerr << "w ^ d: " << leaves * 1e-6 << " M" <<std::endl;
         wtl::benchmark([&]() {
-            model.calc_loglik(model.mle_params() - 0.1);
+            searcher.calc_loglik(searcher.mle_params() - 0.1);
         }, "", CONCURRENCY);
         throw wtl::ExitSuccess();
       }
@@ -91,7 +92,7 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
     std::signal(SIGINT, [](int signum){
         if (signum == SIGINT) {
             PathtypeModel::raise_sigint();
-            GenotypeModel::raise_sigint();
+            GridSearch::raise_sigint();
         }
     });
 
@@ -117,10 +118,10 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 void Program::run() {HERE;
     try {
         if (GENOTYPES_FILE == "-") {
-            GenotypeModel model(std::cin, MAX_SITES, CONCURRENCY);
-            model.run(false);
+            GridSearch searcher(std::cin, MAX_SITES, CONCURRENCY);
+            searcher.run(false);
         } else {
-            GenotypeModel model(GENOTYPES_FILE, MAX_SITES, CONCURRENCY);
+            GridSearch searcher(GENOTYPES_FILE, MAX_SITES, CONCURRENCY);
             std::smatch mobj;
             std::regex_search(GENOTYPES_FILE, mobj, std::regex("([^/]+?)\\.[^/]+$"));
             std::ostringstream oss;
@@ -128,7 +129,7 @@ void Program::run() {HERE;
             const std::string outdir = oss.str();
             wtl::mkdir(outdir);  // after constructor success
             wtl::Pushd cd(outdir);
-            model.run(true);
+            searcher.run(true);
         }
     } catch (const wtl::KeyboardInterrupt& e) {
         std::cerr << e.what() << std::endl;
