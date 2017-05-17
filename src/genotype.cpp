@@ -22,19 +22,7 @@
 
 namespace likeligrid {
 
-bool GenotypeModel::SIGINT_RAISED_ = false;
-
-GenotypeModel::GenotypeModel(const std::string& infile,
-    const size_t max_sites,
-    const unsigned int concurrency)
-    : GenotypeModel(wtl::izfstream(infile), max_sites, concurrency) {HERE;}
-
-GenotypeModel::GenotypeModel(
-    std::istream& ist,
-    const size_t max_sites,
-    const unsigned int concurrency)
-    : concurrency_(concurrency) {HERE;
-
+Model::Model(std::istream& ist, const size_t max_sites) {HERE;
     nlohmann::json jso;
     ist >> jso;
     names_ = jso["pathway"].get<std::vector<std::string>>();
@@ -77,7 +65,31 @@ GenotypeModel::GenotypeModel(
     std::cerr << "s_gene : " << s_gene << std::endl;
     std::cerr << "w_gene_: " << w_gene_ << std::endl;
 
-    mle_params_.resize(annot_.size());
+    max_sites_ = nsam_with_s_.size() - 1;
+    denoms_.resize(max_sites_ + 1);
+    effects_.reserve(ngene);
+    for (size_t j=0; j<ngene; ++j) {
+        effects_.emplace_back(translate(j));
+    }
+    // std::cerr << "effects_: " << effects_ << std::endl;
+}
+
+bool GenotypeModel::SIGINT_RAISED_ = false;
+
+GenotypeModel::GenotypeModel(const std::string& infile,
+    const size_t max_sites,
+    const unsigned int concurrency)
+    : GenotypeModel(wtl::izfstream(infile), max_sites, concurrency) {HERE;}
+
+GenotypeModel::GenotypeModel(
+    std::istream& ist,
+    const size_t max_sites,
+    const unsigned int concurrency)
+    : model_(ist, max_sites),
+      concurrency_(concurrency) {HERE;
+
+    names_ = model_.names();
+    mle_params_.resize(model_.names().size());
     mle_params_ = 1.0;
 }
 
@@ -119,7 +131,7 @@ void GenotypeModel::run_cout() {HERE;
     ++stage_;
 }
 
-void GenotypeModel::search_limits() const {HERE;
+void GenotypeModel::search_limits() {HERE;
     namespace bmath = boost::math;
     bmath::chi_squared_distribution<> chisq(1.0);
     const double diff95 = 0.5 * bmath::quantile(bmath::complement(chisq, 0.05));
@@ -151,11 +163,11 @@ void GenotypeModel::search_limits() const {HERE;
     }
 }
 
-void GenotypeModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::valarray<double>>&& gen) const {HERE;
+void GenotypeModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::valarray<double>>&& gen) {HERE;
     std::cerr << skip_ << " to " << gen.max_count() << std::endl;
     if (skip_ == 0) {
         ost << "##max_count=" << gen.max_count() << "\n";
-        ost << "##max_sites=" << nsam_with_s_.size() - 1 << "\n";
+        ost << "##max_sites=" << model_.max_sites() << "\n";
         ost << "##step=" << STEPS.at(stage_) << "\n";
         ost << "loglik\t" << wtl::join(names_, "\t") << "\n";
         ost.flush();
@@ -165,7 +177,7 @@ void GenotypeModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::v
     auto task = [this,&semaphore](const std::valarray<double> th_path) {
         // argument is copied for thread
         auto buffer = wtl::make_oss();
-        buffer << calc_loglik(th_path) << "\t"
+        buffer << model_.calc_loglik(th_path) << "\t"
                << wtl::str_join(th_path, "\t") << "\n";
         semaphore.unlock();
         return buffer.str();
@@ -203,131 +215,6 @@ void GenotypeModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::v
         std::cerr << "*";
     }
     std::cerr << std::endl;
-}
-
-inline std::valarray<size_t> to_indices(const bits_t& bits) {
-    std::valarray<size_t> indices(bits.count());
-    for (size_t i=0, j=0; i<indices.size(); ++j) {
-        if (bits[j]) {
-            indices[i] = j;
-            ++i;
-        }
-    }
-    return indices;
-}
-
-inline double slice_prod(const std::valarray<double>& coefs, const bits_t& bits) {
-    double p = 1.0;
-    for (size_t i=0; i<coefs.size(); ++i) {
-        if (bits[i]) p *= coefs[i];
-    }
-    return p;
-}
-
-class Denoms {
-  public:
-    Denoms() = delete;
-    Denoms(const std::valarray<double>& w_gene,
-        const std::valarray<double>& th_path,
-        const std::vector<bits_t>& annot,
-        const size_t max_sites):
-        w_gene_(w_gene),
-        th_path_(th_path),
-        annot_(annot),
-        max_sites_(max_sites),
-        denoms_(max_sites + 1)
-    {
-        const size_t ngene = w_gene.size();
-        effects_.reserve(ngene);
-        for (size_t j=0; j<ngene; ++j) {
-            effects_.emplace_back(translate(j));
-        }
-        // std::cerr << "effects_: " << effects_ << std::endl;
-        mutate(bits_t(), bits_t(), 1.0);
-        // std::cerr << "denoms_: " << denoms_ << std::endl;
-    }
-    const std::valarray<double> log() const {return std::log(denoms_);}
-
-    double lnp_sample(const bits_t& genotype) const {
-        double p = 0.0;
-        const double p_basic = slice_prod(w_gene_, genotype);
-        auto mut_route = to_indices(genotype);
-        do {
-            p += p_basic * discount(mut_route);
-        } while (std::next_permutation(std::begin(mut_route), std::end(mut_route)));
-        return std::log(p);
-    }
-
-  private:
-    void mutate(const bits_t& genotype, const bits_t& pathtype, const double anc_p) {
-        const auto s = genotype.count() + 1;
-        for (size_t j=0; j<w_gene_.size(); ++j) {
-            if (genotype[j]) continue;
-            const bits_t& mut_path = effects_[j];
-            double p = anc_p;
-            p *= w_gene_[j];
-            p *= discount_if_subset(pathtype, mut_path);
-            denoms_[s] += p;
-            if (s < max_sites_) {
-                mutate(bits_t(genotype).set(j), pathtype | mut_path, p);
-            }
-        }
-    }
-
-    double discount_if_subset(const bits_t& pathtype, const bits_t& mut_path) const {
-        double p = 1.0;
-        for (size_t i=0; i<th_path_.size(); ++i) {
-            if (mut_path[i]) {
-                if (pathtype[i]) {
-                    p *= th_path_[i];
-                } else {
-                    return 1.0;
-                }
-            }
-        }
-        return p;
-    }
-
-    double discount(const std::valarray<size_t>& mut_route) const {
-        double p = 1.0;
-        bits_t pathtype;
-        for (const auto j: mut_route) {
-            const auto& mut_path = effects_[j];
-            p *= discount_if_subset(pathtype, mut_path);
-            pathtype |= mut_path;
-        }
-        return p;
-    }
-
-    bits_t translate(const size_t& mut_idx) const {
-        bits_t mut_path;
-        for (size_t j=0; j<annot_.size(); ++j) {
-            mut_path.set(j, annot_[j][mut_idx]);
-        }
-        return mut_path;
-    }
-    const std::valarray<double>& w_gene_;
-    const std::valarray<double>& th_path_;
-    const std::vector<bits_t>& annot_;
-    const size_t max_sites_;
-    std::valarray<double> denoms_;
-    std::vector<bits_t> effects_;
-};
-
-double GenotypeModel::calc_loglik(const std::valarray<double>& th_path) const {
-    const size_t max_sites = nsam_with_s_.size() - 1;
-    Denoms subcalc(w_gene_, th_path, annot_, max_sites);
-    double loglik = 0.0;
-    for (const auto& genotype: genot_) {
-        loglik += subcalc.lnp_sample(genotype);
-    }
-    const auto lnD = subcalc.log();
-    // std::cerr << "lnD: " << lnD << std::endl;
-    // -inf, 0, D2, D3, ...
-    for (size_t s=2; s<=max_sites; ++s) {
-        loglik -= nsam_with_s_[s] * lnD[s];
-    }
-    return loglik;
 }
 
 std::string GenotypeModel::init_meta() {HERE;
