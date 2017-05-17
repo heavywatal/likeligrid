@@ -30,12 +30,11 @@ class GridSearch {
         const std::string& infile,
         const size_t max_sites=255,
         const unsigned int concurrency=1);
+
     void run(const bool writing=true);
 
-    double calc_loglik(const std::valarray<double>& th_path) {return model_.calc_loglik(th_path);}
     const std::valarray<double>& mle_params() const {return mle_params_;}
     const std::vector<std::string>& names() const {return names_;}
-    size_t num_genes() const {return model_.num_genes();}
 
     static void raise_sigint() {SIGINT_RAISED_ = true;}
     static void unit_test();

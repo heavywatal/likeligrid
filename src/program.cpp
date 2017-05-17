@@ -17,6 +17,7 @@
 #include <wtl/os.hpp>
 #include <wtl/getopt.hpp>
 #include <wtl/math.hpp>
+#include <wtl/zfstream.hpp>
 
 namespace likeligrid {
 
@@ -68,13 +69,17 @@ void Program::test(const int flag) {HERE;
         PathtypeModel::unit_test();
         throw wtl::ExitSuccess();
       case 3: {
-        GridSearch searcher(GENOTYPES_FILE, MAX_SITES, CONCURRENCY);
-        std::cerr << "width: " << searcher.num_genes() << std::endl;
+        wtl::izfstream ist(GENOTYPES_FILE);
+        GenotypeModel model(ist, MAX_SITES);
+        const size_t dimensions = model.names().size();
+        const std::valarray<double> param(0.9, dimensions);
+        double leaves = wtl::pow(static_cast<double>(model.num_genes()), MAX_SITES);
+        std::cerr << "# parameters: " << dimensions << std::endl;
+        std::cerr << "width: " << model.num_genes() << std::endl;
         std::cerr << "depth: " << MAX_SITES << std::endl;
-        double leaves = wtl::pow(static_cast<double>(searcher.num_genes()), MAX_SITES);
         std::cerr << "w ^ d: " << leaves * 1e-6 << " M" <<std::endl;
         wtl::benchmark([&]() {
-            searcher.calc_loglik(searcher.mle_params() - 0.1);
+            model.calc_loglik(param);
         }, "", CONCURRENCY);
         throw wtl::ExitSuccess();
       }
