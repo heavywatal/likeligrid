@@ -9,6 +9,7 @@
 #include <wtl/debug.hpp>
 #include <wtl/iostr.hpp>
 #include <wtl/algorithm.hpp>
+#include <wtl/math.hpp>
 
 namespace likeligrid {
 
@@ -62,6 +63,67 @@ GenotypeModel::GenotypeModel(std::istream& ist, const size_t max_sites) {HERE;
         effects_.emplace_back(translate(j));
     }
     // std::cerr << "effects_: " << effects_ << std::endl;
+}
+
+double GenotypeModel::calc_loglik(const std::valarray<double>& th_path) {
+    denoms_ = 0.0;
+    th_path_ = th_path;
+    mutate(bits_t(), bits_t(), 1.0);
+    // std::cerr << "denoms_: " << denoms_ << std::endl;
+    double loglik = 0.0;
+    for (const auto& genotype: genot_) {
+        loglik += lnp_sample(genotype);
+    }
+    const auto lnD = std::log(denoms_);
+    // std::cerr << "lnD: " << lnD << std::endl;
+    // -inf, 0, D2, D3, ...
+    for (size_t s=2; s<=max_sites_; ++s) {
+        loglik -= nsam_with_s_[s] * lnD[s];
+    }
+    return loglik;
+}
+
+inline std::valarray<size_t> to_indices(const bits_t& bits) {
+    std::valarray<size_t> indices(bits.count());
+    for (size_t i=0, j=0; i<indices.size(); ++j) {
+        if (bits[j]) {
+            indices[i] = j;
+            ++i;
+        }
+    }
+    return indices;
+}
+
+inline double slice_prod(const std::valarray<double>& coefs, const bits_t& bits) {
+    double p = 1.0;
+    for (size_t i=0; i<coefs.size(); ++i) {
+        if (bits[i]) p *= coefs[i];
+    }
+    return p;
+}
+
+double GenotypeModel::lnp_sample(const bits_t& genotype) const {
+    double p = 0.0;
+    const double p_basic = slice_prod(w_gene_, genotype);
+    auto mut_route = to_indices(genotype);
+    do {
+        p += p_basic * discount(mut_route);
+    } while (std::next_permutation(std::begin(mut_route), std::end(mut_route)));
+    return std::log(p);
+}
+
+void GenotypeModel::benchmark(const size_t n) {
+    const size_t width = w_gene_.size();
+    const size_t dimensions = names().size();
+    const std::valarray<double> param(0.9, dimensions);
+    double leaves = wtl::pow(static_cast<double>(width), max_sites_);
+    std::cerr << "# parameters: " << dimensions << std::endl;
+    std::cerr << "width: " << width << std::endl;
+    std::cerr << "depth: " << max_sites_ << std::endl;
+    std::cerr << "w ^ d: " << leaves * 1e-6 << " M" <<std::endl;
+    wtl::benchmark([&]() {
+        calc_loglik(param);
+    }, "", n);
 }
 
 void GenotypeModel::unit_test() {HERE;

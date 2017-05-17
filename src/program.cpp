@@ -16,7 +16,6 @@
 #include <wtl/iostr.hpp>
 #include <wtl/os.hpp>
 #include <wtl/getopt.hpp>
-#include <wtl/math.hpp>
 #include <wtl/zfstream.hpp>
 
 namespace likeligrid {
@@ -71,16 +70,7 @@ void Program::test(const int flag) {HERE;
       case 3: {
         wtl::izfstream ist(GENOTYPES_FILE);
         GenotypeModel model(ist, MAX_SITES);
-        const size_t dimensions = model.names().size();
-        const std::valarray<double> param(0.9, dimensions);
-        double leaves = wtl::pow(static_cast<double>(model.num_genes()), MAX_SITES);
-        std::cerr << "# parameters: " << dimensions << std::endl;
-        std::cerr << "width: " << model.num_genes() << std::endl;
-        std::cerr << "depth: " << MAX_SITES << std::endl;
-        std::cerr << "w ^ d: " << leaves * 1e-6 << " M" <<std::endl;
-        wtl::benchmark([&]() {
-            model.calc_loglik(param);
-        }, "", CONCURRENCY);
+        model.benchmark(CONCURRENCY);
         throw wtl::ExitSuccess();
       }
       default:
