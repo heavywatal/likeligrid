@@ -14,10 +14,14 @@
 #include <string>
 #include <vector>
 #include <valarray>
+#include <array>
 #include <map>
 #include <iterator>
 
 namespace likeligrid {
+
+constexpr std::array<double, 6> STEPS = {{0.32, 0.16, 0.08, 0.04, 0.02, 0.01}};
+constexpr std::array<size_t, 6> BREAKS = {{5, 5, 5, 5, 5, 5}};
 
 inline std::vector<std::valarray<double>>
 make_vicinity(const std::valarray<double>& center, const size_t breaks, const double radius, const double max=2.001) {
@@ -33,10 +37,14 @@ make_vicinity(const std::valarray<double>& center, const size_t breaks, const do
     return axes;
 }
 
-inline size_t guess_stage(const std::vector<double>& STEPS, const double step) {
+inline size_t guess_stage(const double step) {
     const auto it = std::find_if(STEPS.begin(), STEPS.end(), wtl::approx(step));
     if (it == STEPS.end()) throw std::runtime_error("invalid step size");
     return it - STEPS.begin();
+}
+
+inline double radius(const size_t stage) {
+    return (BREAKS.at(stage) - 1) * STEPS.at(stage) * 0.5;
 }
 
 inline std::tuple<size_t, size_t, double>

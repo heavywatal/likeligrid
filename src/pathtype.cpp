@@ -20,8 +20,6 @@
 
 namespace likeligrid {
 
-const std::vector<double> PathtypeModel::STEPS_ = {0.4, 0.2, 0.1, 0.05, 0.02, 0.01};
-const std::vector<size_t> PathtypeModel::BREAKS_ = {5, 5, 5, 5, 6, 5};
 bool PathtypeModel::SIGINT_RAISED_ = false;
 
 PathtypeModel::PathtypeModel(const std::string& infile, const size_t max_sites):
@@ -81,11 +79,11 @@ void PathtypeModel::run(const std::string& infile) {HERE;
     const std::string outfile = init_meta(infile);
     std::cerr << "mle_params_: " << mle_params_ << std::endl;
     if (outfile == "") {
-        std::cerr << "Done: step size = " << STEPS_.at(--stage_) << std::endl;
+        std::cerr << "Done: step size = " << STEPS.at(--stage_) << std::endl;
         search_limits();
         return;
     }
-    const auto axes = make_vicinity(mle_params_, BREAKS_.at(stage_), 2.0 * STEPS_.at(stage_));
+    const auto axes = make_vicinity(mle_params_, BREAKS.at(stage_), 2.0 * STEPS.at(stage_));
     for (size_t j=0; j<names_.size(); ++j) {
         std::cerr << names_[j] << ": " << axes[j] << std::endl;
     }
@@ -136,7 +134,7 @@ void PathtypeModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::v
     if (skip_ == 0) {
         ost << "##max_count=" << gen.max_count() << "\n";
         ost << "##max_sites=" << nsam_with_s_.size() - 1 << "\n";
-        ost << "##step=" << STEPS_.at(stage_) << "\n";
+        ost << "##step=" << STEPS.at(stage_) << "\n";
         ost << "loglik\t" << wtl::join(names_, "\t") << "\n";
     }
     auto buffer = wtl::make_oss();
@@ -190,9 +188,9 @@ double PathtypeModel::calc_denom(
 
 std::string PathtypeModel::init_meta(const std::string& infile) {HERE;
     if (infile == "/dev/null") return "/dev/stdout";
-    if (stage_ >= STEPS_.size()) return "";
+    if (stage_ >= STEPS.size()) return "";
     auto oss = wtl::make_oss(2, std::ios::fixed);
-    oss << "grid-" << STEPS_.at(stage_) << ".tsv.gz";
+    oss << "grid-" << STEPS.at(stage_) << ".tsv.gz";
     std::string outfile = oss.str();
     if (read_results(outfile) && skip_ == 0) {
         ++stage_;
@@ -210,7 +208,7 @@ bool PathtypeModel::read_results(const std::string& infile) {HERE;
         size_t max_count;
         double step;
         std::tie(max_count, std::ignore, step) = read_metadata(ist);
-        stage_ = guess_stage(STEPS_, step);
+        stage_ = guess_stage(step);
         std::vector<std::string> colnames;
         std::valarray<double> mle_params;
         std::tie(skip_, colnames, mle_params) = read_body(ist);

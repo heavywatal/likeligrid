@@ -20,9 +20,6 @@ namespace likeligrid {
 
 class PathtypeModel {
   public:
-    static const std::vector<double> STEPS_;
-    static const std::vector<size_t> BREAKS_;
-
     PathtypeModel() = default;
     PathtypeModel(std::istream&&, const size_t max_sites);
     PathtypeModel(

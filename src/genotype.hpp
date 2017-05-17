@@ -18,9 +18,6 @@ namespace likeligrid {
 
 class GenotypeModel {
   public:
-    static const std::vector<double> STEPS_;
-    static const std::vector<size_t> BREAKS_;
-
     GenotypeModel() = default;
     GenotypeModel(std::istream&,
         const size_t max_sites,
@@ -51,9 +48,6 @@ class GenotypeModel {
     void search_limits() const;
     std::string init_meta();
     void read_results(std::istream&);
-
-    size_t breaks() const {return BREAKS_.at(stage_);}
-    double radius() const {return (breaks() - 1) * STEPS_.at(stage_) * 0.5;}
 
     std::vector<std::string> names_;
     std::vector<bits_t> annot_;

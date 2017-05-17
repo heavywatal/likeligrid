@@ -22,8 +22,6 @@
 
 namespace likeligrid {
 
-const std::vector<double> GenotypeModel::STEPS_ = {0.32, 0.16, 0.08, 0.04, 0.02, 0.01};
-const std::vector<size_t> GenotypeModel::BREAKS_ = {5, 5, 5, 5, 5, 5};
 bool GenotypeModel::SIGINT_RAISED_ = false;
 
 GenotypeModel::GenotypeModel(const std::string& infile,
@@ -84,7 +82,7 @@ GenotypeModel::GenotypeModel(
 }
 
 void GenotypeModel::run(const bool writing) {HERE;
-    while (stage_ < STEPS_.size()) {
+    while (stage_ < STEPS.size()) {
         if (writing) {run_fout();} else {run_cout();}
     }
     --stage_;
@@ -95,7 +93,7 @@ void GenotypeModel::run_fout() {HERE;
     const std::string outfile = init_meta();
     std::cerr << "mle_params_: " << mle_params_ << std::endl;
     if (outfile.empty()) return;
-    const auto axes = make_vicinity(mle_params_, breaks(), radius());
+    const auto axes = make_vicinity(mle_params_, BREAKS.at(stage_), radius(stage_));
     for (size_t j=0; j<names_.size(); ++j) {
         std::cerr << names_[j] << ": " << axes[j] << std::endl;
     }
@@ -107,7 +105,7 @@ void GenotypeModel::run_fout() {HERE;
 }
 
 void GenotypeModel::run_cout() {HERE;
-    const auto axes = make_vicinity(mle_params_, breaks(), radius());
+    const auto axes = make_vicinity(mle_params_, BREAKS.at(stage_), radius(stage_));
     for (size_t j=0; j<names_.size(); ++j) {
         std::cerr << names_[j] << ": " << axes[j] << std::endl;
     }
@@ -158,7 +156,7 @@ void GenotypeModel::run_impl(std::ostream& ost, wtl::itertools::Generator<std::v
     if (skip_ == 0) {
         ost << "##max_count=" << gen.max_count() << "\n";
         ost << "##max_sites=" << nsam_with_s_.size() - 1 << "\n";
-        ost << "##step=" << STEPS_.at(stage_) << "\n";
+        ost << "##step=" << STEPS.at(stage_) << "\n";
         ost << "loglik\t" << wtl::join(names_, "\t") << "\n";
         ost.flush();
     }
@@ -333,9 +331,9 @@ double GenotypeModel::calc_loglik(const std::valarray<double>& th_path) const {
 }
 
 std::string GenotypeModel::init_meta() {HERE;
-    if (stage_ >= STEPS_.size()) return "";
+    if (stage_ >= STEPS.size()) return "";
     auto oss = wtl::make_oss(2, std::ios::fixed);
-    oss << "grid-" << STEPS_.at(stage_) << ".tsv.gz";
+    oss << "grid-" << STEPS.at(stage_) << ".tsv.gz";
     std::string outfile = oss.str();
     try {
         wtl::izfstream ist(outfile);
@@ -355,7 +353,7 @@ void GenotypeModel::read_results(std::istream& ist) {HERE;
     size_t max_count;
     double step;
     std::tie(max_count, std::ignore, step) = read_metadata(ist);
-    stage_ = guess_stage(STEPS_, step);
+    stage_ = guess_stage(step);
     std::vector<std::string> colnames;
     std::valarray<double> mle_params;
     std::tie(skip_, colnames, mle_params) = read_body(ist);
