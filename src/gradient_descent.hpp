@@ -11,8 +11,18 @@
 #include <string>
 #include <vector>
 #include <valarray>
+#include <map>
 
 namespace likeligrid {
+
+class lexicographical_less {
+  public:
+    bool operator() (const std::valarray<double>& x, const std::valarray<double>&y) const {
+        return std::lexicographical_compare(std::begin(x), std::end(x), std::begin(y), std::end(y));
+    }
+};
+
+typedef std::map<std::valarray<double>, double, lexicographical_less> MapGrid;
 
 class GradientDescent {
   public:
@@ -35,7 +45,11 @@ class GradientDescent {
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
+    MapGrid::iterator find_better(const MapGrid::const_iterator&);
+    std::vector<std::valarray<double>> empty_neighbors_of(const std::valarray<double>&);
+
     GenotypeModel model_;
+    MapGrid history_;
 
     const unsigned int concurrency_;
 };

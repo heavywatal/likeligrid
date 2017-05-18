@@ -9,6 +9,8 @@
 #include <wtl/exception.hpp>
 #include <wtl/iostr.hpp>
 #include <wtl/zfstream.hpp>
+#include <wtl/prandom.hpp>
+#include <wtl/itertools.hpp>
 
 namespace likeligrid {
 
@@ -27,7 +29,45 @@ GradientDescent::GradientDescent(
 }
 
 void GradientDescent::run() {HERE;
+    const size_t dimensions = model_.names().size();
+    std::uniform_int_distribution<size_t> direction_dist(0, dimensions);
 
+    const std::valarray<double> initial_values(0.80, dimensions);
+    const double previous_loglik = model_.calc_loglik(initial_values);
+    for (auto it = history_.emplace(initial_values, previous_loglik).first;
+         it != history_.end();
+         it = find_better(it)) {
+        std::cerr << *it << std::endl;
+    }
+    std::cerr << history_ << std::endl;
+}
+
+MapGrid::iterator GradientDescent::find_better(const MapGrid::const_iterator& it) {
+    const double previous_loglik = it->second;
+    auto next_nodes = empty_neighbors_of(it->first);
+    std::shuffle(std::begin(next_nodes), std::end(next_nodes), wtl::sfmt());
+    for (const auto& x: next_nodes) {
+        const double loglik = model_.calc_loglik(x);
+        if (loglik > previous_loglik) {
+            return history_.emplace(x, loglik).first;
+        } else {
+            history_.emplace(x, loglik);
+        }
+    }
+    return history_.end();
+}
+
+std::vector<std::valarray<double>> GradientDescent::empty_neighbors_of(const std::valarray<double>& center) {
+    const auto axes = make_vicinity(center, 3, 0.01);
+    auto iter = wtl::itertools::product(axes);
+    std::vector<std::valarray<double>> empty_neighbors;
+    empty_neighbors.reserve(iter.max_count());
+    for (const auto& x: iter()) {
+        if (history_.find(x) == history_.end()) {
+            empty_neighbors.push_back(x);
+        }
+    }
+    return empty_neighbors;
 }
 
 
