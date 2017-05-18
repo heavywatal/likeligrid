@@ -57,7 +57,6 @@ GenotypeModel::GenotypeModel(std::istream& ist, const size_t max_sites) {HERE;
     std::cerr << "w_gene_: " << w_gene_ << std::endl;
 
     max_sites_ = nsam_with_s_.size() - 1;
-    denoms_.resize(max_sites_ + 1);
     effects_.reserve(ngene);
     for (size_t j=0; j<ngene; ++j) {
         effects_.emplace_back(translate(j));
@@ -66,6 +65,7 @@ GenotypeModel::GenotypeModel(std::istream& ist, const size_t max_sites) {HERE;
 }
 
 double GenotypeModel::calc_loglik(const std::valarray<double>& th_path) {
+    denoms_.resize(max_sites_ + 1);
     denoms_ = 0.0;
     th_path_ = th_path;
     mutate(bits_t(), bits_t(), 1.0);

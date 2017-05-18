@@ -118,9 +118,10 @@ void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
 
     wtl::Semaphore semaphore(concurrency_);
     auto task = [this,&semaphore](const std::valarray<double> th_path) {
-        // argument is copied for thread
+        // argument and model are copied for each thread
+        auto model_copy = this->model_;
         auto buffer = wtl::make_oss();
-        buffer << model_.calc_loglik(th_path) << "\t"
+        buffer << model_copy.calc_loglik(th_path) << "\t"
                << wtl::str_join(th_path, "\t") << "\n";
         semaphore.unlock();
         return buffer.str();

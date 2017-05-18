@@ -77,15 +77,19 @@ class GenotypeModel {
         }
         return mut_path;
     }
+
+    // initialized in constructor
     std::vector<std::string> names_;
     std::vector<bits_t> annot_;
     std::vector<bits_t> genot_;
     std::valarray<double> w_gene_;
     std::vector<size_t> nsam_with_s_;
     size_t max_sites_;
+    std::vector<bits_t> effects_;
+
+    // updated in calc_loglik()
     std::valarray<double> th_path_;
     std::valarray<double> denoms_;
-    std::vector<bits_t> effects_;
 };
 
 } // namespace likeligrid
