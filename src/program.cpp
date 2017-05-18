@@ -6,6 +6,7 @@
 #include "pathtype.hpp"
 #include "genotype.hpp"
 #include "gridsearch.hpp"
+#include "gradient_descent.hpp"
 
 #include <csignal>
 #include <cstdlib>
@@ -61,10 +62,11 @@ void Program::test(const int flag) {HERE;
       case 0:
         break;
       case 1:
-        GenotypeModel::unit_test();
         GridSearch::unit_test();
+        GradientDescent::unit_test();
         throw wtl::ExitSuccess();
       case 2:
+        GenotypeModel::unit_test();
         PathtypeModel::unit_test();
         throw wtl::ExitSuccess();
       case 3: {
