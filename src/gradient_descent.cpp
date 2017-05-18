@@ -31,15 +31,21 @@ GradientDescent::GradientDescent(
 void GradientDescent::run() {HERE;
     const size_t dimensions = model_.names().size();
     std::uniform_int_distribution<size_t> direction_dist(0, dimensions);
-
-    const std::valarray<double> initial_values(0.80, dimensions);
+    const std::valarray<double> initial_values(0.90, dimensions);
     const double previous_loglik = model_.calc_loglik(initial_values);
+
     for (auto it = history_.emplace(initial_values, previous_loglik).first;
          it != history_.end();
          it = find_better(it)) {
-        std::cerr << *it << std::endl;
     }
-    std::cerr << history_ << std::endl;
+
+    auto oss = wtl::make_oss();
+    oss << "loglik\t" << wtl::join(model_.names(), "\t") << "\n";
+    for (const auto& p: history_) {
+        oss << p.second << "\t"
+            << wtl::str_join(p.first, "\t") << "\n";
+    }
+    std::cerr << oss.str();
 }
 
 MapGrid::iterator GradientDescent::find_better(const MapGrid::const_iterator& it) {
