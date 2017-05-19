@@ -63,11 +63,11 @@ calc_probs_null(.freqs, 3L)
 
 calc_coefs_excl = function(x, times) {
     crossing_rep(names(x), times) %>>%
-    purrr::by_row(~{
+    purrr::pmap_dbl(function(...) {
+        .x = list(...)
         dups = table(purrr::flatten_chr(.x)) - 1L
         prod(x[names(dups)] ^ dups)
-    }, .labels=FALSE) %>>%
-    (flatten_dbl(.$.out))
+    })
 }
 calc_coefs_excl(.excl, 3L)
 

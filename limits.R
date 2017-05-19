@@ -15,11 +15,11 @@ read_likeligrid = function(file) {
 
 .transform = function(.data, .best) {
     tibble(pathway= names(.data)[-1]) %>>%
-    purrr::by_row(~{
-        .data[.data[.x$pathway] != .best[[.x$pathway]],] %>>%
+    dplyr::mutate(data= purrr::map(pathway, ~{
+        .data[.data[.x] != .best[[.x]],] %>>%
         dplyr::bind_rows(.best) %>>%
-        dplyr::arrange_(.x$pathway) %>>%
-        dplyr::transmute_(value= .x$pathway, ~loglik)
+        dplyr::arrange_(.x) %>>%
+        dplyr::transmute_(value= .x, ~loglik)
     }) %>>%
     tidyr::unnest()
 }
@@ -68,8 +68,8 @@ read_likeligrid = function(file) {
     dplyr::filter(purrr::map_int(data, nrow) > 0) %>>%
     dplyr::group_by(group) %>>%
     purrr::by_slice(~{
-        purrr::by_row(.x, ~.plot(.x$data[[1]], .x$label)) %>>%
-        (cowplot::plot_grid(plotlist=.$.out, nrow=2, ncol=2))
+        purrr::pmap(.x, function(data, label, ...) {.plot(.data, label)}) %>>%
+        (cowplot::plot_grid(plotlist=., nrow=2, ncol=2))
     }) %>>%
     # (ggsave('uniaxis-tiny-0501.pdf', .$.out, width=12, height=12))
     (ggsave('uniaxis-major-0501.pdf', .$.out, width=12, height=12))
@@ -90,11 +90,11 @@ read_likeligrid = function(file) {
 .gather_uniaxis = function(.data) {
     .mle = .extract_mle(.data)
     tibble(pathway= names(.data)[-1]) %>>%
-    purrr::by_row(~{
-        .data[.data[.x$pathway] != .mle[[.x$pathway]],] %>>%
+    dplyr::mutate(data= purrr::map(pathway, ~{
+        .data[.data[.x] != .mle[[.x]],] %>>%
         dplyr::bind_rows(.mle) %>>%
-        dplyr::arrange_(.x$pathway) %>>%
-        dplyr::transmute_(value= .x$pathway, ~loglik)
+        dplyr::arrange_(.x) %>>%
+        dplyr::transmute_(value= .x, ~loglik)
     }) %>>%
     tidyr::unnest()
 }

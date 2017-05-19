@@ -208,10 +208,10 @@ write_tsv(.dirty, 'summary-pathways.tsv', na='')
 
 .dirty %>>%
     tidyr::nest(-definition) %>>%
-    purrr::by_row(~{
-        .outfile = sprintf('summary-pathways-%s.tsv', .$definition)
+    purrr::pwalk(function(definition, data) {
+        .outfile = sprintf('summary-pathways-%s.tsv', definition)
         message(.outfile)
-        write_tsv(.$data[[1]], .outfile, na='')
+        write_tsv(data, .outfile, na='')
     })
 
 .dirty = .manual %>>%
@@ -282,10 +282,10 @@ dir.create(.outdir, mode='0755')
 # .manual %>>%
     tidyr::nest(-definition, -cancer_type) %>>%
     # head(2) %>>%
-    purrr::by_row(~{
-        .outfile = file.path(.outdir, sprintf('TCGA-%s-%s.json.gz', .$cancer_type, .$definition))
+    purrr::pwalk(function(definition, cancer_type, data) {
+        .outfile = file.path(.outdir, sprintf('TCGA-%s-%s.json.gz', cancer_type, definition))
         message(.outfile)
-        .data = .x$data[[1]] %>>% dplyr::mutate(symbol=as.factor(symbol))
+        .data = data %>>% dplyr::mutate(symbol=as.factor(symbol))
         .path = .data %>>%
             dplyr::distinct(pathway, symbol) %>>%
             genotype2bits() #%>>% (?.)
@@ -357,12 +357,12 @@ plot_mutdist = function(.data, .definition='HALLMARK', .quantile='99%', .head=12
 .counts = maf %>>% join_pathdefs() %>>% .count_mutated() %>>% (?.)
 .counts.narm = maf %>>% join_pathdefs() %>>% dplyr::filter(!is.na(pathway)) %>>% .count_mutated() %>>% (?.)
 
-tidyr::crossing(def= names(pathdefs), p= c('95%', '99%', '100%')) %>>%
-purrr::by_row(~{
-    message(paste(.$def, .$p))
-    plot_mutdist(.counts.narm, .$def, .$p)
+tidyr::crossing(def= names(pathdefs), p= c('95%', '99%', '100%')) %>>% head(2) %>>%
+purrr::pmap(function(def, p) {
+    message(paste(def, p))
+    plot_mutdist(.counts.narm, def, p)
 }) %>>%
-(ggsave('mutdist-narm.pdf', .$.out, width=16, height=10))
+(ggsave('mutdist-narm.pdf', ., width=16, height=10))
 
 # .major %>>%
 # .tiny %>>%
@@ -385,17 +385,17 @@ purrr::by_slice(~{
     dplyr::ungroup() %>>%
     tidyr::nest(-cancer_type, -definition) %>>%
     dplyr::arrange(definition, cancer_type) %>>%
-    purrr::by_row(~{
-        .title = paste(.x$cancer_type, .x$definition)
+    purrr::pmap(function(definition, cancer_type, data) {
+        .title = paste(cancer_type, definition)
         message(.title)
-        ggplot(.x$data[[1]], aes(n))+
+        ggplot(data, aes(n))+
         geom_bar()+
         facet_wrap(~pathway)+
         labs(title=.title)+
         wtl::theme_wtl()
     }) %>>%
-    (ggsave('hist-s-pathway-manual.pdf', .$.out, width=12, height=12))
-    # (ggsave('hist-s-pathway-major.pdf', .$.out, width=12, height=12))
+    (ggsave('hist-s-pathway-manual.pdf', ., width=12, height=12))
+    # (ggsave('hist-s-pathway-major.pdf', ., width=12, height=12))
 
 #########1#########2#########3#########4#########5#########6#########7#########
 ## Shuffle
@@ -464,8 +464,8 @@ make_poisson = function(.data) {
     nsam = dplyr::n_distinct(.data[['sample']]) #%>>% (?.)
     dplyr::count(.data, pathway, wt=n) %>>%
     dplyr::mutate(lambda= nn / nsam) %>>% #(?.) %>>%
-    purrr::by_row(~{
-        tibble(n= seq_len(40), y= dpois(n, .x$lambda) * nsam) %>>%
+    purrr::pmap_df(function(lambda, ...) {
+        tibble(n= seq_len(40), y= dpois(n, lambda) * nsam) %>>%
         dplyr::filter(y >= 1)
     }) %>>%
     dplyr::select(-nn, -lambda) %>>%
@@ -488,18 +488,18 @@ make_poisson = function(.data) {
 .plot(.nested$data[[3]], .nested$definition[[3]])
 
 .p = .nested %>>%
-    purrr::by_row(~.plot(.x$data[[1]], .x$definition)) %>>%
-    # purrr::by_row(~.plot(.x$shuffled[[1]], .x$definition)) %>>%
+    purrr::pmap(function(definition, data, ...) {.plot(data, definition)}) %>>%
+    # purrr::pmap(function(definition, shuffled, ...) {.plot(shuffled, definition)}) %>>%
     (cowplot::plot_grid(plotlist=.$.out))
 .p
 ggsave('poisson_pathway-pancancer.pdf', .p, width=18, height=12)
 # ggsave('poisson_pathway_shuffled-pancancer.pdf', .p, width=18, height=12)
 
-.nested %>>% purrr::by_row(~{
-    .outfile = sprintf('poisson_pathway-%s.pdf', .x$definition)
+.nested %>>% purrr::pwalk(function(definition, data) {
+    .outfile = sprintf('poisson_pathway-%s.pdf', definition)
     # .outfile = sprintf('poisson_pathway_shuffled-%s.pdf', .x$definition)
     message(.outfile)
-    .x$data[[1]] %>>%
+    data %>>%
     # .x$shuffled[[1]] %>>%
         tidyr::nest(-cancer_type) %>>%
         purrr::pmap(function(cancer_type, data) {
@@ -558,10 +558,10 @@ ggsave('poisson_pathway-pancancer.pdf', .p, width=18, height=12)
     })) %>>% (?.)
 
 .outdir = '~/Dropbox/working/likeligrid/pathtypes'
-.matrices %>>% purrr::by_row(~{
-    .outfile = file.path(.outdir, sprintf('TCGA-%s-%s.tsv.gz', .$cancer_type, .$definition))
+.matrices %>>% purrr::pwalk(function(definition, cancer_type, data) {
+    .outfile = file.path(.outdir, sprintf('TCGA-%s-%s.tsv.gz', cancer_type, definition))
     message(.outfile)
-    write_tsv(.$data[[1]], .outfile, na='')
+    write_tsv(data, .outfile, na='')
 })
 
 # preserving all pathways
@@ -578,8 +578,8 @@ ggsave('poisson_pathway-pancancer.pdf', .p, width=18, height=12)
     tidyr::unnest() %>>% (?.)
 
 .outdir = 'full-pathtypes'
-.matrices %>>% purrr::by_row(~{
-    .outfile = file.path(.outdir, sprintf('TCGA-%s-%s.tsv.gz', .$cancer_type, .$definition))
+.matrices %>>% purrr::pwalk(function(definition, cancer_type, data) {
+    .outfile = file.path(.outdir, sprintf('TCGA-%s-%s.tsv.gz', cancer_type, definition))
     message(.outfile)
-    write_tsv(.$data[[1]], .outfile, na='')
+    write_tsv(data, .outfile, na='')
 })

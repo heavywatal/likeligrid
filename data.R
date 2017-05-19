@@ -56,8 +56,8 @@ maf_annot %>>%
 calc_mudens = function(.data) {.data %>>%
     tidyr::nest(-role, -pathway, -gene, -mutype) %>>%
     dplyr::select(-pathway) %>>%
-    purrr::by_row(~{
-        table(.$data[[1]]$start, dnn='pos') %>>%
+    dplyr::mutate(data= purrr::map(data, ~{
+        table(.x$start, dnn='pos') %>>%
         tibble::as_tibble() %>>%
         dplyr::mutate(pos=as.integer(pos),
           mut_density= n / sum(n), n=NULL)
