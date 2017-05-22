@@ -17,8 +17,6 @@
 
 namespace likeligrid {
 
-bool GridSearch::SIGINT_RAISED_ = false;
-
 GridSearch::GridSearch(const std::string& infile,
     const size_t max_sites,
     const unsigned int concurrency)
@@ -150,7 +148,7 @@ void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
                 }
             }
         }
-        if (SIGINT_RAISED_) {throw wtl::KeyboardInterrupt();}
+        if (SIGINT_RAISED) {throw wtl::KeyboardInterrupt();}
     }
     for (auto& ftr: futures) {
         ost << ftr.get();

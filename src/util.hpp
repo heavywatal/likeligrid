@@ -20,6 +20,8 @@
 
 namespace likeligrid {
 
+extern bool SIGINT_RAISED;
+
 constexpr std::array<double, 6> STEPS = {{0.32, 0.16, 0.08, 0.04, 0.02, 0.01}};
 constexpr std::array<size_t, 6> BREAKS = {{5, 5, 5, 5, 5, 5}};
 

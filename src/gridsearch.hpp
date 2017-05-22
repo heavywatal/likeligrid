@@ -36,7 +36,6 @@ class GridSearch {
     const std::valarray<double>& mle_params() const {return mle_params_;}
     const std::vector<std::string>& names() const {return names_;}
 
-    static void raise_sigint() {SIGINT_RAISED_ = true;}
     static void unit_test();
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
@@ -54,8 +53,6 @@ class GridSearch {
     size_t skip_ = 0;
     size_t stage_ = 0;
     const unsigned int concurrency_;
-
-    static bool SIGINT_RAISED_;
 };
 
 } // namespace likeligrid

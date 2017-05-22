@@ -21,6 +21,8 @@
 
 namespace likeligrid {
 
+bool SIGINT_RAISED = false;
+
 namespace po = boost::program_options;
 
 inline po::options_description general_desc() {HERE;
@@ -88,7 +90,7 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
     std::cerr.precision(6);
     std::signal(SIGINT, [](int signum){
         if (signum == SIGINT) {
-            GridSearch::raise_sigint();
+            SIGINT_RAISED = true;
         }
     });
 

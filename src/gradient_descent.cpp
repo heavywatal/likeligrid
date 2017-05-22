@@ -37,6 +37,7 @@ void GradientDescent::run() {HERE;
     for (auto it = history_.emplace(initial_values, previous_loglik).first;
          it != history_.end();
          it = find_better(it)) {
+        if (SIGINT_RAISED) {throw wtl::KeyboardInterrupt();}
     }
 
     auto oss = wtl::make_oss();
