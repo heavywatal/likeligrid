@@ -30,8 +30,11 @@ GradientDescent::GradientDescent(
 
 void GradientDescent::run() {HERE;
     const size_t dimensions = model_.names().size();
-    std::uniform_int_distribution<size_t> direction_dist(0, dimensions);
     const std::valarray<double> initial_values(0.90, dimensions);
+    run(initial_values);
+}
+
+void GradientDescent::run(const std::valarray<double>& initial_values) {HERE;
     const double previous_loglik = model_.calc_loglik(initial_values);
 
     for (auto it = history_.emplace(initial_values, previous_loglik).first;
@@ -40,13 +43,7 @@ void GradientDescent::run() {HERE;
         if (SIGINT_RAISED) {throw wtl::KeyboardInterrupt();}
     }
 
-    auto oss = wtl::make_oss();
-    oss << "loglik\t" << wtl::join(model_.names(), "\t") << "\n";
-    for (const auto& p: history_) {
-        oss << p.second << "\t"
-            << wtl::str_join(p.first, "\t") << "\n";
-    }
-    std::cerr << oss.str();
+    write(std::cout);
 }
 
 MapGrid::iterator GradientDescent::find_better(const MapGrid::const_iterator& it) {
@@ -77,6 +74,24 @@ std::vector<std::valarray<double>> GradientDescent::empty_neighbors_of(const std
     return empty_neighbors;
 }
 
+MapGrid::const_iterator GradientDescent::mle_params() const {HERE;
+    return std::max_element(std::begin(history_), std::end(history_),
+        [](const MapGrid::value_type& x, const MapGrid::value_type& y){
+            return x.second < y.second;
+        });
+}
+
+
+void GradientDescent::write(std::ostream& ost) {HERE;
+    ost << "##max_count=" << 0U << "\n";
+    ost << "##max_sites=" << model_.max_sites() << "\n";
+    ost << "##step=" << 0.01 << "\n";
+    ost << "loglik\t" << wtl::join(model_.names(), "\t") << "\n";
+    for (const auto& p: history_) {
+        ost << p.second << "\t"
+            << wtl::str_join(p.first, "\t") << "\n";
+    }
+}
 
 void GradientDescent::unit_test() {HERE;
     std::stringstream sst;
