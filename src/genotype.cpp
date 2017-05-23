@@ -17,8 +17,8 @@ GenotypeModel::GenotypeModel(std::istream& ist, const size_t max_sites) {HERE;
     nlohmann::json jso;
     ist >> jso;
     names_ = jso["pathway"].get<std::vector<std::string>>();
-    const size_t npath = names_.size();
-    annot_.reserve(npath);
+    num_pathways_ = names_.size();
+    annot_.reserve(num_pathways_);
     for (const std::string& s: jso["annotation"]) {
         annot_.emplace_back(s);
     }
@@ -32,15 +32,15 @@ GenotypeModel::GenotypeModel(std::istream& ist, const size_t max_sites) {HERE;
     }
 
     genot_.reserve(nsam);
-    const size_t ngene = jso["sample"].at(0).get<std::string>().size();
-    nsam_with_s_.assign(ngene + 1, 0);  // at most
-    std::valarray<double> s_gene(ngene);
+    num_genes_ = jso["sample"].at(0).get<std::string>().size();
+    nsam_with_s_.assign(num_genes_ + 1, 0);  // at most
+    std::valarray<double> s_gene(num_genes_);
     for (const auto& bits: all_genotypes) {
         const size_t s = bits.count();
         ++nsam_with_s_[s];
         if (s > max_sites) continue;
         genot_.push_back(bits);
-        for (size_t j=0; j<ngene; ++j) {
+        for (size_t j=0; j<num_genes_; ++j) {
             if (bits[j]) ++s_gene[j];
         }
     }
@@ -57,8 +57,8 @@ GenotypeModel::GenotypeModel(std::istream& ist, const size_t max_sites) {HERE;
     std::cerr << "w_gene_: " << w_gene_ << std::endl;
 
     max_sites_ = nsam_with_s_.size() - 1;
-    effects_.reserve(ngene);
-    for (size_t j=0; j<ngene; ++j) {
+    effects_.reserve(num_genes_);
+    for (size_t j=0; j<num_genes_; ++j) {
         effects_.emplace_back(translate(j));
     }
     // std::cerr << "effects_: " << effects_ << std::endl;
@@ -113,12 +113,10 @@ double GenotypeModel::lnp_sample(const bits_t& genotype) const {
 }
 
 void GenotypeModel::benchmark(const size_t n) {
-    const size_t width = w_gene_.size();
-    const size_t dimensions = names().size();
-    const std::valarray<double> param(0.9, dimensions);
-    double leaves = wtl::pow(static_cast<double>(width), max_sites_);
-    std::cerr << "# parameters: " << dimensions << std::endl;
-    std::cerr << "width: " << width << std::endl;
+    const std::valarray<double> param(0.9, num_pathways_);
+    double leaves = wtl::pow(static_cast<double>(num_genes_), max_sites_);
+    std::cerr << "# parameters: " << num_pathways_ << std::endl;
+    std::cerr << "width: " << num_genes_ << std::endl;
     std::cerr << "depth: " << max_sites_ << std::endl;
     std::cerr << "w ^ d: " << leaves * 1e-6 << " M" <<std::endl;
     wtl::benchmark([&]() {

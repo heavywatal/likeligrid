@@ -7,10 +7,13 @@
 #define LIKELIGRID_GENOTYPE_HPP_
 
 #include "typedef.hpp"
+#include "util.hpp"
 
 #include <string>
 #include <vector>
 #include <valarray>
+
+#include <wtl/exception.hpp>
 
 namespace likeligrid {
 
@@ -32,7 +35,7 @@ class GenotypeModel {
 
     void mutate(const bits_t& genotype, const bits_t& pathtype, const double anc_p) {
         const auto s = genotype.count() + 1;
-        for (size_t j=0; j<w_gene_.size(); ++j) {
+        for (size_t j=0; j<num_genes_; ++j) {
             if (genotype[j]) continue;
             const bits_t& mut_path = effects_[j];
             double p = anc_p;
@@ -40,6 +43,7 @@ class GenotypeModel {
             p *= discount_if_subset(pathtype, mut_path);
             denoms_[s] += p;
             if (s < max_sites_) {
+                if (SIGINT_RAISED) {throw wtl::KeyboardInterrupt();}
                 mutate(bits_t(genotype).set(j), pathtype | mut_path, p);
             }
         }
@@ -47,7 +51,7 @@ class GenotypeModel {
 
     double discount_if_subset(const bits_t& pathtype, const bits_t& mut_path) const {
         double p = 1.0;
-        for (size_t i=0; i<th_path_.size(); ++i) {
+        for (size_t i=0; i<num_pathways_; ++i) {
             if (mut_path[i]) {
                 if (pathtype[i]) {
                     p *= th_path_[i];
@@ -72,7 +76,7 @@ class GenotypeModel {
 
     bits_t translate(const size_t& mut_idx) const {
         bits_t mut_path;
-        for (size_t j=0; j<annot_.size(); ++j) {
+        for (size_t j=0; j<num_pathways_; ++j) {
             mut_path.set(j, annot_[j][mut_idx]);
         }
         return mut_path;
@@ -80,9 +84,11 @@ class GenotypeModel {
 
     // initialized in constructor
     std::vector<std::string> names_;
+    size_t num_pathways_;
     std::vector<bits_t> annot_;
     std::vector<bits_t> genot_;
     std::valarray<double> w_gene_;
+    size_t num_genes_;
     std::vector<size_t> nsam_with_s_;
     size_t max_sites_;
     std::vector<bits_t> effects_;
