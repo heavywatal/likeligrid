@@ -199,6 +199,11 @@ void GridSearch::read_results(std::istream& ist) {HERE;
     }
 }
 
+void GridSearch::read_results(const std::string& infile) {
+    wtl::izfstream ist(infile);
+    read_results(ist);
+}
+
 void GridSearch::unit_test() {HERE;
     std::stringstream sst;
     sst <<

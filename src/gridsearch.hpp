@@ -33,6 +33,8 @@ class GridSearch {
 
     void run(const bool writing=true);
 
+    void read_results(const std::string&);
+
     const std::valarray<double>& mle_params() const {return mle_params_;}
     const std::vector<std::string>& names() const {return names_;}
 
