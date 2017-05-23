@@ -21,7 +21,7 @@
 
 namespace likeligrid {
 
-bool SIGINT_RAISED = false;
+std::atomic_bool SIGINT_RAISED(false);
 
 namespace po = boost::program_options;
 
@@ -90,9 +90,8 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
     std::cout.precision(15);
     std::cerr.precision(6);
     std::signal(SIGINT, [](int signum){
-        if (signum == SIGINT) {
-            SIGINT_RAISED = true;
-        }
+        signum += 0; // suppress warning of unused parameter
+        SIGINT_RAISED = true;
     });
 
     auto description = general_desc();
