@@ -8,6 +8,7 @@
 
 #include "genotype.hpp"
 
+#include <iosfwd>
 #include <string>
 #include <vector>
 #include <valarray>
@@ -39,7 +40,7 @@ class GradientDescent {
         const size_t max_sites=255,
         const unsigned int concurrency=1);
 
-    void run(const std::valarray<double>&);
+    void run(std::ostream&, const std::valarray<double>&);
     void run();
 
     MapGrid::const_iterator mle_params() const;

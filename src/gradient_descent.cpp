@@ -31,19 +31,23 @@ GradientDescent::GradientDescent(
 void GradientDescent::run() {HERE;
     const size_t dimensions = model_.names().size();
     const std::valarray<double> initial_values(0.90, dimensions);
-    run(initial_values);
+    run(std::cerr, initial_values);
 }
 
-void GradientDescent::run(const std::valarray<double>& initial_values) {HERE;
+void GradientDescent::run(std::ostream& ost, const std::valarray<double>& initial_values) {HERE;
     const double previous_loglik = model_.calc_loglik(initial_values);
 
     for (auto it = history_.emplace(initial_values, previous_loglik).first;
          it != history_.end();
          it = find_better(it)) {
-        if (SIGINT_RAISED) {throw wtl::KeyboardInterrupt();}
+        if (SIGINT_RAISED) {
+            std::cerr << std::endl;
+            write(ost);
+            throw wtl::KeyboardInterrupt();
+        }
     }
-
-    write(std::cout);
+    std::cerr << std::endl;
+    write(ost);
 }
 
 MapGrid::iterator GradientDescent::find_better(const MapGrid::const_iterator& it) {
@@ -52,6 +56,7 @@ MapGrid::iterator GradientDescent::find_better(const MapGrid::const_iterator& it
     std::shuffle(std::begin(next_nodes), std::end(next_nodes), wtl::sfmt());
     for (const auto& x: next_nodes) {
         const double loglik = model_.calc_loglik(x);
+        std::cerr << "." << std::flush;
         if (loglik > previous_loglik) {
             return history_.emplace(x, loglik).first;
         } else {

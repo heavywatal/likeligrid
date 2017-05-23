@@ -120,19 +120,18 @@ void Program::run() {HERE;
             GradientDescent gradient_descent(GENOTYPES_FILE, MAX_SITES, CONCURRENCY);
             GridSearch grid_search(GENOTYPES_FILE);
             grid_search.read_results(PREVIOUS_RESULT);
-            gradient_descent.run(grid_search.mle_params());
+            const std::string outdir = make_outdir();
+            wtl::Pushd cd(outdir);
+            wtl::ozfstream ost("gradient_descent.tsv.gz");
+            gradient_descent.run(ost, grid_search.mle_params());
             std::cout << *gradient_descent.mle_params() << std::endl;
         } else if (GENOTYPES_FILE == "-") {
             GridSearch searcher(std::cin, MAX_SITES, CONCURRENCY);
             searcher.run(false);
         } else {
             GridSearch searcher(GENOTYPES_FILE, MAX_SITES, CONCURRENCY);
-            std::smatch mobj;
-            std::regex_search(GENOTYPES_FILE, mobj, std::regex("([^/]+?)\\.[^/]+$"));
-            std::ostringstream oss;
-            oss << mobj.str(1) << "-s" << MAX_SITES;
-            const std::string outdir = oss.str();
-            wtl::mkdir(outdir);  // after constructor success
+            // after constructor success
+            const std::string outdir = make_outdir();
             wtl::Pushd cd(outdir);
             searcher.run(true);
         }
@@ -141,6 +140,16 @@ void Program::run() {HERE;
     } catch (const lnpnan_error& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }
+}
+
+std::string Program::make_outdir() const {
+    std::smatch mobj;
+    std::regex_search(GENOTYPES_FILE, mobj, std::regex("([^/]+?)\\.[^/]+$"));
+    std::ostringstream oss;
+    oss << mobj.str(1) << "-s" << MAX_SITES;
+    const std::string outdir = oss.str();
+    wtl::mkdir(outdir);
+    return outdir;
 }
 
 } // namespace likeligrid

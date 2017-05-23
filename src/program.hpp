@@ -7,7 +7,7 @@
 #define LIKELIGRID_PROGRAM_HPP_
 
 #include <iostream>
-#include <sstream>
+#include <string>
 #include <vector>
 
 #include <wtl/exception.hpp>
@@ -36,6 +36,7 @@ class Program {
     boost::program_options::options_description positional_desc();
     void help_and_exit();
     void test(const int flag);
+    std::string make_outdir() const;
 
     unsigned int CONCURRENCY = 1;
     size_t MAX_SITES = 3;
