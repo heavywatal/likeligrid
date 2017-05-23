@@ -38,7 +38,8 @@ po::options_description Program::options_desc() {HERE;
     po::options_description description("Program");
     description.add_options()
         ("parallel,j", po::value(&CONCURRENCY)->default_value(CONCURRENCY))
-        ("max-sites,s", po::value(&MAX_SITES)->default_value(MAX_SITES));
+        ("max-sites,s", po::value(&MAX_SITES)->default_value(MAX_SITES))
+        ("previous,p", po::value(&PREVIOUS_RESULT)->default_value(PREVIOUS_RESULT));
     return description;
 }
 
@@ -115,7 +116,13 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 
 void Program::run() {HERE;
     try {
-        if (GENOTYPES_FILE == "-") {
+        if (PREVIOUS_RESULT != "") {
+            GradientDescent gradient_descent(GENOTYPES_FILE, MAX_SITES, CONCURRENCY);
+            GridSearch grid_search(GENOTYPES_FILE);
+            grid_search.read_results(PREVIOUS_RESULT);
+            gradient_descent.run(grid_search.mle_params());
+            std::cout << *gradient_descent.mle_params() << std::endl;
+        } else if (GENOTYPES_FILE == "-") {
             GridSearch searcher(std::cin, MAX_SITES, CONCURRENCY);
             searcher.run(false);
         } else {
