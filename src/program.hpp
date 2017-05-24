@@ -6,11 +6,8 @@
 #ifndef LIKELIGRID_PROGRAM_HPP_
 #define LIKELIGRID_PROGRAM_HPP_
 
-#include <iostream>
 #include <string>
 #include <vector>
-
-#include <wtl/exception.hpp>
 
 namespace boost {
     namespace program_options {

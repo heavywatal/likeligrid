@@ -9,11 +9,11 @@
 #include "typedef.hpp"
 #include "util.hpp"
 
+#include <wtl/exception.hpp>
+
 #include <string>
 #include <vector>
 #include <valarray>
-
-#include <wtl/exception.hpp>
 
 namespace likeligrid {
 
@@ -43,7 +43,7 @@ class GenotypeModel {
             p *= discount_if_subset(pathtype, mut_path);
             denoms_[s] += p;
             if (s < max_sites_) {
-                if (SIGINT_RAISED) {throw wtl::KeyboardInterrupt();}
+                if (wtl::SIGINT_RAISED()) {throw wtl::KeyboardInterrupt();}
                 mutate(bits_t(genotype).set(j), pathtype | mut_path, p);
             }
         }

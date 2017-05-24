@@ -5,8 +5,8 @@
 #include "gradient_descent.hpp"
 #include "util.hpp"
 
-#include <wtl/debug.hpp>
 #include <wtl/exception.hpp>
+#include <wtl/debug.hpp>
 #include <wtl/iostr.hpp>
 #include <wtl/zfstream.hpp>
 #include <wtl/prandom.hpp>
@@ -40,7 +40,7 @@ void GradientDescent::run(std::ostream& ost, const std::valarray<double>& initia
     for (auto it = history_.emplace(initial_values, previous_loglik).first;
          it != history_.end();
          it = find_better(it)) {
-        if (SIGINT_RAISED) {
+        if (wtl::SIGINT_RAISED()) {
             std::cerr << std::endl;
             write(ost);
             throw wtl::KeyboardInterrupt();

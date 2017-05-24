@@ -5,15 +5,15 @@
 #include "gridsearch.hpp"
 #include "util.hpp"
 
-#include <chrono>
-
-#include <wtl/debug.hpp>
 #include <wtl/exception.hpp>
+#include <wtl/debug.hpp>
 #include <wtl/iostr.hpp>
 #include <wtl/zfstream.hpp>
 #include <wtl/numeric.hpp>
 #include <wtl/math.hpp>
 #include <wtl/concurrent.hpp>
+
+#include <chrono>
 
 namespace likeligrid {
 
@@ -148,7 +148,7 @@ void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
                 }
             }
         }
-        if (SIGINT_RAISED) {throw wtl::KeyboardInterrupt();}
+        if (wtl::SIGINT_RAISED()) {throw wtl::KeyboardInterrupt();}
     }
     for (auto& ftr: futures) {
         ost << ftr.get();

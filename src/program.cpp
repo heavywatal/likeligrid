@@ -8,20 +8,16 @@
 #include "gridsearch.hpp"
 #include "gradient_descent.hpp"
 
-#include <csignal>
-#include <cstdlib>
-#include <memory>
-#include <regex>
-
+#include <wtl/exception.hpp>
 #include <wtl/debug.hpp>
 #include <wtl/iostr.hpp>
 #include <wtl/os.hpp>
 #include <wtl/getopt.hpp>
 #include <wtl/zfstream.hpp>
 
-namespace likeligrid {
+#include <regex>
 
-std::atomic_bool SIGINT_RAISED(false);
+namespace likeligrid {
 
 namespace po = boost::program_options;
 
@@ -89,10 +85,7 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
     std::cin.tie(0);
     std::cout.precision(15);
     std::cerr.precision(6);
-    std::signal(SIGINT, [](int signum){
-        signum += 0; // suppress warning of unused parameter
-        SIGINT_RAISED = true;
-    });
+    wtl::set_SIGINT_handler();
 
     auto description = general_desc();
     description.add(options_desc());
