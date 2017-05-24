@@ -12,6 +12,7 @@
 #include <wtl/prandom.hpp>
 #include <wtl/itertools.hpp>
 #include <wtl/concurrent.hpp>
+#include <wtl/scope.hpp>
 
 namespace likeligrid {
 
@@ -37,18 +38,14 @@ void GradientDescent::run() {HERE;
 
 void GradientDescent::run(std::ostream& ost, const std::valarray<double>& initial_values) {HERE;
     const double previous_loglik = model_.calc_loglik(initial_values);
-
+    auto at_exit = wtl::scope_exit([&ost,this](){
+        std::cerr << std::endl;
+        write(ost);
+    });
     for (auto it = history_.emplace(initial_values, previous_loglik).first;
          it != history_.end();
          it = find_better(it)) {
-        if (wtl::SIGINT_RAISED()) {
-            std::cerr << std::endl;
-            write(ost);
-            throw wtl::KeyboardInterrupt();
-        }
     }
-    std::cerr << std::endl;
-    write(ost);
 }
 
 MapGrid::iterator GradientDescent::find_better(const MapGrid::iterator& prev_it) {
