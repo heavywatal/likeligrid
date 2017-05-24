@@ -51,7 +51,7 @@ class GradientDescent {
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
-    MapGrid::iterator find_better(const MapGrid::const_iterator&);
+    MapGrid::iterator find_better(const MapGrid::iterator&);
     std::vector<std::valarray<double>> empty_neighbors_of(const std::valarray<double>&);
 
     GenotypeModel model_;

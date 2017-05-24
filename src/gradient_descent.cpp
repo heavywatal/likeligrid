@@ -11,6 +11,7 @@
 #include <wtl/zfstream.hpp>
 #include <wtl/prandom.hpp>
 #include <wtl/itertools.hpp>
+#include <wtl/concurrent.hpp>
 
 namespace likeligrid {
 
@@ -50,17 +51,31 @@ void GradientDescent::run(std::ostream& ost, const std::valarray<double>& initia
     write(ost);
 }
 
-MapGrid::iterator GradientDescent::find_better(const MapGrid::const_iterator& it) {
-    const double previous_loglik = it->second;
-    auto next_nodes = empty_neighbors_of(it->first);
-    std::shuffle(std::begin(next_nodes), std::end(next_nodes), wtl::sfmt());
-    for (const auto& x: next_nodes) {
-        const double loglik = model_.calc_loglik(x);
-        std::cerr << "." << std::flush;
-        if (loglik > previous_loglik) {
-            return history_.emplace(x, loglik).first;
-        } else {
-            history_.emplace(x, loglik);
+MapGrid::iterator GradientDescent::find_better(const MapGrid::iterator& prev_it) {
+    auto task = [](decltype(model_) model, const std::valarray<double> theta) {
+        // arguments are copied for each thread
+        return std::make_pair(theta, model.calc_loglik(theta));
+    };
+    std::vector<std::future<std::pair<std::valarray<double>, double>>> futures;
+    futures.reserve(concurrency_);
+
+    auto surrounding = empty_neighbors_of(prev_it->first);
+    std::shuffle(std::begin(surrounding), std::end(surrounding), wtl::sfmt());
+    for (const auto& theta: surrounding) {
+        futures.push_back(std::async(std::launch::async, task, model_, theta));
+        if (futures.size() == concurrency_) {
+            auto better_it = prev_it;
+            for (auto& ftr: futures) {
+                auto result_it = history_.insert(ftr.get()).first;
+                std::cerr << "." << std::flush;
+                if (result_it->second > better_it->second) {
+                    better_it = result_it;
+                }
+            }
+            if (better_it != prev_it) {
+                return better_it;
+            }
+            futures.clear();
         }
     }
     return history_.end();
