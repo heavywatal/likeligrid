@@ -129,23 +129,24 @@ void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
     const auto min_interval = std::chrono::seconds(2);
     auto next_time = std::chrono::system_clock::now() + min_interval;
     size_t stars = 0;
+    size_t progress = skip_;
     for (const auto& th_path: gen(skip_)) {
         semaphore.lock();
         futures.push_back(std::async(std::launch::async, task, th_path));
         auto now = std::chrono::system_clock::now();
         if (now > next_time) {
             next_time = now + min_interval;
-            size_t progress = 0;
             while (!futures.empty() && wtl::is_ready(futures.front())) {
                 ost << futures.front().get();
                 futures.pop_front();
                 ++progress;
             }
-            if (progress > 0) {
-                ost.flush();
-                for (size_t n= 0.2 * gen.percent(); stars<n; ++stars) {
-                    std::cerr << "*";
-                }
+        }
+        if (progress > 0) {
+            progress = 0;
+            ost.flush();
+            for (size_t n= 0.2 * gen.percent(); stars<n; ++stars) {
+                std::cerr << "*";
             }
         }
         if (wtl::SIGINT_RAISED()) {throw wtl::KeyboardInterrupt();}
