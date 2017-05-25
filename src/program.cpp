@@ -110,13 +110,14 @@ void Program::run() {HERE;
     try {
         if (PREVIOUS_RESULT != "") {
             GradientDescent gradient_descent(GENOTYPES_FILE, MAX_SITES, CONCURRENCY);
-            GridSearch grid_search(GENOTYPES_FILE);
-            grid_search.read_results(PREVIOUS_RESULT);
+            wtl::izfstream ist(PREVIOUS_RESULT);
+            gradient_descent.read_results(ist);
             const std::string outdir = make_outdir();
             wtl::Pushd cd(outdir);
             wtl::ozfstream ost("gradient_descent.tsv.gz");
-            gradient_descent.run(ost, grid_search.mle_params());
-            std::cout << *gradient_descent.mle_params() << std::endl;
+            ost.precision(std::cout.precision());
+            gradient_descent.run(ost);
+            std::cout << *gradient_descent.const_max_iterator() << std::endl;
         } else if (GENOTYPES_FILE == "-") {
             GridSearch searcher(std::cin, MAX_SITES, CONCURRENCY);
             searcher.run(false);
