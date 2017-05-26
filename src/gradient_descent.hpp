@@ -40,13 +40,14 @@ class GradientDescent {
         const size_t max_sites=255,
         const unsigned int concurrency=1);
 
+    void run();
     void run(std::ostream&);
 
     MapGrid::iterator max_iterator();
     MapGrid::const_iterator const_max_iterator() const;
 
     void write(std::ostream&);
-    void read_results(std::istream&);
+    void read_results(const std::string&);
 
     static void unit_test();
 

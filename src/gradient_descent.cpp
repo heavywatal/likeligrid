@@ -30,7 +30,15 @@ GradientDescent::GradientDescent(
 
 }
 
+void GradientDescent::run() {HERE;
+    std::ostringstream oss;
+    oss << "gradient_descent-s" << model_.max_sites() << ".tsv.gz";
+    wtl::ozfstream ost(oss.str());
+    run(ost);
+}
+
 void GradientDescent::run(std::ostream& ost) {HERE;
+    ost.precision(std::cout.precision());
     auto at_exit = wtl::scope_exit([&ost,this](){
         std::cerr << std::endl;
         write(ost);
@@ -115,7 +123,8 @@ void GradientDescent::write(std::ostream& ost) {HERE;
     }
 }
 
-void GradientDescent::read_results(std::istream& ist) {HERE;
+void GradientDescent::read_results(const std::string& infile) {HERE;
+    wtl::izfstream ist(infile);
     size_t max_sites;
     std::tie(std::ignore, max_sites, std::ignore) = read_metadata(ist);
 
