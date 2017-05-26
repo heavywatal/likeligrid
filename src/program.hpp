@@ -37,8 +37,8 @@ class Program {
 
     unsigned int CONCURRENCY = 1;
     size_t MAX_SITES = 3;
-    std::string GENOTYPES_FILE = "-";
-    std::string PREVIOUS_RESULT = "";
+    std::string INFILE = "-";
+    bool GRADIENT_MODE = false;
 };
 
 } // namespace likeligrid

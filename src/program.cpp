@@ -35,14 +35,14 @@ po::options_description Program::options_desc() {HERE;
     description.add_options()
         ("parallel,j", po::value(&CONCURRENCY)->default_value(CONCURRENCY))
         ("max-sites,s", po::value(&MAX_SITES)->default_value(MAX_SITES))
-        ("previous,p", po::value(&PREVIOUS_RESULT)->default_value(PREVIOUS_RESULT));
+        ("gradient,g", po::value(&GRADIENT_MODE)->default_value(GRADIENT_MODE)->implicit_value(true));
     return description;
 }
 
 po::options_description Program::positional_desc() {HERE;
     po::options_description description("Positional");
     description.add_options()
-        ("genotypes", po::value(&GENOTYPES_FILE)->default_value(GENOTYPES_FILE));
+        ("infile", po::value(&INFILE)->default_value(INFILE));
     return description;
 }
 
@@ -50,7 +50,7 @@ void Program::help_and_exit() {HERE;
     auto description = general_desc();
     description.add(options_desc());
     // do not print positional arguments as options
-    std::cout << "Usage: likeligrid [options] genotypes\n" << std::endl;
+    std::cout << "Usage: likeligrid [options] infile\n" << std::endl;
     description.print(std::cout);
     throw wtl::ExitSuccess();
 }
@@ -69,7 +69,7 @@ void Program::test(const int flag) {HERE;
         PathtypeModel::unit_test();
         throw wtl::ExitSuccess();
       case 3: {
-        wtl::izfstream ist(GENOTYPES_FILE);
+        wtl::izfstream ist(INFILE);
         GenotypeModel model(ist, MAX_SITES);
         model.benchmark(CONCURRENCY);
         throw wtl::ExitSuccess();
@@ -91,7 +91,7 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
     description.add(options_desc());
     description.add(positional_desc());
     po::positional_options_description positional;
-    positional.add("genotypes", 1);
+    positional.add("infile", 1);
     po::variables_map vm;
     po::store(po::command_line_parser({arguments.begin() + 1, arguments.end()}).
               options(description).
@@ -108,16 +108,16 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 
 void Program::run() {HERE;
     try {
-        if (PREVIOUS_RESULT != "") {
-            GradientDescent gradient_descent(PREVIOUS_RESULT, MAX_SITES, CONCURRENCY);
-            wtl::Pushd cd(wtl::dirname(PREVIOUS_RESULT));
+        if (GRADIENT_MODE) {
+            GradientDescent gradient_descent(INFILE, MAX_SITES, CONCURRENCY);
+            wtl::Pushd cd(wtl::dirname(INFILE));
             gradient_descent.run();
             std::cerr << *gradient_descent.const_max_iterator() << std::endl;
-        } else if (GENOTYPES_FILE == "-") {
+        } else if (INFILE == "-") {
             GridSearch searcher(std::cin, MAX_SITES, CONCURRENCY);
             searcher.run(false);
         } else {
-            GridSearch searcher(GENOTYPES_FILE, MAX_SITES, CONCURRENCY);
+            GridSearch searcher(INFILE, MAX_SITES, CONCURRENCY);
             // after constructor success
             const std::string outdir = make_outdir();
             wtl::Pushd cd(outdir);
@@ -132,7 +132,7 @@ void Program::run() {HERE;
 
 std::string Program::make_outdir() const {
     std::smatch mobj;
-    std::regex_search(GENOTYPES_FILE, mobj, std::regex("([^/]+?)\\.[^/]+$"));
+    std::regex_search(INFILE, mobj, std::regex("([^/]+?)\\.[^/]+$"));
     std::ostringstream oss;
     oss << mobj.str(1) << "-s" << MAX_SITES;
     const std::string outdir = oss.str();

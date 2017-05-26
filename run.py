@@ -7,8 +7,8 @@ import wtl.options as wopt
 program = 'likeligrid'
 
 
-def iter(infiles, range_s, concurrency):
-    const = ['-j{}'.format(concurrency)]
+def iter(infiles, range_s, concurrency, rest):
+    const = ['-j{}'.format(concurrency)] + rest
     params = wopt.OrderedDict()
     params['s'] = range_s
     for p in wopt.sequential(params):
@@ -27,5 +27,6 @@ if __name__ == '__main__':
     (args, rest) = parser.parse_known_args()
 
     range_s = range(args.begin, args.end)
-    wopt.map_async(iter(args.infile, range_s, args.jobs), 1, args.dry_run)
+    wopt.map_async(iter(args.infile, range_s, args.jobs, rest),
+                   1, args.dry_run)
     print('End of ' + __file__)
