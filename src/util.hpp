@@ -47,19 +47,22 @@ inline double radius(const size_t stage) {
     return (BREAKS.at(stage) - 1) * STEPS.at(stage) * 0.5;
 }
 
-inline std::tuple<size_t, size_t, double>
+inline std::tuple<std::string, size_t, size_t, double>
 read_metadata(std::istream& ist) {
     std::string buffer;
     ist.ignore(std::numeric_limits<std::streamsize>::max(), '=');
     std::getline(ist, buffer);
-    const size_t max_count = std::stoul(buffer);
+    const std::string genotype_file = buffer;
     ist.ignore(std::numeric_limits<std::streamsize>::max(), '=');
     std::getline(ist, buffer);
     const size_t max_sites = std::stoul(buffer);
     ist.ignore(std::numeric_limits<std::streamsize>::max(), '=');
     std::getline(ist, buffer);
+    const size_t max_count = std::stoul(buffer);
+    ist.ignore(std::numeric_limits<std::streamsize>::max(), '=');
+    std::getline(ist, buffer);
     const double step = std::stod(buffer);
-    return std::make_tuple(max_count, max_sites, step);
+    return std::make_tuple(genotype_file, max_sites, max_count, step);
 }
 
 inline std::tuple<size_t, std::vector<std::string>, std::valarray<double>>

@@ -37,7 +37,7 @@ class GradientDescent {
         : GradientDescent(ist, max_sites, concurrency){}
     GradientDescent(
         const std::string& infile,
-        const size_t max_sites=255,
+        const size_t max_sites,
         const unsigned int concurrency=1);
 
     void run();
@@ -47,7 +47,7 @@ class GradientDescent {
     MapGrid::const_iterator const_max_iterator() const;
 
     void write(std::ostream&);
-    void read_results(const std::string&);
+    std::string read_results(const std::string&, const size_t max_sites);
 
     static void unit_test();
 
@@ -56,8 +56,8 @@ class GradientDescent {
     MapGrid::iterator find_better(const MapGrid::iterator&);
     std::vector<std::valarray<double>> empty_neighbors_of(const std::valarray<double>&);
 
-    GenotypeModel model_;
     MapGrid history_;
+    GenotypeModel model_;
 
     const unsigned int concurrency_;
 };

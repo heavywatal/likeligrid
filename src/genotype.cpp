@@ -8,12 +8,20 @@
 
 #include <wtl/debug.hpp>
 #include <wtl/iostr.hpp>
+#include <wtl/zfstream.hpp>
 #include <wtl/algorithm.hpp>
 #include <wtl/math.hpp>
 
 namespace likeligrid {
 
-GenotypeModel::GenotypeModel(std::istream& ist, const size_t max_sites) {HERE;
+GenotypeModel::GenotypeModel(const std::string& infile, const size_t max_sites)
+: filename_(infile) {
+    HERE;
+    wtl::izfstream ist(filename_);
+    init(ist, max_sites);
+}
+
+void GenotypeModel::init(std::istream& ist, const size_t max_sites) {HERE;
     nlohmann::json jso;
     ist >> jso;
     names_ = jso["pathway"].get<std::vector<std::string>>();

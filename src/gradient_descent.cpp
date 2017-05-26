@@ -19,7 +19,9 @@ namespace likeligrid {
 GradientDescent::GradientDescent(const std::string& infile,
     const size_t max_sites,
     const unsigned int concurrency)
-    : GradientDescent(wtl::izfstream(infile), max_sites, concurrency) {HERE;}
+    : model_(read_results(infile, max_sites), max_sites),
+      concurrency_(concurrency) {HERE;
+}
 
 GradientDescent::GradientDescent(
     std::istream& ist,
@@ -27,7 +29,6 @@ GradientDescent::GradientDescent(
     const unsigned int concurrency)
     : model_(ist, max_sites),
       concurrency_(concurrency) {HERE;
-
 }
 
 void GradientDescent::run() {HERE;
@@ -113,8 +114,9 @@ MapGrid::const_iterator GradientDescent::const_max_iterator() const {HERE;
 }
 
 void GradientDescent::write(std::ostream& ost) {HERE;
-    ost << "##max_count=" << 0U << "\n";
+    ost << "##genotype_file=" << model_.filename() << "\n";
     ost << "##max_sites=" << model_.max_sites() << "\n";
+    ost << "##max_count=" << 0U << "\n";
     ost << "##step=" << 0.01 << "\n";
     ost << "loglik\t" << wtl::join(model_.names(), "\t") << "\n";
     for (const auto& p: history_) {
@@ -123,30 +125,17 @@ void GradientDescent::write(std::ostream& ost) {HERE;
     }
 }
 
-void GradientDescent::read_results(const std::string& infile) {HERE;
+std::string GradientDescent::read_results(const std::string& infile, const size_t max_sites) {HERE;
     wtl::izfstream ist(infile);
-    size_t max_sites;
-    std::tie(std::ignore, max_sites, std::ignore) = read_metadata(ist);
+    std::string genotype_file;
+    size_t prev_max_sites;
+    std::tie(genotype_file, prev_max_sites, std::ignore, std::ignore) = read_metadata(ist);
+    const bool is_resuming = (prev_max_sites == max_sites);
+
+    // discard header
+    ist.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
     std::string buffer;
-    ist >> buffer; // loglik
-    std::getline(ist, buffer); // header
-    buffer.erase(0, 1); // \t
-    const std::vector<std::string> colnames = wtl::split(buffer, "\t");
-
-    bool is_resuming = false;
-    if (model_.names() != colnames) {
-        std::ostringstream oss;
-        oss << "Contradiction in column names:\n"
-            << "genotype file: " << model_.names() << "\n"
-            << "result file:" << colnames;
-        throw std::runtime_error(oss.str());
-    } else {
-        if (max_sites == model_.max_sites()) {
-            is_resuming = true;
-        }
-    }
-
     while (std::getline(ist, buffer)) {
         std::istringstream iss(buffer);
         std::istream_iterator<double> it(iss);
@@ -156,6 +145,7 @@ void GradientDescent::read_results(const std::string& infile) {HERE;
             history_.emplace(std::valarray<double>(vec.data(), vec.size()), loglik);
         }
     }
+    return genotype_file;
 }
 
 void GradientDescent::unit_test() {HERE;

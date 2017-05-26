@@ -109,8 +109,7 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 void Program::run() {HERE;
     try {
         if (PREVIOUS_RESULT != "") {
-            GradientDescent gradient_descent(GENOTYPES_FILE, MAX_SITES, CONCURRENCY);
-            gradient_descent.read_results(PREVIOUS_RESULT);
+            GradientDescent gradient_descent(PREVIOUS_RESULT, MAX_SITES, CONCURRENCY);
             wtl::Pushd cd(wtl::dirname(PREVIOUS_RESULT));
             gradient_descent.run();
             std::cerr << *gradient_descent.const_max_iterator() << std::endl;

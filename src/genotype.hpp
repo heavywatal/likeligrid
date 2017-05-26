@@ -19,18 +19,26 @@ namespace likeligrid {
 
 class GenotypeModel {
   public:
-    GenotypeModel(std::istream&, const size_t max_sites);
+    GenotypeModel(std::istream& ist, const size_t max_sites) {
+        init(ist, max_sites);
+    }
+    GenotypeModel(std::istream&& ist, const size_t max_sites)
+    : GenotypeModel(ist, max_sites) {};
+    GenotypeModel(const std::string&, const size_t max_sites);
 
     double calc_loglik(const std::valarray<double>& th_path);
     void benchmark(const size_t);
 
     // getter
+    const std::string& filename() const {return filename_;}
     const std::vector<std::string>& names() const {return names_;}
     size_t max_sites() const {return max_sites_;}
 
     static void unit_test();
 
   private:
+    void init(std::istream&, const size_t max_sites);
+
     double lnp_sample(const bits_t& genotype) const;
 
     void mutate(const bits_t& genotype, const bits_t& pathtype, const double anc_p) {
@@ -83,6 +91,7 @@ class GenotypeModel {
     }
 
     // initialized in constructor
+    std::string filename_ = "-";
     std::vector<std::string> names_;
     size_t num_pathways_;
     std::vector<bits_t> annot_;

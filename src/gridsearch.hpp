@@ -18,7 +18,7 @@ namespace likeligrid {
 
 class GridSearch {
   public:
-    GridSearch() = default;
+    GridSearch() = delete;
     GridSearch(std::istream&,
         const size_t max_sites,
         const unsigned int concurrency=1);
@@ -28,7 +28,7 @@ class GridSearch {
         : GridSearch(ist, max_sites, concurrency){}
     GridSearch(
         const std::string& infile,
-        const size_t max_sites=255,
+        const size_t max_sites,
         const unsigned int concurrency=1);
 
     void run(const bool writing=true);

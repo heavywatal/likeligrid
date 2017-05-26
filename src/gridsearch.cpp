@@ -20,7 +20,14 @@ namespace likeligrid {
 GridSearch::GridSearch(const std::string& infile,
     const size_t max_sites,
     const unsigned int concurrency)
-    : GridSearch(wtl::izfstream(infile), max_sites, concurrency) {HERE;}
+    : model_(infile, max_sites),
+      concurrency_(concurrency) {HERE;
+
+    names_ = model_.names();
+    mle_params_.resize(model_.names().size());
+    mle_params_ = 1.0;
+}
+    // : GridSearch(wtl::izfstream(infile), max_sites, concurrency) {HERE;}
 
 GridSearch::GridSearch(
     std::istream& ist,
@@ -107,8 +114,9 @@ void GridSearch::search_limits() {HERE;
 void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::valarray<double>>&& gen) {HERE;
     std::cerr << skip_ << " to " << gen.max_count() << std::endl;
     if (skip_ == 0) {
-        ost << "##max_count=" << gen.max_count() << "\n";
+        ost << "##genotype_file=" << model_.filename() << "\n";
         ost << "##max_sites=" << model_.max_sites() << "\n";
+        ost << "##max_count=" << gen.max_count() << "\n";
         ost << "##step=" << STEPS.at(stage_) << "\n";
         ost << "loglik\t" << wtl::join(names_, "\t") << "\n";
         ost.flush();
@@ -182,7 +190,7 @@ std::string GridSearch::init_meta() {HERE;
 void GridSearch::read_results(std::istream& ist) {HERE;
     size_t max_count;
     double step;
-    std::tie(max_count, std::ignore, step) = read_metadata(ist);
+    std::tie(std::ignore, std::ignore, max_count, step) = read_metadata(ist);
     stage_ = guess_stage(step);
     std::vector<std::string> colnames;
     std::valarray<double> mle_params;
