@@ -7,16 +7,17 @@ import wtl.options as wopt
 program = 'likeligrid'
 
 
-def iter(infiles, range_s, concurrency, rest):
-    const = ['-j{}'.format(concurrency)] + rest
-    params = wopt.OrderedDict()
-    params['s'] = range_s
-    for p in wopt.sequential(params):
+def iter_args(infiles, range_s, concurrency, rest):
+    const = [program, '-j{}'.format(concurrency)] + rest
+    axes = wopt.OrderedDict()
+    axes['s'] = range_s
+    for v in wopt.sequential(axes):
+        args = wopt.make_args(v)
         for f in infiles:
-            yield ' '.join([program, *const, p, f])
+            yield const + args + [f]
 
 
-if __name__ == '__main__':
+def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--dry-run', action='store_true')
@@ -27,6 +28,10 @@ if __name__ == '__main__':
     (args, rest) = parser.parse_known_args()
 
     range_s = range(args.begin, args.end)
-    wopt.map_async(iter(args.infile, range_s, args.jobs, rest),
+    wopt.map_async(iter_args(args.infile, range_s, args.jobs, rest),
                    1, args.dry_run)
     print('End of ' + __file__)
+
+
+if __name__ == '__main__':
+    main()
