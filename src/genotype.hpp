@@ -26,7 +26,7 @@ class GenotypeModel {
     : GenotypeModel(ist, max_sites) {};
     GenotypeModel(const std::string&, const size_t max_sites);
 
-    double calc_loglik(const std::valarray<double>& th_path);
+    double calc_loglik(const std::valarray<double>& theta, const std::pair<size_t, size_t>& pair={0,0});
     void benchmark(const size_t);
 
     // getter
@@ -49,6 +49,7 @@ class GenotypeModel {
             double p = anc_p;
             p *= w_gene_[j];
             p *= discount_if_subset(pathtype, mut_path);
+            p *= epistasis(pathtype, mut_path);
             denoms_[s] += p;
             if (s < max_sites_) {
                 if (wtl::SIGINT_RAISED()) {throw wtl::KeyboardInterrupt();}
@@ -62,7 +63,7 @@ class GenotypeModel {
         for (size_t i=0; i<num_pathways_; ++i) {
             if (mut_path[i]) {
                 if (pathtype[i]) {
-                    p *= th_path_[i];
+                    p *= theta_[i];
                 } else {
                     return 1.0;
                 }
@@ -71,12 +72,28 @@ class GenotypeModel {
         return p;
     }
 
+    double epistasis(const bits_t& pathtype, const bits_t& mut_path) const {
+        if (!with_epistasis_) return 1.0;
+        if (pathtype[epistasis_pair_.first]) {
+            if (pathtype[epistasis_pair_.second]) return 1.0;
+            if (mut_path[epistasis_pair_.second]) return theta_[num_pathways_];
+        }
+        if (pathtype[epistasis_pair_.second]) {
+            if (mut_path[epistasis_pair_.first]) return theta_[num_pathways_];
+        }
+        if (mut_path[epistasis_pair_.first]) {
+            if (mut_path[epistasis_pair_.second]) return theta_[num_pathways_];
+        }
+        return 1.0;
+    }
+
     double discount(const std::valarray<size_t>& mut_route) const {
         double p = 1.0;
         bits_t pathtype;
         for (const auto j: mut_route) {
             const auto& mut_path = effects_[j];
             p *= discount_if_subset(pathtype, mut_path);
+            p *= epistasis(pathtype, mut_path);
             pathtype |= mut_path;
         }
         return p;
@@ -103,8 +120,10 @@ class GenotypeModel {
     std::vector<bits_t> effects_;
 
     // updated in calc_loglik()
-    std::valarray<double> th_path_;
+    std::valarray<double> theta_;
     std::valarray<double> denoms_;
+    std::pair<size_t, size_t> epistasis_pair_;
+    bool with_epistasis_ = false;
 };
 
 } // namespace likeligrid
