@@ -35,20 +35,33 @@ void GradientDescent::run() {HERE;
     std::ostringstream oss;
     oss << "gradient_descent-s" << model_.max_sites() << ".tsv.gz";
     wtl::ozfstream ost(oss.str());
+    ost.precision(std::cout.precision());
     run(ost);
 }
 
-void GradientDescent::run(std::ostream& ost) {HERE;
-    ost.precision(std::cout.precision());
-    auto at_exit = wtl::scope_exit([&ost,this](){
+void GradientDescent::run(std::ostream& ost, const std::pair<size_t, size_t>& epistasis_pair) {HERE;
+    auto at_exit = wtl::scope_exit([&ost,&epistasis_pair,this](){
         std::cerr << std::endl;
-        write(ost);
+        write(ost, epistasis_pair);
     });
+    const bool with_epistasis = (epistasis_pair.first != epistasis_pair.second);
+    const size_t dimensions = model_.names().size() + static_cast<size_t>(with_epistasis);
     if (history_.empty()) {
-        const size_t dimensions = model_.names().size();
-        const std::valarray<double> initial_values(0.90, dimensions);
-        const double loglik = model_.calc_loglik(initial_values);
+        const std::valarray<double> initial_values(1.0, dimensions);
+        const double loglik = model_.calc_loglik(initial_values, epistasis_pair);
         history_.emplace(initial_values, loglik);
+    } else if (with_epistasis) {
+        const auto it = const_max_iterator();
+        std::cerr << "old best: " << *it << std::endl;
+        const auto& old_best = it->first;
+        if (old_best.size() < dimensions) {
+            std::valarray<double> new_start(1.0, dimensions);
+            std::copy(std::begin(old_best), std::end(old_best), std::begin(new_start));
+            history_.clear();
+            const double loglik = model_.calc_loglik(new_start, epistasis_pair);
+            history_.emplace(new_start, loglik);
+            std::cerr << "new start: " << *history_.begin() << std::endl;
+        }
     }
     for (auto it = max_iterator();
          it != history_.end();
@@ -113,12 +126,17 @@ MapGrid::const_iterator GradientDescent::const_max_iterator() const {HERE;
         });
 }
 
-void GradientDescent::write(std::ostream& ost) {HERE;
+void GradientDescent::write(std::ostream& ost, const std::pair<size_t, size_t>& epistasis_pair) {HERE;
     ost << "##genotype_file=" << model_.filename() << "\n";
     ost << "##max_sites=" << model_.max_sites() << "\n";
     ost << "##max_count=" << 0U << "\n";
     ost << "##step=" << 0.01 << "\n";
-    ost << "loglik\t" << wtl::join(model_.names(), "\t") << "\n";
+    ost << "loglik\t" << wtl::join(model_.names(), "\t");
+    if (epistasis_pair.first != epistasis_pair.second) {
+        ost << "\t" << model_.names()[epistasis_pair.first]
+            <<  ":" << model_.names()[epistasis_pair.second];
+    }
+    ost << "\n";
     for (const auto& p: history_) {
         ost << p.second << "\t"
             << wtl::str_join(p.first, "\t") << "\n";
@@ -157,7 +175,7 @@ R"({
   "sample": ["0011", "0101", "1001", "0110", "1010", "1100"]
 })";
     GradientDescent searcher(sst, 4);
-    searcher.run(std::cerr);
+    searcher.run(std::cout, {0, 1});
 }
 
 } // namespace likeligrid
