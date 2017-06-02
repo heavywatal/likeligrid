@@ -113,10 +113,13 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 void Program::run() {HERE;
     try {
         if (GRADIENT_MODE) {
-            GradientDescent gradient_descent(INFILE, MAX_SITES, CONCURRENCY);
+            GradientDescent gradient_descent(INFILE, MAX_SITES,
+                {EPISTASIS_PAIR[0], EPISTASIS_PAIR[1]}, CONCURRENCY);
             wtl::Pushd cd(wtl::dirname(INFILE));
-            gradient_descent.run({EPISTASIS_PAIR[0], EPISTASIS_PAIR[1]});
-            std::cerr << *gradient_descent.const_max_iterator() << std::endl;
+            wtl::ozfstream ost(gradient_descent.outfile());
+            ost.precision(std::cout.precision());
+            std::cerr << "outfile: " << ost.path() << std::endl;
+            gradient_descent.run(ost);
         } else if (INFILE == "-") {
             GridSearch searcher(std::cin, MAX_SITES, CONCURRENCY);
             searcher.run(false);
