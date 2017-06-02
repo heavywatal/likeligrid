@@ -39,6 +39,7 @@ class Program {
     size_t MAX_SITES = 3;
     std::string INFILE = "-";
     bool GRADIENT_MODE = false;
+    std::vector<size_t> EPISTASIS_PAIR = {0, 0};
 };
 
 } // namespace likeligrid

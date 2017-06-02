@@ -31,12 +31,12 @@ GradientDescent::GradientDescent(
       concurrency_(concurrency) {HERE;
 }
 
-void GradientDescent::run() {HERE;
+void GradientDescent::run(const std::pair<size_t, size_t>& epistasis_pair) {HERE;
     std::ostringstream oss;
     oss << "gradient_descent-s" << model_.max_sites() << ".tsv.gz";
     wtl::ozfstream ost(oss.str());
     ost.precision(std::cout.precision());
-    run(ost);
+    run(ost, epistasis_pair);
 }
 
 void GradientDescent::run(std::ostream& ost, const std::pair<size_t, size_t>& epistasis_pair) {HERE;

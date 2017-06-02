@@ -35,7 +35,8 @@ po::options_description Program::options_desc() {HERE;
     description.add_options()
         ("parallel,j", po::value(&CONCURRENCY)->default_value(CONCURRENCY))
         ("max-sites,s", po::value(&MAX_SITES)->default_value(MAX_SITES))
-        ("gradient,g", po::value(&GRADIENT_MODE)->default_value(GRADIENT_MODE)->implicit_value(true));
+        ("gradient,g", po::value(&GRADIENT_MODE)->default_value(GRADIENT_MODE)->implicit_value(true))
+        ("epistasis,e", po::value(&EPISTASIS_PAIR)->default_value(EPISTASIS_PAIR)->multitoken());
     return description;
 }
 
@@ -98,6 +99,9 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
               positional(positional).run(), vm);
     if (vm["help"].as<bool>()) {help_and_exit();}
     po::notify(vm);
+    if (EPISTASIS_PAIR.size() != 2U) {
+        throw std::runtime_error("EPISTASIS_PAIR.size() != 2U");
+    }
 
     if (vm["verbose"].as<bool>()) {
         std::cerr << wtl::iso8601datetime() << std::endl;
@@ -111,7 +115,7 @@ void Program::run() {HERE;
         if (GRADIENT_MODE) {
             GradientDescent gradient_descent(INFILE, MAX_SITES, CONCURRENCY);
             wtl::Pushd cd(wtl::dirname(INFILE));
-            gradient_descent.run();
+            gradient_descent.run({EPISTASIS_PAIR[0], EPISTASIS_PAIR[1]});
             std::cerr << *gradient_descent.const_max_iterator() << std::endl;
         } else if (INFILE == "-") {
             GridSearch searcher(std::cin, MAX_SITES, CONCURRENCY);
