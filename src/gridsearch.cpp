@@ -213,7 +213,7 @@ void GridSearch::read_results(const std::string& infile) {
     read_results(ist);
 }
 
-void GridSearch::unit_test() {HERE;
+void GridSearch::test() {HERE;
     std::stringstream sst;
     sst <<
 R"({
@@ -222,7 +222,7 @@ R"({
   "sample": ["0011", "0101", "1001", "0110", "1010", "1100"]
 })";
     GridSearch searcher(sst, 4);
-    searcher.run(false);
+    searcher.run_cout();
 }
 
 } // namespace likeligrid

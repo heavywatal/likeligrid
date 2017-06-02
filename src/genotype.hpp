@@ -34,7 +34,7 @@ class GenotypeModel {
     const std::vector<std::string>& names() const {return names_;}
     size_t max_sites() const {return max_sites_;}
 
-    static void unit_test();
+    static void test();
 
   private:
     void init(std::istream&, const size_t max_sites);

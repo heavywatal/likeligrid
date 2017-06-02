@@ -38,7 +38,7 @@ class GridSearch {
     const std::valarray<double>& mle_params() const {return mle_params_;}
     const std::vector<std::string>& names() const {return names_;}
 
-    static void unit_test();
+    static void test();
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:

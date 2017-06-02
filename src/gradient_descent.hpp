@@ -49,7 +49,7 @@ class GradientDescent {
     void write(std::ostream&, const std::pair<size_t, size_t>& epistasis_pair={0,0});
     std::string read_results(const std::string&, const size_t max_sites);
 
-    static void unit_test();
+    static void test();
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:

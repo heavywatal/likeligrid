@@ -101,7 +101,7 @@ double PathtypeModel::calc_denom(
     return sum_prob;
 }
 
-void PathtypeModel::unit_test() {HERE;
+void PathtypeModel::test() {HERE;
     std::stringstream sst;
     sst <<
 R"(A B

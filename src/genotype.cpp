@@ -134,7 +134,7 @@ void GenotypeModel::benchmark(const size_t n) {
     }, "", n);
 }
 
-void GenotypeModel::unit_test() {HERE;
+void GenotypeModel::test() {HERE;
     std::stringstream sst;
     sst <<
 R"({

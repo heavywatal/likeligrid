@@ -61,12 +61,12 @@ void Program::test(const int flag) {HERE;
       case 0:
         break;
       case 1:
-        GridSearch::unit_test();
-        GradientDescent::unit_test();
+        GridSearch::test();
+        GradientDescent::test();
         throw wtl::ExitSuccess();
       case 2:
-        GenotypeModel::unit_test();
-        PathtypeModel::unit_test();
+        GenotypeModel::test();
+        PathtypeModel::test();
         throw wtl::ExitSuccess();
       case 3: {
         wtl::izfstream ist(INFILE);

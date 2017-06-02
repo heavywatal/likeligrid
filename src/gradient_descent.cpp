@@ -166,7 +166,7 @@ std::string GradientDescent::read_results(const std::string& infile, const size_
     return genotype_file;
 }
 
-void GradientDescent::unit_test() {HERE;
+void GradientDescent::test() {HERE;
     std::stringstream sst;
     sst <<
 R"({
