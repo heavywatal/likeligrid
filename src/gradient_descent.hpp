@@ -46,15 +46,15 @@ class GradientDescent {
     MapGrid::iterator max_iterator();
     MapGrid::const_iterator const_max_iterator() const;
 
-    void write(std::ostream&, const std::pair<size_t, size_t>& epistasis_pair={0,0});
-    std::string read_results(const std::string&, const size_t max_sites);
-
     static void test();
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
     MapGrid::iterator find_better(const MapGrid::iterator&);
     std::vector<std::valarray<double>> empty_neighbors_of(const std::valarray<double>&);
+
+    void write(std::ostream&);
+    std::string read_results(const std::string&, const size_t max_sites);
 
     MapGrid history_;
     GenotypeModel model_;

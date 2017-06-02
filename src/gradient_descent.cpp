@@ -33,24 +33,32 @@ GradientDescent::GradientDescent(
 
 void GradientDescent::run(const std::pair<size_t, size_t>& epistasis_pair) {HERE;
     std::ostringstream oss;
-    oss << "gradient_descent-s" << model_.max_sites() << ".tsv.gz";
+    oss << "gradient-s" << model_.max_sites();
+    if (epistasis_pair.first != epistasis_pair.second) {
+        oss << "-e" << epistasis_pair.first
+            <<  "x" << epistasis_pair.second;
+    }
+    oss << ".tsv.gz";
     wtl::ozfstream ost(oss.str());
     ost.precision(std::cout.precision());
     run(ost, epistasis_pair);
 }
 
 void GradientDescent::run(std::ostream& ost, const std::pair<size_t, size_t>& epistasis_pair) {HERE;
-    auto at_exit = wtl::scope_exit([&ost,&epistasis_pair,this](){
+    auto at_exit = wtl::scope_exit([&ost,this](){
         std::cerr << std::endl;
-        write(ost, epistasis_pair);
+        write(ost);
     });
-    const bool with_epistasis = (epistasis_pair.first != epistasis_pair.second);
-    const size_t dimensions = model_.names().size() + static_cast<size_t>(with_epistasis);
+    size_t dimensions = model_.names().size();
+    if (epistasis_pair.first != epistasis_pair.second) {
+        model_.set_epistasis(epistasis_pair);
+        ++dimensions;
+    }
     if (history_.empty()) {
         const std::valarray<double> initial_values(1.0, dimensions);
-        const double loglik = model_.calc_loglik(initial_values, epistasis_pair);
+        const double loglik = model_.calc_loglik(initial_values);
         history_.emplace(initial_values, loglik);
-    } else if (with_epistasis) {
+    } else if (dimensions > model_.names().size()) {
         const auto it = const_max_iterator();
         std::cerr << "old best: " << *it << std::endl;
         const auto& old_best = it->first;
@@ -58,7 +66,7 @@ void GradientDescent::run(std::ostream& ost, const std::pair<size_t, size_t>& ep
             std::valarray<double> new_start(1.0, dimensions);
             std::copy(std::begin(old_best), std::end(old_best), std::begin(new_start));
             history_.clear();
-            const double loglik = model_.calc_loglik(new_start, epistasis_pair);
+            const double loglik = model_.calc_loglik(new_start);
             history_.emplace(new_start, loglik);
             std::cerr << "new start: " << *history_.begin() << std::endl;
         }
@@ -126,15 +134,16 @@ MapGrid::const_iterator GradientDescent::const_max_iterator() const {HERE;
         });
 }
 
-void GradientDescent::write(std::ostream& ost, const std::pair<size_t, size_t>& epistasis_pair) {HERE;
+void GradientDescent::write(std::ostream& ost) {HERE;
     ost << "##genotype_file=" << model_.filename() << "\n";
     ost << "##max_sites=" << model_.max_sites() << "\n";
     ost << "##max_count=" << 0U << "\n";
     ost << "##step=" << 0.01 << "\n";
     ost << "loglik\t" << wtl::join(model_.names(), "\t");
+    const auto& epistasis_pair = model_.epistasis_pair();
     if (epistasis_pair.first != epistasis_pair.second) {
-        ost << "\t" << model_.names()[epistasis_pair.first]
-            <<  ":" << model_.names()[epistasis_pair.second];
+        ost << "\t" << model_.names().at(epistasis_pair.first)
+            <<  ":" << model_.names().at(epistasis_pair.second);
     }
     ost << "\n";
     for (const auto& p: history_) {

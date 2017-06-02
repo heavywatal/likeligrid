@@ -72,10 +72,21 @@ void GenotypeModel::init(std::istream& ist, const size_t max_sites) {HERE;
     // std::cerr << "effects_: " << effects_ << std::endl;
 }
 
-double GenotypeModel::calc_loglik(const std::valarray<double>& theta, const std::pair<size_t, size_t>& pair) {
-    theta_ = theta;
+void GenotypeModel::set_epistasis(const std::pair<size_t, size_t>& pair) {HERE;
+    std::cerr << "epistasis: " << names_.at(pair.first)
+                        << ":" << names_.at(pair.second) << std::endl;
+    if (pair.first == pair.second) {
+        throw std::runtime_error("pair.first == pair.second");
+    }
     epistasis_pair_ = pair;
-    with_epistasis_ = (theta_.size() > num_pathways_) && (epistasis_pair_.first != epistasis_pair_.second);
+    with_epistasis_ = true;
+}
+
+double GenotypeModel::calc_loglik(const std::valarray<double>& theta) {
+    theta_ = theta;
+    if (with_epistasis_ && theta_.size() <= num_pathways_) {
+        throw std::runtime_error("theta_.size() <= num_pathways_");
+    }
     denoms_.resize(max_sites_ + 1);
     denoms_ = 0.0;
     mutate(bits_t(), bits_t(), 1.0);

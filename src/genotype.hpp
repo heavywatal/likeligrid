@@ -26,12 +26,15 @@ class GenotypeModel {
     : GenotypeModel(ist, max_sites) {};
     GenotypeModel(const std::string&, const size_t max_sites);
 
-    double calc_loglik(const std::valarray<double>& theta, const std::pair<size_t, size_t>& pair={0,0});
+    void set_epistasis(const std::pair<size_t, size_t>& pair);
+
+    double calc_loglik(const std::valarray<double>& theta);
     void benchmark(const size_t);
 
     // getter
     const std::string& filename() const {return filename_;}
     const std::vector<std::string>& names() const {return names_;}
+    const std::pair<size_t, size_t>& epistasis_pair() const {return epistasis_pair_;}
     size_t max_sites() const {return max_sites_;}
 
     static void test();
