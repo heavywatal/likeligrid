@@ -91,7 +91,7 @@ read_body(std::istream& ist) {
 inline std::valarray<double>
 read_loglik(std::istream& ist, const size_t nrow) {
     std::valarray<double> values(nrow);
-    for (size_t i=0; i<4U; ++i) {
+    for (size_t i=0; i<5U; ++i) {
         ist.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
     for (size_t i=0; i<nrow; ++i) {
