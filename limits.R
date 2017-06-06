@@ -74,7 +74,7 @@ read_likeligrid = function(file) {
         cowplot::plot_grid(plotlist=., nrow=2, ncol=2)
     })) %>%
     # (ggsave('uniaxis-tiny-0501.pdf', .$.out, width=12, height=12))
-    ggsave('uniaxis.pdf', .$.out, width=12, height=12)
+    {ggsave('uniaxis.pdf', .$.out, width=12, height=12)}
 
 #########1#########2#########3#########4#########5#########6#########7#########
 # Plot including limit-*.tsv.gz
@@ -127,28 +127,36 @@ read_likeligrid = function(file) {
 }
 .plot(.limits, .uniaxis)
 
-plot_limits = function(.indir) {
-    message(.indir)
-    .infiles = list.files(.indir, 'limit.*\\.tsv\\.gz$', full.names=TRUE)
-    .limits = .infiles %>% map_df(.read_limit_max)
-    .uniaxis = list.files(.indir, 'uniaxis.*\\.tsv\\.gz$', full.names=TRUE) %>%
-        purrr::map_df(read_likeligrid)
-    .plot(.limits, .uniaxis, basename(.indir))
-}
-plot_limits(.indirs[6])
+.results = tibble(indir= list.dirs(.datadir, recursive=FALSE)) %>%
+    dplyr::mutate(
+        label= basename(indir),
+        group= str_replace(label, '-s\\d$', '')) %>%
+    dplyr::filter(str_detect(group, 'vogelstein$')) %>%
+    dplyr::mutate(
+        uniaxis= purrr::map(indir, ~{
+            list.files(.x, 'uniaxis.+\\.gz$', full.names=TRUE) %>%
+            purrr::map_df(read_likeligrid)
+        }),
+        limits= purrr::map(indir, ~{
+            list.files(.x, 'limit.+\\.gz$', full.names=TRUE) %>%
+            purrr::map_df(.read_limit_max)
+        })
+    ) %>% print()
 
-.out = tibble(
-    indir= list.dirs(.datadir, recursive=FALSE),
-    group= str_replace(indir, '-s\\d$', '') %>% basename()) %>%
-    dplyr::filter(str_detect(group, 'vogelstein$')) %>% head(4) %>%
-    nest(-group) %>%
-    dplyr::mutate(plt= wtl::map_par(data, ~{
-        .plts = purrr::map(.x$indir, plot_limits)
+.out = .results %>%
+    dplyr::select(group, label, uniaxis, limits) %>%
+    tidyr::nest(-group) %>%
+    dplyr::mutate(plt= purrr::map(data, ~{
+        .plts = .x %>%
+        dplyr::filter(purrr::map_lgl(limits, ~{nrow(.x) > 0})) %>%
+        purrr::pmap(function(label, uniaxis, limits) {
+            .plot(limits, uniaxis, label)
+        })
         cowplot::plot_grid(plotlist=.plts, nrow=2, ncol=2)
     }))
 
 # .out$plt[[2]]
-ggsave('confidence-simple.pdf', .out$plt, width=12, height=10)
+ggsave('confidence.pdf', .out$plt, width=9, height=9)
 
 
 #########1#########2#########3#########4#########5#########6#########7#########
