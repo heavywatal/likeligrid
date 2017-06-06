@@ -26,16 +26,27 @@ gather_uniaxis = function(.data) {
 
 .chisq = tibble(alpha=c(0.9, 0.95, 0.99), y=qchisq(alpha, 1) * 0.5)
 
-.plot = function(uniaxis, limits, label='') {
+.plot = function(uniaxis, limits, gradient=tibble(), label='', ...) {
     .title = label
     .mle = dplyr::top_n(uniaxis, 1L, loglik) %>% dplyr::distinct(loglik, pathway, .keep_all=TRUE)
     .max_loglik = .mle$loglik[1]
-    ggplot(limits, aes(value, loglik))+
-    geom_line(data=uniaxis, colour='#66cc66')+
-    geom_point(alpha=0.5)+
+    .p = ggplot(uniaxis, aes(value, loglik))+
+        geom_line(colour='#66cc66')+
+        geom_point(data=limits, alpha=0.5)
+    .max_y = .max_loglik
+    if (nrow(gradient) > 0L) {
+        .offset = .max_loglik - min(gradient$loglik)
+        .data_g = gradient %>%
+          tidyr::gather(pathway, value, -loglik) %>%
+          dplyr::distinct() %>%
+          dplyr::mutate(loglik=loglik+.offset)
+        .p = .p + geom_point(data=.data_g, colour='#33cc99', alpha=0.5)
+        .max_y = max(.data_g$loglik)
+    }
+    .p+
     geom_vline(data=.mle, aes(xintercept=value), colour='salmon')+
     geom_hline(data=.chisq, aes(yintercept=.max_loglik - y, colour=alpha))+
-    coord_cartesian(ylim=c(.max_loglik, .max_loglik - qchisq(0.95, 1)))+
+    coord_cartesian(ylim=c(.max_y, .max_loglik - qchisq(0.95, 1)))+
     scale_x_continuous(breaks=c(0, 1, 2), limits=c(0, 2), expand=c(0, 0))+
     labs(title=.title)+
     facet_wrap(~pathway)+
@@ -80,3 +91,20 @@ gather_uniaxis = function(.data) {
 
 # .out$plt[[2]]
 ggsave('confidence.pdf', .out$plt, width=9, height=9)
+
+# #######1#########2#########3#########4#########5#########6#########7#########
+# gradient descent
+
+.results_with_g = .results %>%
+    dplyr::filter(str_detect(group, 'vogelstein$')) %>%
+    dplyr::filter(str_detect(label, '-s4$')) %>% print() %>%
+    dplyr::mutate(
+        gradient=map(indir, ~{
+            .f = list.files(.x, 'gradient-s5\\.tsv\\.gz', full.names=TRUE)
+            message(.f)
+            if (length(.f) > 0) {read_likeligrid(.f)} else {tibble()}
+        })
+    ) %>% print()
+
+.out_g = .results_with_g %>% dplyr::mutate(plt= purrr::pmap(., .plot))
+ggsave('gradient5.pdf', .out_g$plt, width=5, height=5)
