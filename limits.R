@@ -108,3 +108,35 @@ ggsave('confidence.pdf', .out$plt, width=9, height=9)
 
 .out_g = .results_with_g %>% dplyr::mutate(plt= purrr::pmap(., .plot))
 ggsave('gradient5.pdf', .out_g$plt, width=5, height=5)
+
+# #######1#########2#########3#########4#########5#########6#########7#########
+# epistasis
+
+.results_e = .results %>%
+    dplyr::filter(str_detect(group, 'vogelstein$')) %>%
+    dplyr::filter(str_detect(label, '-s4$')) %>%
+    # dplyr::filter(str_detect(label, 'BRCA')) %>%
+    dplyr::mutate(
+        epistasis=map(indir, ~{
+            message(.x)
+            list.files(.x, 'gradient-s4-e.*\\.gz$', full.names=TRUE) %>%
+            map(read_likeligrid)
+        })
+    ) %>% print()
+
+.rename_tail = function(.names) {
+    c(head(.names, -1L), paste0('~', tail(.names, 1L)))
+}
+.rename_tail(letters)
+
+.out_e = .results_e %>% dplyr::mutate(plts= purrr::pmap(., function(...) {
+    .args = list(...)
+    message(.args$label)
+    map(.args$epistasis, ~{
+        names(.x) = .rename_tail(names(.x))
+        .plot(.args$uniaxis, .args$limits, .x, .args$label)
+    })
+}))
+cowplot::plot_grid(plotlist=.out_e$plts[[1]])
+.pl = .out_e$plts %>% map(~{cowplot::plot_grid(plotlist=.x)})
+ggsave('epistasis-less.pdf', .pl, width=20, height=20)
