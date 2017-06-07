@@ -11,9 +11,9 @@
 
 namespace likeligrid {
 
-typedef uint_fast32_t uint;
+using uint =  uint_fast32_t;
 
-typedef std::bitset<128> bits_t;
+using bits_t = std::bitset<128>;
 // TODO: Try boost::multiprecision::uint256_t
 
 } // namespace likeligrid

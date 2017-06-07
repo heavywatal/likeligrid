@@ -24,7 +24,7 @@ class lexicographical_less {
     }
 };
 
-typedef std::map<std::valarray<double>, double, lexicographical_less> MapGrid;
+using MapGrid = std::map<std::valarray<double>, double, lexicographical_less>;
 
 class GradientDescent {
   public:
