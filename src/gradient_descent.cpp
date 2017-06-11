@@ -6,11 +6,11 @@
 #include "genotype.hpp"
 #include "util.hpp"
 
+#include <sfmt.hpp>
 #include <wtl/exception.hpp>
 #include <wtl/debug.hpp>
 #include <wtl/iostr.hpp>
 #include <wtl/zfstream.hpp>
-#include <wtl/prandom.hpp>
 #include <wtl/itertools.hpp>
 #include <wtl/concurrent.hpp>
 #include <wtl/scope.hpp>
