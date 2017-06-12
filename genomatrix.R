@@ -131,7 +131,7 @@ hypermutants_each = maf %>%
     dplyr::filter(definition == 'vogelstein') %>%
     dplyr::group_by(definition, cancer_type) %>%
     dplyr::mutate(i= seq_len(n()), csum= cumsum(n_muts) / sum(n_muts)) %>%
-    less()
+    wtl::less()
 
 .major_pathways = .summary_pathways %>%
     dplyr::group_by(definition, cancer_type) %>%
@@ -143,7 +143,7 @@ hypermutants_each = maf %>%
     dplyr::select(-i) %>%
     dplyr::ungroup() %>% print()
 
-less(.major_pathways)
+wtl::less(.major_pathways)
 
 .major_pathways %>% dplyr::filter(n_genes < 3)
 
@@ -189,13 +189,36 @@ less(.major_pathways)
 summarize_genes = function(.data, .def=c('vogelstein')) {.data %>%
     dplyr::filter(definition %in% .def) %>%
     dplyr::group_by(cancer_type, definition, symbol) %>%
-    dplyr::summarize(npath= n_distinct(pathway), nmut= n_distinct(sample)) %>%
+    dplyr::summarize(
+        nmut= n_distinct(sample),
+        npath= n_distinct(pathway),
+        pathways= str_c(unique(pathway), collapse=':')) %>%
+    dplyr::ungroup() %>%
     dplyr::arrange(cancer_type, definition, desc(nmut), symbol)
 }
 summarize_genes(.major) %>% less()
 summarize_genes(.tiny) %>% less()
 summarize_genes(.major, 'HALLMARK')
 summarize_genes(.manual) %>% less()
+
+.summary = summarize_genes(.manual) %>%
+    dplyr::select(-definition) %>%
+    dplyr::group_by(cancer_type) %>%
+    dplyr::top_n(20L, nmut) %>%
+    print() %>%
+    write_tsv('summary-genes.tsv', na='')
+
+loadNamespace('gridExtra')
+.summary %>%
+    tidyr::nest(-cancer_type) %>%# head(4) %>%
+    dplyr::mutate(grob= purrr::map2(cancer_type, data, ~{
+        .title = grid::textGrob(.x)
+        .table = gridExtra::tableGrob(.y, theme=gridExtra::ttheme_minimal())
+        .table = gtable::gtable_add_rows(.table, grid::unit(2, 'lines'), 0)
+        gtable::gtable_add_grob(.table, .title, 1, 2, clip='off')
+    })) %>%
+    {gridExtra::marrangeGrob(.$grob, top=1, nrow=1, ncol=1)} %>%
+    {ggsave('summary-genes.pdf', ., width=4, height=7)}
 
 .dirty = .mutcount %>%
     dplyr::transmute(definition, cancer_type, pathway, value=sprintf('%s %4d', symbol, n)) %>%
