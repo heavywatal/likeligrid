@@ -18,15 +18,10 @@
 namespace likeligrid {
 
 void GridSearch::init(const std::pair<size_t, size_t>& epistasis_pair) {HERE;
-    size_t dimensions = model_.names().size();
     if (epistasis_pair.first != epistasis_pair.second) {
-        const std::string epistasis_name =
-            model_.names().at(epistasis_pair.first) + ":" +
-            model_.names().at(epistasis_pair.second);
         model_.set_epistasis(epistasis_pair);
-        ++dimensions;
     }
-    mle_params_.resize(dimensions);
+    mle_params_.resize(model_.names().size());
     mle_params_ = 1.0;
 }
 
@@ -185,13 +180,7 @@ void GridSearch::write_header(std::ostream& ost, const size_t max_count) const {
     ost << "##max_sites=" << model_.max_sites() << "\n";
     ost << "##max_count=" << max_count << "\n";
     ost << "##step=" << STEPS.at(stage_) << "\n";
-    ost << "loglik\t" << wtl::join(model_.names(), "\t");
-    const auto& epistasis_pair = model_.epistasis_pair();
-    if (epistasis_pair.first != epistasis_pair.second) {
-        ost << "\t" << model_.names().at(epistasis_pair.first)
-            <<  ":" << model_.names().at(epistasis_pair.second);
-    }
-    ost << std::endl;
+    ost << "loglik\t" << wtl::join(model_.names(), "\t") << "\n";
 }
 
 void GridSearch::test() {HERE;

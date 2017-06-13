@@ -32,27 +32,22 @@ GradientDescent::GradientDescent(const std::string& infile,
         = read_results(infile);
     std::cerr << "genotype: " << genotype_file << std::endl;
     model_ = std::make_unique<GenotypeModel>(genotype_file, max_sites);
-    size_t dimensions = model_->names().size();
     bool is_restarting = (max_sites != prev_max_sites);
     if (epistasis_pair.first != epistasis_pair.second) {
+        model_->set_epistasis(epistasis_pair);
         if (prev_epistasis.empty()) {
             is_restarting = true;
         } else {
-            const std::string epistasis_name =
-                model_->names().at(epistasis_pair.first) + ":" +
-                model_->names().at(epistasis_pair.second);
-            if (epistasis_name != prev_epistasis) {
+            if (model_->names().back() != prev_epistasis) {
                 throw std::runtime_error("epistasis_name != prev_epistasis");
             }
         }
-        model_->set_epistasis(epistasis_pair);
-        ++dimensions;
     }
     const auto it = const_max_iterator();
     std::cerr << "old best: " << *it << std::endl;
     if (is_restarting) {
         const auto& old_best = it->first;
-        std::valarray<double> new_start(1.0, dimensions);
+        std::valarray<double> new_start(1.0, model_->names().size());
         std::copy(std::begin(old_best), std::end(old_best), std::begin(new_start));
         history_.clear();
         const double loglik = model_->calc_loglik(new_start);
@@ -68,12 +63,10 @@ GradientDescent::GradientDescent(
     const unsigned int concurrency)
     : model_(std::make_unique<GenotypeModel>(ist, max_sites)),
       concurrency_(concurrency) {HERE;
-    size_t dimensions = model_->names().size();
     if (epistasis_pair.first != epistasis_pair.second) {
         model_->set_epistasis(epistasis_pair);
-        ++dimensions;
     }
-    const std::valarray<double> new_start(1.0, dimensions);
+    const std::valarray<double> new_start(1.0, model_->names().size());
     const double loglik = model_->calc_loglik(new_start);
     history_.emplace(new_start, loglik);
 }
@@ -148,13 +141,7 @@ void GradientDescent::write(std::ostream& ost) {HERE;
     ost << "##max_sites=" << model_->max_sites() << "\n";
     ost << "##max_count=" << 0U << "\n";
     ost << "##step=" << 0.01 << "\n";
-    ost << "loglik\t" << wtl::join(model_->names(), "\t");
-    const auto& epistasis_pair = model_->epistasis_pair();
-    if (epistasis_pair.first != epistasis_pair.second) {
-        ost << "\t" << model_->names().at(epistasis_pair.first)
-            <<  ":" << model_->names().at(epistasis_pair.second);
-    }
-    ost << "\n";
+    ost << "loglik\t" << wtl::join(model_->names(), "\t") << "\n";
     for (const auto& p: history_) {
         ost << p.second << "\t"
             << wtl::str_join(p.first, "\t") << "\n";
