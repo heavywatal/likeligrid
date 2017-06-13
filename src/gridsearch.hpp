@@ -19,10 +19,14 @@ namespace likeligrid {
 class GridSearch {
   public:
     GridSearch() = delete;
-    GridSearch(std::istream&,
+    GridSearch(std::istream& ist,
         const size_t max_sites,
         const std::pair<size_t, size_t>& epistasis_pair={0,0},
-        const unsigned int concurrency=1);
+        const unsigned int concurrency=1)
+        : model_(ist, max_sites),
+          concurrency_(concurrency) {
+        init(epistasis_pair);
+    }
     GridSearch(std::istream&& ist,
         const size_t max_sites,
         const std::pair<size_t, size_t>& epistasis_pair={0,0},
@@ -32,7 +36,11 @@ class GridSearch {
         const std::string& infile,
         const size_t max_sites,
         const std::pair<size_t, size_t>& epistasis_pair={0,0},
-        const unsigned int concurrency=1);
+        const unsigned int concurrency=1)
+        : model_(infile, max_sites),
+          concurrency_(concurrency) {
+        init(epistasis_pair);
+    }
 
     void run(const bool writing=true);
 
@@ -44,6 +52,7 @@ class GridSearch {
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
+    void init(const std::pair<size_t, size_t>&);
     void run_fout();
     void run_cout();
     void run_impl(std::ostream&, wtl::itertools::Generator<std::valarray<double>>&&);
