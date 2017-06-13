@@ -5,6 +5,7 @@
 import wtl.options as wopt
 
 import gzip
+import json
 import itertools
 
 program = 'likeligrid'
@@ -18,15 +19,18 @@ def iter_args(infiles, range_s, concurrency, rest, epistasis):
         args = wopt.make_args(v)
         for f in infiles:
             if epistasis:
-                assert '-g' in const
-                npath = count_pathways(f)
+                if '-g' in const:
+                    npath = count_pathways_tsv(f)
+                else:
+                    npath = count_pathways_json(f)
                 for x in itertools.combinations(range(npath), 2):
                     yield const + ['-e {} {}'.format(*x)] + args + [f]
             else:
                 yield const + args + [f]
 
 
-def count_pathways(infile):
+def count_pathways_tsv(infile):
+    """Read result file"""
     with gzip.open(infile, 'rt') as fin:
         for line in fin:
             if line.startswith('#'):
@@ -37,6 +41,13 @@ def count_pathways(infile):
     if ':' in header[-1]:
         header.pop(-1)
     return len(header)
+
+
+def count_pathways_json(infile):
+    """Read genotype file"""
+    with gzip.open(infile, 'r') as fin:
+        d = json.load(fin)
+        return len(d['pathway'])
 
 
 def main():
