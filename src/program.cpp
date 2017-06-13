@@ -142,6 +142,10 @@ std::string Program::make_outdir() const {
     std::regex_search(INFILE, mobj, std::regex("([^/]+?)\\.[^/]+$"));
     std::ostringstream oss;
     oss << mobj.str(1) << "-s" << MAX_SITES;
+    if (EPISTASIS_PAIR[0] != EPISTASIS_PAIR[1]) {
+        oss << "-e" << EPISTASIS_PAIR[0]
+            <<  "x" << EPISTASIS_PAIR[1];
+    }
     const std::string outdir = oss.str();
     wtl::mkdir(outdir);
     return outdir;
