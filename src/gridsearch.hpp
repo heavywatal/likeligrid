@@ -21,14 +21,17 @@ class GridSearch {
     GridSearch() = delete;
     GridSearch(std::istream&,
         const size_t max_sites,
+        const std::pair<size_t, size_t>& epistasis_pair={0,0},
         const unsigned int concurrency=1);
     GridSearch(std::istream&& ist,
         const size_t max_sites,
+        const std::pair<size_t, size_t>& epistasis_pair={0,0},
         const unsigned int concurrency=1)
-        : GridSearch(ist, max_sites, concurrency){}
+        : GridSearch(ist, max_sites, epistasis_pair, concurrency){}
     GridSearch(
         const std::string& infile,
         const size_t max_sites,
+        const std::pair<size_t, size_t>& epistasis_pair={0,0},
         const unsigned int concurrency=1);
 
     void run(const bool writing=true);
@@ -36,7 +39,6 @@ class GridSearch {
     void read_results(const std::string&);
 
     const std::valarray<double>& mle_params() const {return mle_params_;}
-    const std::vector<std::string>& names() const {return names_;}
 
     static void test();
 
@@ -50,7 +52,6 @@ class GridSearch {
     void read_results(std::istream&);
 
     GenotypeModel model_;
-    std::vector<std::string> names_;
     std::valarray<double> mle_params_;
     size_t skip_ = 0;
     size_t stage_ = 0;

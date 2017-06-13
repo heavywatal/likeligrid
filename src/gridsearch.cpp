@@ -19,12 +19,20 @@ namespace likeligrid {
 
 GridSearch::GridSearch(const std::string& infile,
     const size_t max_sites,
+    const std::pair<size_t, size_t>& epistasis_pair,
     const unsigned int concurrency)
     : model_(infile, max_sites),
       concurrency_(concurrency) {HERE;
 
-    names_ = model_.names();
-    mle_params_.resize(model_.names().size());
+    size_t dimensions = model_.names().size();
+    if (epistasis_pair.first != epistasis_pair.second) {
+        const std::string epistasis_name =
+            model_.names().at(epistasis_pair.first) + ":" +
+            model_.names().at(epistasis_pair.second);
+        model_.set_epistasis(epistasis_pair);
+        ++dimensions;
+    }
+    mle_params_.resize(dimensions);
     mle_params_ = 1.0;
 }
     // : GridSearch(wtl::izfstream(infile), max_sites, concurrency) {HERE;}
@@ -32,12 +40,20 @@ GridSearch::GridSearch(const std::string& infile,
 GridSearch::GridSearch(
     std::istream& ist,
     const size_t max_sites,
+    const std::pair<size_t, size_t>& epistasis_pair,
     const unsigned int concurrency)
     : model_(ist, max_sites),
       concurrency_(concurrency) {HERE;
 
-    names_ = model_.names();
-    mle_params_.resize(model_.names().size());
+    size_t dimensions = model_.names().size();
+    if (epistasis_pair.first != epistasis_pair.second) {
+        const std::string epistasis_name =
+            model_.names().at(epistasis_pair.first) + ":" +
+            model_.names().at(epistasis_pair.second);
+        model_.set_epistasis(epistasis_pair);
+        ++dimensions;
+    }
+    mle_params_.resize(dimensions);
     mle_params_ = 1.0;
 }
 
@@ -54,8 +70,8 @@ void GridSearch::run_fout() {HERE;
     std::cerr << "mle_params_: " << mle_params_ << std::endl;
     if (outfile.empty()) return;
     const auto axes = make_vicinity(mle_params_, BREAKS.at(stage_), radius(stage_));
-    for (size_t j=0; j<names_.size(); ++j) {
-        std::cerr << names_[j] << ": " << axes[j] << std::endl;
+    for (size_t j=0; j<model_.names().size(); ++j) {
+        std::cerr << model_.names()[j] << ": " << axes[j] << std::endl;
     }
     {
         wtl::ozfstream fout(outfile, std::ios::out | std::ios::app);
@@ -66,8 +82,8 @@ void GridSearch::run_fout() {HERE;
 
 void GridSearch::run_cout() {HERE;
     const auto axes = make_vicinity(mle_params_, BREAKS.at(stage_), radius(stage_));
-    for (size_t j=0; j<names_.size(); ++j) {
-        std::cerr << names_[j] << ": " << axes[j] << std::endl;
+    for (size_t j=0; j<model_.names().size(); ++j) {
+        std::cerr << model_.names()[j] << ": " << axes[j] << std::endl;
     }
     {
         std::stringstream sst;
@@ -86,8 +102,8 @@ void GridSearch::search_limits() {HERE;
     auto axis = wtl::round(wtl::lin_spaced(200, 2.0, 0.01), 100);
     axis = (axis * 100.0).apply(std::round) / 100.0;
     std::map<std::string, std::valarray<double>> intersections;
-    for (size_t i=0; i<names_.size(); ++i) {
-        const std::string outfile = "uniaxis-" + names_[i] + ".tsv.gz";
+    for (size_t i=0; i<model_.names().size(); ++i) {
+        const std::string outfile = "uniaxis-" + model_.names()[i] + ".tsv.gz";
         std::cerr << outfile << std::endl;
         std::stringstream sst;
         run_impl(sst, wtl::itertools::uniaxis(axis, mle_params_, i));
@@ -97,9 +113,9 @@ void GridSearch::search_limits() {HERE;
         const std::valarray<double> range = axis[logliks > threshold];
         auto bound_params = mle_params_;
         bound_params[i] = std::max(range.min() - 0.01, 0.01);
-        intersections.emplace(names_[i] + "_L", bound_params);
+        intersections.emplace(model_.names()[i] + "_L", bound_params);
         bound_params[i] = std::min(range.max() + 0.01, 2.00);
-        intersections.emplace(names_[i] + "_U", bound_params);
+        intersections.emplace(model_.names()[i] + "_U", bound_params);
     }
     for (const auto& p: intersections) {
         const std::string outfile = "limit-" + p.first + ".tsv.gz";
@@ -118,7 +134,13 @@ void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
         ost << "##max_sites=" << model_.max_sites() << "\n";
         ost << "##max_count=" << gen.max_count() << "\n";
         ost << "##step=" << STEPS.at(stage_) << "\n";
-        ost << "loglik\t" << wtl::join(names_, "\t") << "\n";
+        ost << "loglik\t" << wtl::join(model_.names(), "\t");
+        const auto& epistasis_pair = model_.epistasis_pair();
+        if (epistasis_pair.first != epistasis_pair.second) {
+            ost << "\t" << model_.names().at(epistasis_pair.first)
+                <<  ":" << model_.names().at(epistasis_pair.second);
+        }
+        ost << "\n";
         ost.flush();
     }
 
@@ -199,13 +221,6 @@ void GridSearch::read_results(std::istream& ist) {HERE;
         skip_ = 0;
         mle_params_.swap(mle_params);
     }
-    if (names_ != colnames) {
-        std::ostringstream oss;
-        oss << "Contradiction in column names:\n"
-            << "genotype file: " << names_ << "\n"
-            << "result file:" << colnames;
-        throw std::runtime_error(oss.str());
-    }
 }
 
 void GridSearch::read_results(const std::string& infile) {
@@ -221,7 +236,7 @@ R"({
   "annotation": ["0011", "1100"],
   "sample": ["0011", "0101", "1001", "0110", "1010", "1100"]
 })";
-    GridSearch searcher(sst, 4);
+    GridSearch searcher(sst, 4, {0, 1});
     searcher.run_cout();
 }
 

@@ -111,20 +111,20 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 }
 
 void Program::run() {HERE;
+    std::pair<size_t, size_t> epistasis{EPISTASIS_PAIR[0], EPISTASIS_PAIR[1]};
     try {
         if (GRADIENT_MODE) {
-            GradientDescent gradient_descent(INFILE, MAX_SITES,
-                {EPISTASIS_PAIR[0], EPISTASIS_PAIR[1]}, CONCURRENCY);
+            GradientDescent gradient_descent(INFILE, MAX_SITES, epistasis, CONCURRENCY);
             wtl::Pushd cd(wtl::dirname(INFILE));
             wtl::ozfstream ost(gradient_descent.outfile());
             ost.precision(std::cout.precision());
             std::cerr << "outfile: " << ost.path() << std::endl;
             gradient_descent.run(ost);
         } else if (INFILE == "-") {
-            GridSearch searcher(std::cin, MAX_SITES, CONCURRENCY);
+            GridSearch searcher(std::cin, MAX_SITES, epistasis, CONCURRENCY);
             searcher.run(false);
         } else {
-            GridSearch searcher(INFILE, MAX_SITES, CONCURRENCY);
+            GridSearch searcher(INFILE, MAX_SITES, epistasis, CONCURRENCY);
             // after constructor success
             const std::string outdir = make_outdir();
             wtl::Pushd cd(outdir);
