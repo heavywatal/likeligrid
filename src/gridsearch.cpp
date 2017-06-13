@@ -130,18 +130,7 @@ void GridSearch::search_limits() {HERE;
 void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::valarray<double>>&& gen) {HERE;
     std::cerr << skip_ << " to " << gen.max_count() << std::endl;
     if (skip_ == 0) {
-        ost << "##genotype_file=" << model_.filename() << "\n";
-        ost << "##max_sites=" << model_.max_sites() << "\n";
-        ost << "##max_count=" << gen.max_count() << "\n";
-        ost << "##step=" << STEPS.at(stage_) << "\n";
-        ost << "loglik\t" << wtl::join(model_.names(), "\t");
-        const auto& epistasis_pair = model_.epistasis_pair();
-        if (epistasis_pair.first != epistasis_pair.second) {
-            ost << "\t" << model_.names().at(epistasis_pair.first)
-                <<  ":" << model_.names().at(epistasis_pair.second);
-        }
-        ost << "\n";
-        ost.flush();
+        write_header(ost, gen.max_count());
     }
 
     wtl::Semaphore semaphore(concurrency_);
@@ -156,10 +145,9 @@ void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
     };
 
     std::deque<std::future<std::string>> futures;
-    const auto min_interval = std::chrono::seconds(2);
+    const auto min_interval = std::chrono::seconds(1);
     auto next_time = std::chrono::system_clock::now() + min_interval;
     size_t stars = 0;
-    size_t progress = skip_;
     for (const auto& th_path: gen(skip_)) {
         semaphore.lock();
         futures.push_back(std::async(std::launch::async, task, th_path));
@@ -169,12 +157,7 @@ void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
             while (!futures.empty() && wtl::is_ready(futures.front())) {
                 ost << futures.front().get();
                 futures.pop_front();
-                ++progress;
             }
-        }
-        if (progress > 0) {
-            progress = 0;
-            ost.flush();
             for (size_t n= 0.2 * gen.percent(); stars<n; ++stars) {
                 std::cerr << "*";
             }
@@ -184,10 +167,6 @@ void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
     for (auto& ftr: futures) {
         ost << ftr.get();
     }
-    for (; stars<20U; ++stars) {
-        std::cerr << "*";
-    }
-    std::cerr << std::endl;
 }
 
 std::string GridSearch::init_meta() {HERE;
@@ -226,6 +205,20 @@ void GridSearch::read_results(std::istream& ist) {HERE;
 void GridSearch::read_results(const std::string& infile) {
     wtl::izfstream ist(infile);
     read_results(ist);
+}
+
+void GridSearch::write_header(std::ostream& ost, const size_t max_count) const {
+    ost << "##genotype_file=" << model_.filename() << "\n";
+    ost << "##max_sites=" << model_.max_sites() << "\n";
+    ost << "##max_count=" << max_count << "\n";
+    ost << "##step=" << STEPS.at(stage_) << "\n";
+    ost << "loglik\t" << wtl::join(model_.names(), "\t");
+    const auto& epistasis_pair = model_.epistasis_pair();
+    if (epistasis_pair.first != epistasis_pair.second) {
+        ost << "\t" << model_.names().at(epistasis_pair.first)
+            <<  ":" << model_.names().at(epistasis_pair.second);
+    }
+    ost << std::endl;
 }
 
 void GridSearch::test() {HERE;

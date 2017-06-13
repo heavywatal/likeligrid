@@ -50,6 +50,7 @@ class GridSearch {
     void search_limits();
     std::string init_meta();
     void read_results(std::istream&);
+    void write_header(std::ostream&, const size_t max_count) const;
 
     GenotypeModel model_;
     std::valarray<double> mle_params_;
