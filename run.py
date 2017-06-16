@@ -11,7 +11,7 @@ import itertools
 program = 'likeligrid'
 
 
-def iter_args(infiles, range_s, concurrency, rest, epistasis):
+def iter_args(infiles, range_s, concurrency, rest, epistasis, tp53):
     const = [program, '-j{}'.format(concurrency)] + rest
     axes = wopt.OrderedDict()
     axes['s'] = range_s
@@ -25,6 +25,9 @@ def iter_args(infiles, range_s, concurrency, rest, epistasis):
                     npath = count_pathways_json(f)
                 for x in itertools.combinations(range(npath), 2):
                     yield const + ['-e {} {}'.format(*x)] + args + [f]
+            elif tp53:
+                pair = tp53_pleiotropic_pair(f)
+                yield const + ['-e {} {}'.format(*pair)] + args + [f]
             else:
                 yield const + args + [f]
 
@@ -50,6 +53,14 @@ def count_pathways_json(infile):
         return len(d['pathway'])
 
 
+def tp53_pleiotropic_pair(infile):
+    """Read genotype file"""
+    with gzip.open(infile, 'r') as fin:
+        d = json.load(fin)
+        p = d['pathway']
+        return (p.index('Cycle'), p.index('Damage'))
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser()
@@ -58,11 +69,13 @@ def main():
     parser.add_argument('--begin', type=int, default=2)
     parser.add_argument('--end', type=int, default=6)
     parser.add_argument('-e', '--epistasis', action='store_true')
+    parser.add_argument('--tp53', action='store_true')
     parser.add_argument('infile', nargs='+')
     (args, rest) = parser.parse_known_args()
 
     range_s = range(args.begin, args.end)
-    it = iter_args(args.infile, range_s, args.jobs, rest, args.epistasis)
+    it = iter_args(args.infile, range_s, args.jobs, rest,
+                   args.epistasis, args.tp53)
     wopt.map_async(it, 1, args.dry_run)
     print('End of ' + __file__)
 

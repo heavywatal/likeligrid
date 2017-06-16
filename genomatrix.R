@@ -299,9 +299,10 @@ genotype2bits = function(.data) {
 # .outdir = sprintf('~/Dropbox/working/likeligrid/genotypes/tiny-%s', wtl::today())
 .outdir = sprintf('~/Dropbox/working/likeligrid/genotypes/manual-%s', wtl::today())
 dir.create(.outdir, mode='0755')
-.major %>%
+# .major %>%
 # .tiny %>%
-# .manual %>%
+.manual %>%
+    # group_by(sample) %>% dplyr::filter(!'TP53' %in% symbol, definition %in% c('vogelstein')) %>% ungroup() %>%
     tidyr::nest(-definition, -cancer_type) %>%
     dplyr::mutate(cancer_type= as.character(cancer_type)) %>%
     # head(2) %>%
