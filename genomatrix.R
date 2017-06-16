@@ -303,6 +303,7 @@ dir.create(.outdir, mode='0755')
 # .tiny %>%
 # .manual %>%
     tidyr::nest(-definition, -cancer_type) %>%
+    dplyr::mutate(cancer_type= as.character(cancer_type)) %>%
     # head(2) %>%
     purrr::pwalk(function(definition, cancer_type, data) {
         .outfile = file.path(.outdir, sprintf('TCGA-%s-%s.json.gz', cancer_type, definition))
@@ -322,6 +323,51 @@ dir.create(.outdir, mode='0755')
         jsonlite::write_json(.con, pretty=TRUE)
         close(.con)
     })
+
+# #######1#########2#########3#########4#########5#########6#########7#########
+## Visualize genotype matrix
+
+.fun = function(definition, cancer_type, data) {
+    .title = sprintf('TCGA-%s-%s', cancer_type, definition)
+    message(.title)
+    .data = data %>%
+        dplyr::group_by(sample, symbol) %>%
+        dplyr::summarize(pathway= paste0(pathway, collapse=':')) %>%
+        dplyr::ungroup()
+    .symbol = .data %>%
+        dplyr::count(symbol) %>%
+        dplyr::arrange(desc(n)) %>%
+        {.$symbol}
+    .sample = .data %>%
+        dplyr::mutate(symbol= factor(symbol, levels=.symbol)) %>%
+        dplyr::arrange(symbol) %>%
+        dplyr::distinct(sample) %>%
+        {.$sample}
+    .data %>%
+        dplyr::mutate(sample= factor(sample, levels=.sample)) %>%
+        .plot(.title)
+}
+
+.plot = function(.data, .title) {
+    ggplot(.data, aes(sample, symbol))+
+    geom_tile()+
+    # blur with geom_raster()?
+    facet_grid(pathway ~ ., scales='free_y', space='free_y', switch='y')+
+    scale_x_discrete(position='top')+
+    labs(x=NULL, title=.title)+
+    wtl::theme_wtl()+
+    theme(panel.grid=element_blank(), axis.ticks=element_blank(),
+        axis.text.x=element_blank(),
+        strip.text.y=element_text(angle=180))
+}
+
+.manual %>%
+    dplyr::distinct() %>%
+    tidyr::nest(-definition, -cancer_type) %>%
+    dplyr::mutate(cancer_type= as.character(cancer_type)) %>%
+    dplyr::filter(definition == 'vogelstein') %>% #head(2) %>%
+    purrr::pmap(.fun) %>%
+    {ggsave('TCGA-genotype-matrix.pdf', ., width=18, height=10)}
 
 #########1#########2#########3#########4#########5#########6#########7#########
 ## Visualize mutation distribution
@@ -569,7 +615,7 @@ ggsave('poisson_pathway-pancancer.pdf', .p, width=18, height=12)
 #########1#########2#########3#########4#########5#########6#########7#########
 ## Generate pathtype matrix
 
-.matrices = .tidy_manual %>%
+.matrices = .manual %>%
     dplyr::count(definition, cancer_type, sample, pathway) %>%
     dplyr::ungroup() %>%
     tidyr::nest(-definition, -cancer_type) %>%
