@@ -4,13 +4,13 @@ output:
   html_document:
     css: "~/.R/rmd.css"
     self_contained: true
-    mathjax: https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_CHTML
+    theme: null
+    mathjax: null
 ---
 
 ```{r setup, include=FALSE}
 library(knitr)
 opts_chunk$set(out.width='100%')
-library(pipeR)
 library(stringr)
 library(tidyverse)
 library(jsonlite)
@@ -39,24 +39,24 @@ C2 CP (Canonical Pathways)
 
 ```{r read}
 read_gmt = function(infile, n=-1L) {
-    readLines(infile, n) %>>%
+    readLines(infile, n) %>%
     purrr::map_df(~{
       .row = wtl::split_chr(.x, '\t')
       tibble::tibble(name=.row[1], genes=list(.row[c(-1, -2)]))
-    }) %>>%
-    (stats::setNames(.$genes, .$name))
+    }) %>%
+    {stats::setNames(.$genes, .$name)}
 }
 
 dbdir = '~/Dropbox/cache/gsea'
 .template = file.path(dbdir, '%s.v5.2.symbols.gmt')
 
-gmt_h = sprintf(.template, 'h.all') %>>% read_gmt()
-names(gmt_h) = names(gmt_h) %>>% str_replace('^HALLMARK_', '')
-#gmt_h %>>% map(~str_subset(.x, 'RAS')) %>>% compact()
+gmt_h = sprintf(.template, 'h.all') %>% read_gmt()
+names(gmt_h) = names(gmt_h) %>% str_replace('^HALLMARK_', '')
+#gmt_h %>% map(~str_subset(.x, 'RAS')) %>% compact()
 
-gmt_c2cp = sprintf(.template, 'c2.cp') %>>% read_gmt()
-gmt_c2 = c('SA', 'ST', 'KEGG', 'PID', 'BIOCARTA') %>>%
-    purrr::set_names() %>>%
+gmt_c2cp = sprintf(.template, 'c2.cp') %>% read_gmt()
+gmt_c2 = c('SA', 'ST', 'KEGG', 'PID', 'BIOCARTA') %>%
+    purrr::set_names() %>%
     purrr::map(~{
         .pattern = sprintf('^%s_', .x)
         .out = gmt_c2cp[str_detect(names(gmt_c2cp), .pattern)]
@@ -65,10 +65,10 @@ gmt_c2 = c('SA', 'ST', 'KEGG', 'PID', 'BIOCARTA') %>>%
     })
 
 gmts = c(list(HALLMARK=gmt_h), gmt_c2)
+length(gmts)
 
-gmts %>>%
-    (?lengths(.)) %>>%
-    purrr::map_df(~{tibble(ngenes=lengths(.x))}, .id='group') %>>%
+gmts %>%
+    purrr::map_df(~{tibble(ngenes=lengths(.x))}, .id='group') %>%
     ggplot(aes(ngenes))+
     geom_histogram(bins=30)+
     facet_wrap(~group)
@@ -78,21 +78,22 @@ gmts %>>%
 
 ```{r other-defs}
 repo = '~/git/innanlab'
-drivers_all = file.path(repo, 'driver_genes.tsv') %>>% read_tsv()
-pereira_drivers = file.path(repo, 'pereira/drivers40.tsv') %>>%
-    read_tsv() %>>%
-    dplyr::rename(symbol=gene) %>>% (?.)
+drivers_all = file.path(repo, 'driver_genes.tsv') %>% read_tsv()
+pereira_drivers = file.path(repo, 'pereira/drivers40.tsv') %>%
+    read_tsv() %>%
+    dplyr::rename(symbol=gene) %>% print()
 # intersect(pereira_drivers$symbol, tr$primary)
 # intersect(pereira_drivers$symbol, tr$synonym)
 
 .tolist = function(.data, .key='pathway', .value='symbol') {
-    .data %>>%
-    dplyr::mutate_(.dots=setNames(list(~str_split(.[[.key]], ':')), .key)) %>>%
-    tidyr::unnest() %>>%
-    purrr::slice_rows(.key) %>>%
-    purrr::by_slice(~.x[[.value]]) %>>%
-    (setNames(.$.out, .[[.key]])) %>>%
-    (.[!is.na(names(.))])
+    .data %>%
+    dplyr::mutate_(.dots=setNames(list(~str_split(.[[.key]], ':')), 'tmpkey')) %>%
+    tidyr::unnest() %>%
+    dplyr::distinct(tmpkey, symbol) %>%
+    tidyr::drop_na() %>%
+    dplyr::group_by(tmpkey) %>%
+    dplyr::summarize(genes=list(symbol)) %>%
+    {setNames(.$genes, .$tmpkey)}
 }
 
 other_defs = list(
@@ -124,28 +125,28 @@ if (FALSE) {
 lengths(pathdefs)
 
 check_pathways = function(.pdef, .drivers=drivers) {
-    .drivers %>>% purrr::by_row(~{
+    .drivers %>% purrr::by_row(~{
       .gene = .x$symbol
-      .pdef %>>% map_df(~.gene %in% .x)
-    }) %>>%
-    dplyr::transmute(symbol=symbol, .out) %>>%
-    tidyr::unnest() %>>%
+      .pdef %>% map_df(~.gene %in% .x)
+    }) %>%
+    dplyr::transmute(symbol=symbol, .out) %>%
+    tidyr::unnest() %>%
     tidyr::gather(pathway, included, -symbol)
 }
 
-.tmp_ldata = pathdefs[c('HALLMARK', 'vogelstein', 'vogelstein3', 'pereira')] %>>%
+.tmp_ldata = pathdefs[c('HALLMARK', 'vogelstein', 'vogelstein3', 'pereira')] %>%
     purrr::map(check_pathways, .drivers=drivers_all)
 
-mapped_genes = .tmp_ldata %>>%
-    map_df(~., .id='group') %>>%
-    dplyr::group_by(symbol) %>>%
-    dplyr::summarise(included=sum(included)) %>>%
-    dplyr::filter(included > 0) %>>%
-    (symbol)
+mapped_genes = .tmp_ldata %>%
+    map_df(~., .id='group') %>%
+    dplyr::group_by(symbol) %>%
+    dplyr::summarise(included=sum(included)) %>%
+    dplyr::filter(included > 0) %>%
+    {.$symbol}
 
-drivers = drivers_all %>>% dplyr::filter(symbol %in% mapped_genes)
-.ldata = pathdefs %>>% purrr::map(check_pathways, .drivers=drivers)
-.tidy = .ldata %>>% map_df(~., .id='group')
+drivers = drivers_all %>% dplyr::filter(symbol %in% mapped_genes)
+.ldata = pathdefs %>% purrr::map(check_pathways, .drivers=drivers)
+.tidy = .ldata %>% map_df(~., .id='group')
 ```
 
 ### Summary and plot
@@ -162,40 +163,40 @@ plot_included = function(.data, .name, base_size=12) {
     axis.title=element_blank(), axis.ticks=element_blank(),
     legend.position='none')
 }
-.lgp = .ldata %>>% purrr::map2(names(.), plot_included, base_size=8)
+.lgp = .ldata %>% purrr::map2(names(.), plot_included, base_size=8)
 .pg = cowplot::plot_grid(plotlist=.lgp, nrow=1, rel_widths=c(2,1,1,2,1,1,3,3,4))
 .pg
 ggsave('gene_pathway.png', .pg, width=16, height=12)
 
 
-.summary = .tidy %>>%
-    dplyr::group_by(group, symbol) %>>%
-    dplyr::summarise(included=sum(included)) %>>%
+.summary = .tidy %>%
+    dplyr::group_by(group, symbol) %>%
+    dplyr::summarise(included=sum(included)) %>%
     dplyr::ungroup()
 
-.summary %>>%
-    dplyr::group_by(group) %>>%
+.summary %>%
+    dplyr::group_by(group) %>%
     dplyr::summarise(cover= sum(included > 0), max= max(included), sd=sd(included))
 
-.summary %>>%
-    dplyr::filter(included > 0) %>>%
+.summary %>%
+    dplyr::filter(included > 0) %>%
     ggplot(aes(included))+
     geom_bar()+
     facet_wrap(~group)
 
-.tidy %>>%
-    dplyr::group_by(group, pathway) %>>%
-    dplyr::summarise(ngenes=sum(included)) %>>%
-    dplyr::ungroup() %>>%
-    dplyr::filter(ngenes > 0) %>>%
+.tidy %>%
+    dplyr::group_by(group, pathway) %>%
+    dplyr::summarise(ngenes=sum(included)) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(ngenes > 0) %>%
     ggplot(aes(ngenes))+
     geom_bar()+
     facet_wrap(~group)
 
-.p = .tidy %>>%
-    dplyr::group_by(group, symbol) %>>%
-    dplyr::summarise(included=sum(included)) %>>%
-    dplyr::ungroup() %>>% (?.) %>>%
+.p = .tidy %>%
+    dplyr::group_by(group, symbol) %>%
+    dplyr::summarise(included=sum(included)) %>%
+    dplyr::ungroup() %>% print() %>%
     ggplot(aes(symbol, included))+
     geom_col(aes(fill=group))+
     scale_fill_brewer(type='qual', palette='Paired')+
@@ -214,17 +215,17 @@ ggsave('hist_gene_pathway.png', .p, width=16, height=5)
 
 ```{r pereira-genes, eval=FALSE}
 check_pathways_pere = function(.pdef, .drivers=pereira_drivers) {
-    .drivers %>>% purrr::by_row(~{
+    .drivers %>% purrr::by_row(~{
       .gene = .x$symbol
-      .pdef %>>% map_df(~.gene %in% .x)
-    }) %>>%
-    dplyr::transmute(symbol=paste0(symbol, '-', pathway) %>>% factor(., levels=.), .out) %>>%
-    tidyr::unnest() %>>%
+      .pdef %>% map_df(~.gene %in% .x)
+    }) %>%
+    dplyr::transmute(symbol=paste0(symbol, '-', pathway) %>% factor(., levels=.), .out) %>%
+    tidyr::unnest() %>%
     tidyr::gather(pathway, included, -symbol)
 }
 
-.ldata = pathdefs %>>% purrr::keep(~length(.x) < 100) %>>% purrr::map(check_pathways_pere)
-.lgp = .ldata %>>% purrr::map2(names(.), plot_included, base_size=6)
+.ldata = pathdefs %>% purrr::keep(~length(.x) < 100) %>% purrr::map(check_pathways_pere)
+.lgp = .ldata %>% purrr::map2(names(.), plot_included, base_size=6)
 cowplot::plot_grid(plotlist=.lgp, nrow=1, rel_widths=c(2,1,2,5,2,3))
 ggsave('pereira_consistency.png', width=14, height=6)
 ```
