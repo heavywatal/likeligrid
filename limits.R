@@ -11,7 +11,9 @@ read_likeligrid = function(file) {
 read_limit_max = function(.infile) {
     .pathway = str_extract(.infile, '(?<=limit-)[^.]+(?=_[LU]\\.tsv)')
     read_likeligrid(.infile) %>%
-    dplyr::transmute_(.dots=c(pathway=~.pathway, value=.pathway, 'loglik')) %>%
+    dplyr::select(loglik, one_of(.pathway)) %>%
+    setNames(c('loglik', 'value')) %>%
+    dplyr::mutate(pathway=.pathway) %>%
     dplyr::group_by(value) %>%
     dplyr::top_n(1, wt=loglik) %>%
     dplyr::ungroup() %>%
@@ -60,7 +62,7 @@ gather_uniaxis = function(.data) {
 .result_dirs = tibble(indir= list.dirs(.datadir, recursive=FALSE)) %>%
     dplyr::mutate(
         label= basename(indir),
-        group= str_replace(label, '-s\\d$', '')) %>%
+        group= str_replace(label, '-s\\d.*$', '')) %>%
     dplyr::filter(str_detect(group, 'vogelstein$')) %>% print()
 
 .results = .result_dirs %>%
@@ -69,10 +71,12 @@ gather_uniaxis = function(.data) {
     })) %>%
     dplyr::mutate(
         uniaxis= purrr::map(indir, ~{
+            message(.x)
             list.files(.x, 'uniaxis.+\\.gz$', full.names=TRUE) %>%
             purrr::map_df(~{read_likeligrid(.x) %>% gather_uniaxis()})
         }),
         limits= purrr::map(indir, ~{
+            message(.x)
             list.files(.x, 'limit.+\\.gz$', full.names=TRUE) %>%
             purrr::map_df(read_limit_max)
         })
