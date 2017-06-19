@@ -76,7 +76,7 @@ def main():
     range_s = range(args.begin, args.end)
     it = iter_args(args.infile, range_s, args.jobs, rest,
                    args.epistasis, args.tp53)
-    wopt.map_async(it, 1, args.dry_run)
+    wopt.map_async(it, 1, args.dry_run, outdir='.stdout')
     print('End of ' + __file__)
 
 
