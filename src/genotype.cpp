@@ -75,6 +75,7 @@ void GenotypeModel::set_epistasis(const std::pair<size_t, size_t>& pair) {HERE;
     std::ostringstream oss;
     oss << names_.at(pair.first) << ":" << names_.at(pair.second);
     names_.push_back(oss.str());
+    names_.push_back("pleiotropy");
     std::cerr << "epistasis: " << names_.back() << std::endl;
     if (pair.first == pair.second) {
         throw std::runtime_error("pair.first == pair.second");

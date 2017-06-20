@@ -84,7 +84,7 @@ class GenotypeModel {
             if (mut_path[epistasis_pair_.first]) return theta_[num_pathways_];
         }
         if (mut_path[epistasis_pair_.first]) {
-            if (mut_path[epistasis_pair_.second]) return theta_[num_pathways_];
+            if (mut_path[epistasis_pair_.second]) return theta_[num_pathways_ + 1U];
         }
         return 1.0;
     }
