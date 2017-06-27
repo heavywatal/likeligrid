@@ -11,14 +11,16 @@
 #include <wtl/exception.hpp>
 #include <wtl/debug.hpp>
 #include <wtl/iostr.hpp>
-#include <wtl/os.hpp>
 #include <wtl/getopt.hpp>
 #include <wtl/zfstream.hpp>
+
+#include <boost/filesystem.hpp>
 
 #include <regex>
 
 namespace likeligrid {
 
+namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
 inline po::options_description general_desc() {HERE;
@@ -115,7 +117,7 @@ void Program::run() {HERE;
     try {
         if (GRADIENT_MODE) {
             GradientDescent gradient_descent(INFILE, MAX_SITES, epistasis, CONCURRENCY);
-            wtl::Pushd cd(wtl::dirname(INFILE));
+            fs::current_path(fs::path(INFILE).parent_path());
             wtl::ozfstream ost(gradient_descent.outfile());
             ost.precision(std::cout.precision());
             std::cerr << "outfile: " << ost.path() << std::endl;
@@ -127,7 +129,7 @@ void Program::run() {HERE;
             GridSearch searcher(INFILE, MAX_SITES, epistasis, CONCURRENCY);
             // after constructor success
             const std::string outdir = make_outdir();
-            wtl::Pushd cd(outdir);
+            fs::current_path(outdir);
             searcher.run(true);
         }
     } catch (const wtl::KeyboardInterrupt& e) {
@@ -147,7 +149,7 @@ std::string Program::make_outdir() const {
             <<  "x" << EPISTASIS_PAIR[1];
     }
     const std::string outdir = oss.str();
-    wtl::mkdir(outdir);
+    fs::create_directory(outdir);
     return outdir;
 }
 
