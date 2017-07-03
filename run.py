@@ -66,6 +66,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--dry-run', action='store_true')
     parser.add_argument('-j', '--jobs', type=int, default=wopt.cpu_count())
+    parser.add_argument('-o', '--outdir', default='.stdout')
     parser.add_argument('--begin', type=int, default=2)
     parser.add_argument('--end', type=int, default=6)
     parser.add_argument('-e', '--epistasis', action='store_true')
@@ -76,7 +77,7 @@ def main():
     range_s = range(args.begin, args.end)
     it = iter_args(args.infile, range_s, args.jobs, rest,
                    args.epistasis, args.tp53)
-    wopt.map_async(it, 1, args.dry_run, outdir='.stdout')
+    wopt.map_async(it, 1, args.dry_run, outdir=args.outdir)
     print('End of ' + __file__)
 
 
