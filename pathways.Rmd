@@ -40,7 +40,7 @@ C2 CP (Canonical Pathways)
 ```{r read}
 read_gmt = function(infile, n=-1L) {
     readLines(infile, n) %>%
-    purrr::map_df(~{
+    purrr::map_dfr(~{
       .row = wtl::split_chr(.x, '\t')
       tibble::tibble(name=.row[1], genes=list(.row[c(-1, -2)]))
     }) %>%
@@ -68,7 +68,7 @@ gmts = c(list(HALLMARK=gmt_h), gmt_c2)
 length(gmts)
 
 gmts %>%
-    purrr::map_df(~{tibble(ngenes=lengths(.x))}, .id='group') %>%
+    purrr::map_dfr(~{tibble(ngenes=lengths(.x))}, .id='group') %>%
     ggplot(aes(ngenes))+
     geom_histogram(bins=30)+
     facet_wrap(~group)
@@ -106,7 +106,7 @@ other_defs = list(
 
 ```{r write, eval=FALSE}
 pathdefs = c(other_defs, gmts)
-pathdefs %>>% (all.equal(., fromJSON(toJSON(.))))
+pathdefs %>% {all.equal(., fromJSON(toJSON(.)))}
 write_json(pathdefs, 'pathway-defs.json')
 ```
 
@@ -125,9 +125,9 @@ if (FALSE) {
 lengths(pathdefs)
 
 check_pathways = function(.pdef, .drivers=drivers) {
-    .drivers %>% purrr::by_row(~{
-      .gene = .x$symbol
-      .pdef %>% map_df(~.gene %in% .x)
+    .drivers %>% purrr::pmap_dfr(function(symbol, ...) {
+      .gene = symbol
+      .pdef %>% purrr::map_dfr(~{.gene %in% .x})
     }) %>%
     dplyr::transmute(symbol=symbol, .out) %>%
     tidyr::unnest() %>%
@@ -138,7 +138,7 @@ check_pathways = function(.pdef, .drivers=drivers) {
     purrr::map(check_pathways, .drivers=drivers_all)
 
 mapped_genes = .tmp_ldata %>%
-    map_df(~., .id='group') %>%
+    purrr::map_dfr(~., .id='group') %>%
     dplyr::group_by(symbol) %>%
     dplyr::summarise(included=sum(included)) %>%
     dplyr::filter(included > 0) %>%
@@ -146,7 +146,7 @@ mapped_genes = .tmp_ldata %>%
 
 drivers = drivers_all %>% dplyr::filter(symbol %in% mapped_genes)
 .ldata = pathdefs %>% purrr::map(check_pathways, .drivers=drivers)
-.tidy = .ldata %>% map_df(~., .id='group')
+.tidy = .ldata %>% purrr::map_dfr(~., .id='group')
 ```
 
 ### Summary and plot
@@ -215,9 +215,9 @@ ggsave('hist_gene_pathway.png', .p, width=16, height=5)
 
 ```{r pereira-genes, eval=FALSE}
 check_pathways_pere = function(.pdef, .drivers=pereira_drivers) {
-    .drivers %>% purrr::by_row(~{
-      .gene = .x$symbol
-      .pdef %>% map_df(~.gene %in% .x)
+    .drivers %>% purrr::pmap_dfr(function(symbol, ...) {
+      .gene = symbol
+      .pdef %>% purrr::map_dfr(~{.gene %in% .x})
     }) %>%
     dplyr::transmute(symbol=paste0(symbol, '-', pathway) %>% factor(., levels=.), .out) %>%
     tidyr::unnest() %>%
