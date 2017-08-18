@@ -73,12 +73,12 @@ gather_uniaxis = function(.data) {
         uniaxis= purrr::map(indir, ~{
             message(.x)
             list.files(.x, 'uniaxis.+\\.gz$', full.names=TRUE) %>%
-            purrr::map_df(~{read_likeligrid(.x) %>% gather_uniaxis()})
+            purrr::map_dfr(~{read_likeligrid(.x) %>% gather_uniaxis()})
         }),
         limits= purrr::map(indir, ~{
             message(.x)
             list.files(.x, 'limit.+\\.gz$', full.names=TRUE) %>%
-            purrr::map_df(read_limit_max)
+            purrr::map_dfr(read_limit_max)
         })
     ) %>% print()
 

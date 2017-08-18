@@ -70,13 +70,13 @@ pathdefs %>% purrr::map(~{flatten_chr(.x) %>% unique()}) %>% lengths()
 pathdefs_cancer %>% purrr::map(~{flatten_chr(.x) %>% unique()}) %>% lengths()
 
 .join = function(.genotypes, .pathdef) {
-    .pd = map_df(.pathdef, ~tibble(symbol=.x), .id='pathway')
+    .pd = map_dfr(.pathdef, ~tibble(symbol=.x), .id='pathway')
     dplyr::left_join(.genotypes, .pd, by='symbol')
 }
 .join(head(maf), pathdefs[['HALLMARK']])
 
 join_pathdefs = function(.data) {
-    purrr::map_df(pathdefs_cancer, .id='definition', ~.join(.data, .x)) %>%
+    purrr::map_dfr(pathdefs_cancer, .id='definition', ~.join(.data, .x)) %>%
     dplyr::arrange(cancer_type, sample, symbol)
 }
 join_pathdefs(maf)
@@ -533,7 +533,7 @@ make_poisson = function(.data) {
     nsam = dplyr::n_distinct(.data[['sample']])
     dplyr::count(.data, pathway, wt=n) %>%
     dplyr::mutate(lambda= nn / nsam) %>%
-    purrr::pmap_df(function(lambda, ...) {
+    purrr::pmap_dfr(function(lambda, ...) {
         tibble(n= seq_len(40), y= dpois(n, lambda) * nsam) %>%
         dplyr::filter(y >= 1)
     }) %>%

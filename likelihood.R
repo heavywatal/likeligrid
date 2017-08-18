@@ -72,7 +72,7 @@ calc_coefs_excl = function(x, times) {
 calc_coefs_excl(.excl, 3L)
 
 calc_denom = function(weights, excl, times=seq_len(6L)) {
-    purrr::map_df(times, ~{
+    purrr::map_dfr(times, ~{
         .d = sum(calc_probs_null(weights, .x) * calc_coefs_excl(excl, .x))
         tibble::tibble(s=.x, denom= .d)
     })
