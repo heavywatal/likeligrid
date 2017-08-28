@@ -132,6 +132,7 @@ void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
         }
         if (wtl::SIGINT_RAISED()) {throw wtl::KeyboardInterrupt();}
     }
+    std::cerr << "\n";
     for (auto& ftr: futures) {
         ost << ftr.get();
     }
