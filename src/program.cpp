@@ -26,8 +26,8 @@ namespace po = boost::program_options;
 inline po::options_description general_desc() {HERE;
     po::options_description description("General");
     description.add_options()
-        ("help,h", po::value<bool>()->default_value(false)->implicit_value(true), "print this help")
-        ("verbose,v", po::value<bool>()->default_value(false)->implicit_value(true), "verbose output")
+        ("help,h", po::bool_switch(), "print this help")
+        ("verbose,v", po::bool_switch(), "verbose output")
         ("test", po::value<int>()->default_value(0)->implicit_value(1));
     return description;
 }
@@ -37,7 +37,7 @@ po::options_description Program::options_desc() {HERE;
     description.add_options()
         ("parallel,j", po::value(&CONCURRENCY)->default_value(CONCURRENCY))
         ("max-sites,s", po::value(&MAX_SITES)->default_value(MAX_SITES))
-        ("gradient,g", po::value(&GRADIENT_MODE)->default_value(GRADIENT_MODE)->implicit_value(true))
+        ("gradient,g", po::bool_switch(&GRADIENT_MODE))
         ("epistasis,e", po::value(&EPISTASIS_PAIR)->default_value(EPISTASIS_PAIR)->multitoken());
     return description;
 }
