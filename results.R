@@ -29,7 +29,9 @@ gather_uniaxis = function(.data) {
 .chisq = tibble(alpha=c(0.9, 0.95, 0.99), y=qchisq(alpha, 1) * 0.5)
 
 .plot = function(uniaxis, limits, gradient=tibble(), label='', ...) {
-    .title = label
+    if (gradient %>% inherits('list')) {
+        return(purrr::map(gradient, ~.plot(uniaxis, limits, .x, label, ...)))
+    }
     .mle = dplyr::top_n(uniaxis, 1L, loglik) %>% dplyr::distinct(loglik, pathway, .keep_all=TRUE)
     .max_loglik = .mle$loglik[1]
     .p = ggplot(uniaxis, aes(value, loglik))+
@@ -37,6 +39,12 @@ gather_uniaxis = function(.data) {
         geom_point(data=limits, alpha=0.5)
     .max_y = .max_loglik
     if (nrow(gradient) > 0L) {
+        if (nrow(gradient) > 100L) {
+            gradient = gradient %>%
+                dplyr::arrange(desc(loglik)) %>%
+                {dplyr::bind_rows(head(., 3L), dplyr::sample_n(., 80L), tail(., 3L))} %>%
+                dplyr::distinct()
+        }
         .offset = .max_loglik - min(gradient$loglik)
         .data_g = gradient %>%
           tidyr::gather(pathway, value, -loglik) %>%
@@ -50,7 +58,7 @@ gather_uniaxis = function(.data) {
     geom_hline(data=.chisq, aes(yintercept=.max_loglik - y, colour=alpha))+
     coord_cartesian(ylim=c(.max_y, .max_loglik - qchisq(0.95, 1)))+
     scale_x_continuous(breaks=c(0, 1, 2), limits=c(0, 2), expand=c(0, 0))+
-    labs(title=.title)+
+    labs(title=label)+
     facet_wrap(~pathway)+
     wtl::theme_wtl()+
     theme(legend.position='none', panel.grid.major.y=element_blank(),
@@ -59,16 +67,18 @@ gather_uniaxis = function(.data) {
 }
 
 .datadir = '~/working/likeligrid/output'
-.result_dirs = tibble(indir= list.dirs(.datadir, recursive=FALSE)) %>%
-    dplyr::mutate(
-        label= basename(indir),
-        group= str_replace(label, '-s\\d.*$', '')) %>%
-    dplyr::filter(str_detect(group, 'vogelstein$')) %>% print()
 
-.results = .result_dirs %>%
-    dplyr::filter(map_lgl(indir, ~{
-        list.files(.x, 'limit.+\\.gz$') %>% length() %>% {. > 0L}
-    })) %>%
+.metadata = tibble(indir= list.dirs(.datadir, recursive=FALSE)) %>%
+    dplyr::mutate(label= basename(indir)) %>%
+    tidyr::separate(label, c('TCGA', 'type', 'definition', 's', 'epistasis'), '-', fill='right', remove=FALSE) %>%
+    dplyr::select(-TCGA) %>%
+    dplyr::filter(!is.na(type)) %>%
+    dplyr::mutate(s=str_replace(s, '^s', '') %>% parse_integer()) %>%
+    print()
+
+.results = .metadata %>%
+    dplyr::filter(is.na(epistasis)) %>%
+    dplyr::filter(s == 4L) %>%
     dplyr::mutate(
         uniaxis= purrr::map(indir, ~{
             message(.x)
@@ -82,9 +92,8 @@ gather_uniaxis = function(.data) {
         })
     ) %>% print()
 
-.out = .results %>%
-    dplyr::select(group, label, uniaxis, limits) %>%
-    tidyr::nest(-group) %>%
+.results %>%
+    tidyr::nest(-type) %>%
     dplyr::mutate(plt= purrr::map(data, ~{
         .plts = .x %>%
             dplyr::filter(purrr::map_lgl(limits, ~{nrow(.x) > 0})) %>%
@@ -96,51 +105,54 @@ gather_uniaxis = function(.data) {
 # .out$plt[[2]]
 ggsave('confidence.pdf', .out$plt, width=9, height=9)
 
+.plt = .results %>% purrr::pmap(.plot)
+.p = cowplot::plot_grid(plotlist=.plt, nrow=3, ncol=4)
+ggsave('confidence-s4.pdf', .p, width=12, height=9)
+
 # #######1#########2#########3#########4#########5#########6#########7#########
 # gradient descent
 
 .results_with_g = .results %>%
-    dplyr::filter(str_detect(group, 'vogelstein$')) %>%
+    dplyr::filter(str_detect(definition, 'vogelstein$')) %>%
     dplyr::filter(str_detect(label, '-s4$')) %>% print() %>%
     dplyr::mutate(
-        gradient=map(indir, ~{
+        gradient=purrr::map(indir, ~{
             .f = list.files(.x, 'gradient-s5\\.tsv\\.gz', full.names=TRUE)
-            message(.f)
-            if (length(.f) > 0) {read_likeligrid(.f)} else {tibble()}
         })
     ) %>% print()
 
-.out_g = .results_with_g %>% dplyr::mutate(plt= purrr::pmap(., .plot))
-ggsave('gradient5.pdf', .out_g$plt, width=5, height=5)
+.plt = .results_with_g %>% purrr::pmap(.plot)
+.p = cowplot::plot_grid(plotlist=.plt, nrow=3, ncol=4)
+ggsave('gradient5.pdf', .p, width=12, height=9)
+# ggsave('gradient6.pdf', .p, width=12, height=9)
 
 # #######1#########2#########3#########4#########5#########6#########7#########
 # epistasis
 
-.results_e = .results %>%
-    dplyr::filter(str_detect(group, 'vogelstein$')) %>%
-    dplyr::filter(str_detect(label, '-s4$')) %>%
-    # dplyr::filter(str_detect(label, 'BRCA')) %>%
-    dplyr::mutate(
-        epistasis=map(indir, ~{
-            message(.x)
-            list.files(.x, 'gradient-s4-e.*\\.gz$', full.names=TRUE) %>%
-            map(read_likeligrid)
-        })
-    ) %>% print()
-
+# Put interaction term at last of facet_wrap
 .rename_tail = function(.names) {
     c(head(.names, -1L), paste0('~', tail(.names, 1L)))
 }
 .rename_tail(letters)
 
-.out_e = .results_e %>% dplyr::mutate(plts= purrr::pmap(., function(...) {
-    .args = list(...)
-    message(.args$label)
-    map(.args$epistasis, ~{
-        names(.x) = .rename_tail(names(.x))
-        .plot(.args$uniaxis, .args$limits, .x, .args$label)
-    })
-}))
-cowplot::plot_grid(plotlist=.out_e$plts[[1]])
-.pl = .out_e$plts %>% map(~{cowplot::plot_grid(plotlist=.x)})
-ggsave('epistasis-less.pdf', .pl, width=20, height=20)
+.results_e = .results %>%
+    dplyr::filter(str_detect(definition, 'vogelstein$')) %>%
+    dplyr::filter(str_detect(label, '-s4$')) %>%
+    # dplyr::filter(str_detect(label, 'BRCA')) %>%
+    dplyr::mutate(
+        gradient=purrr::map(indir, ~{
+            message(.x)
+            list.files(.x, 'gradient-s5-e.*\\.gz$', full.names=TRUE) %>%
+            purrr::map(~{
+                read_likeligrid(.x) %>%
+                setNames(names(.) %>% .rename_tail())
+            })
+        })
+    ) %>% print()
+
+.results_e$gradient[[1]] %>% map_int(nrow)
+
+.plts_epistasis = .results_e %>% purrr::pmap(.plot)
+.pl = .plts_epistasis %>% purrr::map(~{cowplot::plot_grid(plotlist=.x)})
+# ggsave('epistasis-s4.pdf', .pl, width=20, height=20)
+ggsave('epistasis-s5.pdf', .pl, width=20, height=20)
