@@ -26,6 +26,12 @@ gather_uniaxis = function(.data) {
     tidyr::gather(pathway, value, -loglik)
 }
 
+# Put interaction term at last of facet_wrap
+rename_epistasis = function(.names) {
+    str_replace(.names, '(\\w+:\\w+|pleiotropy)', '~\\1')
+}
+c('A', 'B', 'A:B', 'pleiotropy') %>% rename_epistasis()
+
 .chisq = tibble(alpha=c(0.9, 0.95, 0.99), y=qchisq(alpha, 1) * 0.5)
 
 .plot = function(uniaxis, limits, gradient=tibble(), label='', ...) {
@@ -67,6 +73,7 @@ gather_uniaxis = function(.data) {
 }
 
 .datadir = '~/working/likeligrid/output'
+.datadir = '~/working/likeligrid/output-pleiotropy'
 
 .metadata = tibble(indir= list.dirs(.datadir, recursive=FALSE)) %>%
     dplyr::mutate(label= basename(indir)) %>%
@@ -105,6 +112,7 @@ gather_uniaxis = function(.data) {
 # .out$plt[[2]]
 ggsave('confidence.pdf', .out$plt, width=9, height=9)
 
+# .plt = .results %>% dplyr::filter(purrr::map_lgl(limits, ~{nrow(.x) > 0L})) %>% purrr::pmap(.plot)
 .plt = .results %>% purrr::pmap(.plot)
 .p = cowplot::plot_grid(plotlist=.plt, nrow=3, ncol=4)
 ggsave('confidence-s4.pdf', .p, width=12, height=9)
@@ -114,7 +122,7 @@ ggsave('confidence-s4.pdf', .p, width=12, height=9)
 
 .results_with_g = .results %>%
     dplyr::filter(str_detect(definition, 'vogelstein$')) %>%
-    dplyr::filter(str_detect(label, '-s4$')) %>% print() %>%
+    dplyr::filter(s == 4L) %>%
     dplyr::mutate(
         gradient=purrr::map(indir, ~{
             .f = list.files(.x, 'gradient-s5\\.tsv\\.gz', full.names=TRUE)
@@ -129,15 +137,9 @@ ggsave('gradient5.pdf', .p, width=12, height=9)
 # #######1#########2#########3#########4#########5#########6#########7#########
 # epistasis
 
-# Put interaction term at last of facet_wrap
-.rename_tail = function(.names) {
-    c(head(.names, -1L), paste0('~', tail(.names, 1L)))
-}
-.rename_tail(letters)
-
 .results_e = .results %>%
     dplyr::filter(str_detect(definition, 'vogelstein$')) %>%
-    dplyr::filter(str_detect(label, '-s4$')) %>%
+    dplyr::filter(s == 4L) %>%
     # dplyr::filter(str_detect(label, 'BRCA')) %>%
     dplyr::mutate(
         gradient=purrr::map(indir, ~{
@@ -145,7 +147,7 @@ ggsave('gradient5.pdf', .p, width=12, height=9)
             list.files(.x, 'gradient-s5-e.*\\.gz$', full.names=TRUE) %>%
             purrr::map(~{
                 read_likeligrid(.x) %>%
-                setNames(names(.) %>% .rename_tail())
+                setNames(names(.) %>% rename_epistasis())
             })
         })
     ) %>% print()
