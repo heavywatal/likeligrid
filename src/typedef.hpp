@@ -1,4 +1,3 @@
-// -*- mode: c++; coding: utf-8 -*-
 /*! @file typedef.hpp
     @brief Type definitions
 */

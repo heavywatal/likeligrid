@@ -1,4 +1,3 @@
-// -*- mode: c++; coding: utf-8 -*-
 /*! @file program.cpp
     @brief Implementation of Program class
 */

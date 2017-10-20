@@ -1,4 +1,3 @@
-// -*- mode: c++; coding: utf-8 -*-
 /*! @file gridsearch.hpp
     @brief Interface of GridSearch class
 */

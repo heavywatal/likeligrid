@@ -1,4 +1,3 @@
-// -*- mode: c++; coding: utf-8 -*-
 /*! @file gradient_descent.cpp
     @brief Implementation of GradientDescent class
 */

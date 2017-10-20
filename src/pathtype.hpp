@@ -1,4 +1,3 @@
-// -*- mode: c++; coding: utf-8 -*-
 /*! @file pathtype.hpp
     @brief Interface of PathtypeModel class
 */

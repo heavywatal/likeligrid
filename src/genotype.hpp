@@ -1,4 +1,3 @@
-// -*- mode: c++; coding: utf-8 -*-
 /*! @file genotype.hpp
     @brief Interface of GenotypeModel class
 */
