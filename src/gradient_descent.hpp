@@ -30,18 +30,18 @@ class GradientDescent {
     GradientDescent() = default;
     GradientDescent(std::istream&,
         const size_t max_sites,
-        const std::pair<size_t, size_t>& epistasis_pair={0,0},
-        const unsigned int concurrency=1);
+        const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
+        const unsigned int concurrency=1u);
     GradientDescent(std::istream&& ist,
         const size_t max_sites,
-        const std::pair<size_t, size_t>& epistasis_pair={0,0},
-        const unsigned int concurrency=1)
+        const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
+        const unsigned int concurrency=1u)
         : GradientDescent(ist, max_sites, epistasis_pair, concurrency){}
     GradientDescent(
         const std::string& infile,
         const size_t max_sites,
-        const std::pair<size_t, size_t>& epistasis_pair={0,0},
-        const unsigned int concurrency=1);
+        const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
+        const unsigned int concurrency=1u);
     ~GradientDescent();
 
     void run(std::ostream&);

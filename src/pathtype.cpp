@@ -23,21 +23,21 @@ PathtypeModel::PathtypeModel(std::istream&& ist, const size_t max_sites) {HERE;
     names_ = wtl::read_header(ist);
     auto pathtypes = wtl::read_valarrays<uint>(ist);
     const auto raw_s_sample = wtl::row_sums(pathtypes);
-    nsam_with_s_.assign(raw_s_sample.max() + 1, 0);
+    nsam_with_s_.assign(raw_s_sample.max() + 1u, 0u);
     for (const auto s: raw_s_sample) {
         ++nsam_with_s_[s];
     }
     std::cerr << "Original N_s: " << nsam_with_s_ << std::endl;
-    if (max_sites + 1 < nsam_with_s_.size()) {
-        nsam_with_s_.resize(max_sites + 1);
+    if (max_sites + 1u < nsam_with_s_.size()) {
+        nsam_with_s_.resize(max_sites + 1u);
         std::cerr << "Filtered N_s: " << nsam_with_s_ << std::endl;
     } else {
         std::cerr << "Note: -s is too large" << std::endl;
     }
-    while (nsam_with_s_.back() == 0) {
+    while (nsam_with_s_.back() == 0u) {
         nsam_with_s_.pop_back();
     }
-    const auto final_max_s = nsam_with_s_.size() - 1;
+    const uint final_max_s = static_cast<uint>(nsam_with_s_.size()) - 1u;
     pathtypes = wtl::filter(pathtypes, raw_s_sample <= final_max_s);
 
     const auto s_pathway = wtl::cast<double>(wtl::col_sums(pathtypes));
@@ -45,11 +45,11 @@ PathtypeModel::PathtypeModel(std::istream&& ist, const size_t max_sites) {HERE;
     auto duptypes = pathtypes;
     for (auto& row: duptypes) {
         for (auto& x: row) {
-            if (x > 0) --x;
+            if (x > 0u) --x;
         }
     }
     a_pathway_ = wtl::cast<double>(wtl::col_sums(duptypes));
-    for (size_t i=0; i<pathtypes.size(); ++i) {
+    for (size_t i=0u; i<pathtypes.size(); ++i) {
         lnp_const_ += std::log(wtl::multinomial(pathtypes[i]));
     }
     lnp_const_ += (s_pathway * std::log(w_pathway_)).sum();
@@ -61,17 +61,17 @@ PathtypeModel::PathtypeModel(std::istream&& ist, const size_t max_sites) {HERE;
 
     index_axes_.reserve(nsam_with_s_.size());
     std::vector<size_t> indices(a_pathway_.size());
-    std::iota(std::begin(indices), std::end(indices), 0);
-    for (size_t s=0; s<=nsam_with_s_.size(); ++s) {
+    std::iota(std::begin(indices), std::end(indices), 0u);
+    for (size_t s=0u; s<=nsam_with_s_.size(); ++s) {
         index_axes_.emplace_back(s, indices);
     }
 }
 
 double PathtypeModel::calc_loglik(const std::valarray<double>& th_path) const {
-    const size_t max_sites = nsam_with_s_.size() - 1;
+    const size_t max_sites = nsam_with_s_.size() - 1u;
     double loglik = (a_pathway_ * std::log(th_path)).sum();
     // D = 1.0 when s < 2
-    for (size_t s=2; s<=max_sites; ++s) {
+    for (size_t s=2u; s<=max_sites; ++s) {
         loglik -= nsam_with_s_[s] * std::log(calc_denom(w_pathway_, th_path, s));
     }
     return loglik += lnp_const_;
@@ -82,7 +82,7 @@ double PathtypeModel::calc_denom(
     const std::valarray<double>& th_pathway,
     const size_t num_mutations) const {
 
-    if (num_mutations < 2) return 1.0;
+    if (num_mutations < 2u) return 1.0;
     auto iter = wtl::itertools::product(index_axes_[num_mutations]);
     double sum_prob = 0.0;
     bits_t bits(th_pathway.size());
@@ -109,7 +109,7 @@ R"(A B
 1 1
 0 2
 )";
-    PathtypeModel model(std::move(sst), 3);
+    PathtypeModel model(std::move(sst), 3u);
     std::cerr << model.calc_loglik({0.8, 1.2}) << std::endl;;
 }
 

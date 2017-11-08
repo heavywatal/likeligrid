@@ -138,7 +138,7 @@ std::string GradientDescent::outfile() const {HERE;
 void GradientDescent::write(std::ostream& ost) {HERE;
     ost << "##genotype_file=" << model_->filename() << "\n";
     ost << "##max_sites=" << model_->max_sites() << "\n";
-    ost << "##max_count=" << 0U << "\n";
+    ost << "##max_count=" << 0u << "\n";
     ost << "##step=" << 0.01 << "\n";
     ost << "loglik\t" << wtl::join(model_->names(), "\t") << "\n";
     for (const auto& p: history_) {

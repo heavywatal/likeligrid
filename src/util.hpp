@@ -39,11 +39,11 @@ make_vicinity(const std::valarray<double>& center, const size_t breaks, const do
 inline size_t guess_stage(const double step) {
     const auto it = std::find_if(STEPS.begin(), STEPS.end(), wtl::approx(step));
     if (it == STEPS.end()) throw std::runtime_error("invalid step size");
-    return it - STEPS.begin();
+    return static_cast<size_t>(it - STEPS.begin());
 }
 
 inline double radius(const size_t stage) {
-    return (BREAKS.at(stage) - 1) * STEPS.at(stage) * 0.5;
+    return (BREAKS.at(stage) - 1u) * STEPS.at(stage) * 0.5;
 }
 
 inline std::tuple<std::string, size_t, size_t, double>
@@ -69,9 +69,9 @@ read_body(std::istream& ist) {
     std::string buffer;
     ist >> buffer; // loglik
     std::getline(ist, buffer); // header
-    buffer.erase(0, 1); // \t
+    buffer.erase(0u, 1u); // \t
     const std::vector<std::string> colnames = wtl::split(buffer, "\t");
-    size_t nrow = 0;
+    size_t nrow = 0u;
     double max_ll = std::numeric_limits<double>::lowest();
     std::vector<double> mle;
     while (std::getline(ist, buffer)) {
@@ -90,10 +90,10 @@ read_body(std::istream& ist) {
 inline std::valarray<double>
 read_loglik(std::istream& ist, const size_t nrow) {
     std::valarray<double> values(nrow);
-    for (size_t i=0; i<5U; ++i) {
+    for (size_t i=0u; i<5u; ++i) {
         ist.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
-    for (size_t i=0; i<nrow; ++i) {
+    for (size_t i=0u; i<nrow; ++i) {
         ist >> values[i];
         ist.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }

@@ -20,22 +20,22 @@ class GridSearch {
     GridSearch() = delete;
     GridSearch(std::istream& ist,
         const size_t max_sites,
-        const std::pair<size_t, size_t>& epistasis_pair={0,0},
-        const unsigned int concurrency=1)
+        const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
+        const unsigned int concurrency=1u)
         : model_(ist, max_sites),
           concurrency_(concurrency) {
         init(epistasis_pair);
     }
     GridSearch(std::istream&& ist,
         const size_t max_sites,
-        const std::pair<size_t, size_t>& epistasis_pair={0,0},
-        const unsigned int concurrency=1)
+        const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
+        const unsigned int concurrency=1u)
         : GridSearch(ist, max_sites, epistasis_pair, concurrency){}
     GridSearch(
         const std::string& infile,
         const size_t max_sites,
-        const std::pair<size_t, size_t>& epistasis_pair={0,0},
-        const unsigned int concurrency=1)
+        const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
+        const unsigned int concurrency=1u)
         : model_(infile, max_sites),
           concurrency_(concurrency) {
         init(epistasis_pair);
@@ -62,8 +62,8 @@ class GridSearch {
 
     GenotypeModel model_;
     std::valarray<double> mle_params_;
-    size_t skip_ = 0;
-    size_t stage_ = 0;
+    size_t skip_ = 0u;
+    size_t stage_ = 0u;
     const unsigned int concurrency_;
 };
 

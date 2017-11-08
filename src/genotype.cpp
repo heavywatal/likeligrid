@@ -39,22 +39,22 @@ void GenotypeModel::init(std::istream& ist, const size_t max_sites) {HERE;
     }
 
     genot_.reserve(nsam);
-    num_genes_ = jso["sample"].at(0).get<std::string>().size();
-    nsam_with_s_.assign(num_genes_ + 1, 0);  // at most
+    num_genes_ = jso["sample"].at(0u).get<std::string>().size();
+    nsam_with_s_.assign(num_genes_ + 1u, 0u);  // at most
     std::valarray<double> s_gene(num_genes_);
     for (const auto& bits: all_genotypes) {
         const size_t s = bits.count();
         ++nsam_with_s_[s];
         if (s > max_sites) continue;
         genot_.push_back(bits);
-        for (size_t j=0; j<num_genes_; ++j) {
+        for (size_t j=0u; j<num_genes_; ++j) {
             if (bits[j]) ++s_gene[j];
         }
     }
     wtl::rstrip(&nsam_with_s_);
     std::cerr << "Original N_s: " << nsam_with_s_ << std::endl;
-    if (max_sites + 1 < nsam_with_s_.size()) {
-        nsam_with_s_.resize(max_sites + 1);
+    if (max_sites + 1u < nsam_with_s_.size()) {
+        nsam_with_s_.resize(max_sites + 1u);
         std::cerr << "Using N_s: " << nsam_with_s_ << std::endl;
     } else {
         std::cerr << "Note: -s is too large" << std::endl;
@@ -63,9 +63,9 @@ void GenotypeModel::init(std::istream& ist, const size_t max_sites) {HERE;
     std::cerr << "s_gene : " << s_gene << std::endl;
     std::cerr << "w_gene_: " << w_gene_ << std::endl;
 
-    max_sites_ = nsam_with_s_.size() - 1;
+    max_sites_ = nsam_with_s_.size() - 1u;
     effects_.reserve(num_genes_);
-    for (size_t j=0; j<num_genes_; ++j) {
+    for (size_t j=0u; j<num_genes_; ++j) {
         effects_.emplace_back(translate(j));
     }
     // std::cerr << "effects_: " << effects_ << std::endl;
@@ -88,7 +88,7 @@ double GenotypeModel::calc_loglik(const std::valarray<double>& theta) {
     if (with_epistasis_ && theta_.size() <= num_pathways_) {
         throw std::runtime_error("theta_.size() <= num_pathways_");
     }
-    denoms_.resize(max_sites_ + 1);
+    denoms_.resize(max_sites_ + 1u);
     denoms_ = 0.0;
     mutate(bits_t(), bits_t(), 1.0);
     // std::cerr << "denoms_: " << denoms_ << std::endl;
@@ -99,7 +99,7 @@ double GenotypeModel::calc_loglik(const std::valarray<double>& theta) {
     const auto lnD = std::log(denoms_);
     // std::cerr << "lnD: " << lnD << std::endl;
     // -inf, 0, D2, D3, ...
-    for (size_t s=2; s<=max_sites_; ++s) {
+    for (size_t s=2u; s<=max_sites_; ++s) {
         loglik -= nsam_with_s_[s] * lnD[s];
     }
     return loglik;
@@ -107,7 +107,7 @@ double GenotypeModel::calc_loglik(const std::valarray<double>& theta) {
 
 inline std::valarray<size_t> to_indices(const bits_t& bits) {
     std::valarray<size_t> indices(bits.count());
-    for (size_t i=0, j=0; i<indices.size(); ++j) {
+    for (size_t i=0u, j=0u; i<indices.size(); ++j) {
         if (bits[j]) {
             indices[i] = j;
             ++i;
@@ -136,7 +136,7 @@ double GenotypeModel::lnp_sample(const bits_t& genotype) const {
 
 void GenotypeModel::benchmark(const size_t n) {
     const std::valarray<double> param(0.9, num_pathways_);
-    double leaves = wtl::pow(static_cast<double>(num_genes_), max_sites_);
+    double leaves = wtl::pow(static_cast<double>(num_genes_), static_cast<unsigned int>(max_sites_));
     std::cerr << "# parameters: " << num_pathways_ << std::endl;
     std::cerr << "width: " << num_genes_ << std::endl;
     std::cerr << "depth: " << max_sites_ << std::endl;
@@ -154,7 +154,7 @@ R"({
   "annotation": ["0011", "1100"],
   "sample": ["0011", "0101", "1001", "0110", "1010", "1100"]
 })";
-    GenotypeModel model(sst, 4);
+    GenotypeModel model(sst, 4u);
     std::cerr << model.calc_loglik({1.0, 1.0}) << std::endl;
 }
 

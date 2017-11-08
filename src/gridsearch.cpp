@@ -37,7 +37,7 @@ void GridSearch::run_fout() {HERE;
     std::cerr << "mle_params_: " << mle_params_ << std::endl;
     if (outfile.empty()) return;
     const auto axes = make_vicinity(mle_params_, BREAKS.at(stage_), radius(stage_));
-    for (size_t j=0; j<model_.names().size(); ++j) {
+    for (size_t j=0u; j<model_.names().size(); ++j) {
         std::cerr << model_.names()[j] << ": " << axes[j] << std::endl;
     }
     {
@@ -49,7 +49,7 @@ void GridSearch::run_fout() {HERE;
 
 void GridSearch::run_cout() {HERE;
     const auto axes = make_vicinity(mle_params_, BREAKS.at(stage_), radius(stage_));
-    for (size_t j=0; j<model_.names().size(); ++j) {
+    for (size_t j=0u; j<model_.names().size(); ++j) {
         std::cerr << model_.names()[j] << ": " << axes[j] << std::endl;
     }
     {
@@ -69,7 +69,7 @@ void GridSearch::search_limits() {HERE;
     auto axis = wtl::round(wtl::lin_spaced(200, 2.0, 0.01), 100);
     axis = (axis * 100.0).apply(std::round) / 100.0;
     std::map<std::string, std::valarray<double>> intersections;
-    for (size_t i=0; i<model_.names().size(); ++i) {
+    for (size_t i=0u; i<model_.names().size(); ++i) {
         const std::string outfile = "uniaxis-" + model_.names()[i] + ".tsv.gz";
         std::cerr << outfile << std::endl;
         std::stringstream sst;
@@ -87,7 +87,7 @@ void GridSearch::search_limits() {HERE;
     for (const auto& p: intersections) {
         const std::string outfile = "limit-" + p.first + ".tsv.gz";
         std::cerr << outfile << ": " << p.second << std::endl;
-        const auto axes = make_vicinity(p.second, 5, 0.02);
+        const auto axes = make_vicinity(p.second, 5u, 0.02);
         wtl::ozfstream fout(outfile);
         //TODO: if exists
         run_impl(fout, wtl::itertools::product(axes));
@@ -96,7 +96,7 @@ void GridSearch::search_limits() {HERE;
 
 void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::valarray<double>>&& gen) {HERE;
     std::cerr << skip_ << " to " << gen.max_count() << std::endl;
-    if (skip_ == 0) {
+    if (skip_ == 0u) {
         write_header(ost, gen.max_count());
     }
 
@@ -114,7 +114,7 @@ void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
     std::deque<std::future<std::string>> futures;
     const auto min_interval = std::chrono::seconds(1);
     auto next_time = std::chrono::system_clock::now() + min_interval;
-    size_t stars = 0;
+    size_t stars = 0u;
     for (const auto& th_path: gen(skip_)) {
         semaphore.lock();
         futures.push_back(std::async(std::launch::async, task, th_path));
@@ -125,7 +125,7 @@ void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
                 ost << futures.front().get();
                 futures.pop_front();
             }
-            for (size_t n= 0.2 * gen.percent(); stars<n; ++stars) {
+            for (size_t n= static_cast<size_t>(0.2 * gen.percent()); stars<n; ++stars) {
                 std::cerr << "*";
             }
         }
@@ -139,19 +139,19 @@ void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
 
 std::string GridSearch::init_meta() {HERE;
     if (stage_ >= STEPS.size()) return "";
-    auto oss = wtl::make_oss(2, std::ios::fixed);
+    auto oss = wtl::make_oss(2u, std::ios::fixed);
     oss << "grid-" << STEPS.at(stage_) << ".tsv.gz";
     std::string outfile = oss.str();
     try {
         wtl::izfstream ist(outfile);
         std::cerr << "Reading: " << outfile << std::endl;
         read_results(ist);
-        if (skip_ == 0) {
+        if (skip_ == 0u) {
             ++stage_;
             outfile = init_meta();
         }
     } catch (std::ios::failure& e) {
-        if (errno != 2) throw;
+        if (errno != 2u) throw;
     }
     return outfile;
 }
@@ -165,7 +165,7 @@ void GridSearch::read_results(std::istream& ist) {HERE;
     std::valarray<double> mle_params;
     std::tie(skip_, colnames, mle_params) = read_body(ist);
     if (skip_ == max_count) {  // is complete file
-        skip_ = 0;
+        skip_ = 0u;
         mle_params_.swap(mle_params);
     }
 }
@@ -191,7 +191,7 @@ R"({
   "annotation": ["0011", "1100"],
   "sample": ["0011", "0101", "1001", "0110", "1010", "1100"]
 })";
-    GridSearch searcher(sst, 4, {0, 1});
+    GridSearch searcher(sst, 4u, {0, 1});
     searcher.run_cout();
 }
 

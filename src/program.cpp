@@ -48,7 +48,7 @@ po::options_description Program::positional_desc() {HERE;
     return description;
 }
 
-void Program::help_and_exit() {HERE;
+[[noreturn]] void Program::help_and_exit() {HERE;
     auto description = general_desc();
     description.add(options_desc());
     // do not print positional arguments as options
@@ -100,7 +100,7 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
               positional(positional).run(), vm);
     if (vm["help"].as<bool>()) {help_and_exit();}
     po::notify(vm);
-    if (EPISTASIS_PAIR.size() != 2U) {
+    if (EPISTASIS_PAIR.size() != 2u) {
         throw std::runtime_error("EPISTASIS_PAIR.size() != 2U");
     }
 
@@ -112,7 +112,7 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 }
 
 void Program::run() {HERE;
-    std::pair<size_t, size_t> epistasis{EPISTASIS_PAIR[0], EPISTASIS_PAIR[1]};
+    std::pair<size_t, size_t> epistasis{EPISTASIS_PAIR[0u], EPISTASIS_PAIR[1u]};
     try {
         if (GRADIENT_MODE) {
             GradientDescent gradient_descent(INFILE, MAX_SITES, epistasis, CONCURRENCY);
@@ -143,9 +143,9 @@ std::string Program::make_outdir() const {
     std::regex_search(INFILE, mobj, std::regex("([^/]+?)\\.[^/]+$"));
     std::ostringstream oss;
     oss << mobj.str(1) << "-s" << MAX_SITES;
-    if (EPISTASIS_PAIR[0] != EPISTASIS_PAIR[1]) {
-        oss << "-e" << EPISTASIS_PAIR[0]
-            <<  "x" << EPISTASIS_PAIR[1];
+    if (EPISTASIS_PAIR[0u] != EPISTASIS_PAIR[1u]) {
+        oss << "-e" << EPISTASIS_PAIR[0u]
+            <<  "x" << EPISTASIS_PAIR[1u];
     }
     const std::string outdir = oss.str();
     fs::create_directory(outdir);

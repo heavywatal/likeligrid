@@ -30,15 +30,15 @@ class Program {
   private:
     boost::program_options::options_description options_desc();
     boost::program_options::options_description positional_desc();
-    void help_and_exit();
+    [[noreturn]] void help_and_exit();
     void test(const int flag);
     std::string make_outdir() const;
 
-    unsigned int CONCURRENCY = 1;
-    size_t MAX_SITES = 3;
+    unsigned int CONCURRENCY = 1u;
+    size_t MAX_SITES = 3u;
     std::string INFILE = "-";
     bool GRADIENT_MODE = false;
-    std::vector<size_t> EPISTASIS_PAIR = {0, 0};
+    std::vector<size_t> EPISTASIS_PAIR = {0u, 0u};
 };
 
 } // namespace likeligrid

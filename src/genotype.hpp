@@ -22,7 +22,7 @@ class GenotypeModel {
         init(ist, max_sites);
     }
     GenotypeModel(std::istream&& ist, const size_t max_sites)
-    : GenotypeModel(ist, max_sites) {};
+    : GenotypeModel(ist, max_sites) {}
     GenotypeModel(const std::string&, const size_t max_sites);
 
     void set_epistasis(const std::pair<size_t, size_t>& pair);
@@ -44,8 +44,8 @@ class GenotypeModel {
     double lnp_sample(const bits_t& genotype) const;
 
     void mutate(const bits_t& genotype, const bits_t& pathtype, const double anc_p) {
-        const auto s = genotype.count() + 1;
-        for (size_t j=0; j<num_genes_; ++j) {
+        const auto s = genotype.count() + 1u;
+        for (size_t j=0u; j<num_genes_; ++j) {
             if (genotype[j]) continue;
             const bits_t& mut_path = effects_[j];
             double p = anc_p;
@@ -62,7 +62,7 @@ class GenotypeModel {
 
     double discount_if_subset(const bits_t& pathtype, const bits_t& mut_path) const {
         double p = 1.0;
-        for (size_t i=0; i<num_pathways_; ++i) {
+        for (size_t i=0u; i<num_pathways_; ++i) {
             if (mut_path[i]) {
                 if (pathtype[i]) {
                     p *= theta_[i];
@@ -103,7 +103,7 @@ class GenotypeModel {
 
     bits_t translate(const size_t& mut_idx) const {
         bits_t mut_path;
-        for (size_t j=0; j<num_pathways_; ++j) {
+        for (size_t j=0u; j<num_pathways_; ++j) {
             mut_path.set(j, annot_[j][mut_idx]);
         }
         return mut_path;

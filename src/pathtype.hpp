@@ -19,7 +19,7 @@ class PathtypeModel {
     PathtypeModel(std::istream&&, const size_t max_sites);
     PathtypeModel(
         const std::string& infile,
-        const size_t max_sites=255);
+        const size_t max_sites=255u);
 
     double calc_loglik(const std::valarray<double>& th_path) const;
     const std::vector<std::string>& names() const {return names_;}
