@@ -21,24 +21,27 @@ class GridSearch {
     GridSearch(std::istream& ist,
         const size_t max_sites,
         const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
+        const bool pleiotropy=false,
         const unsigned int concurrency=1u)
         : model_(ist, max_sites),
           concurrency_(concurrency) {
-        init(epistasis_pair);
+        init(epistasis_pair, pleiotropy);
     }
     GridSearch(std::istream&& ist,
         const size_t max_sites,
         const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
+        const bool pleiotropy=false,
         const unsigned int concurrency=1u)
-        : GridSearch(ist, max_sites, epistasis_pair, concurrency){}
+        : GridSearch(ist, max_sites, epistasis_pair, pleiotropy, concurrency){}
     GridSearch(
         const std::string& infile,
         const size_t max_sites,
         const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
+        const bool pleiotropy=false,
         const unsigned int concurrency=1u)
         : model_(infile, max_sites),
           concurrency_(concurrency) {
-        init(epistasis_pair);
+        init(epistasis_pair, pleiotropy);
     }
 
     void run(const bool writing=true);
@@ -51,7 +54,7 @@ class GridSearch {
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
-    void init(const std::pair<size_t, size_t>&);
+    void init(const std::pair<size_t, size_t>&, const bool pleiotropy);
     void run_fout();
     void run_cout();
     void run_impl(std::ostream&, wtl::itertools::Generator<std::valarray<double>>&&);

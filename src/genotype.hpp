@@ -25,7 +25,7 @@ class GenotypeModel {
     : GenotypeModel(ist, max_sites) {}
     GenotypeModel(const std::string&, const size_t max_sites);
 
-    void set_epistasis(const std::pair<size_t, size_t>& pair);
+    bool set_epistasis(const std::pair<size_t, size_t>& pair, const bool pleiotropy=false);
 
     double calc_loglik(const std::valarray<double>& theta);
     void benchmark(const size_t);
@@ -51,7 +51,7 @@ class GenotypeModel {
             double p = anc_p;
             p *= w_gene_[j];
             p *= discount_if_subset(pathtype, mut_path);
-            p *= epistasis(pathtype, mut_path);
+            p *= with_epistasis_ ? epistasis(pathtype, mut_path) : 1.0;
             denoms_[s] += p;
             if (s < max_sites_) {
                 if (wtl::SIGINT_RAISED()) {throw wtl::KeyboardInterrupt();}
@@ -75,16 +75,15 @@ class GenotypeModel {
     }
 
     double epistasis(const bits_t& pathtype, const bits_t& mut_path) const {
-        if (!with_epistasis_) return 1.0;
         if (pathtype[epistasis_pair_.first]) {
             if (pathtype[epistasis_pair_.second]) return 1.0;
-            if (mut_path[epistasis_pair_.second]) return theta_[num_pathways_];
+            if (mut_path[epistasis_pair_.second]) return theta_[epistasis_idx_];
         }
         if (pathtype[epistasis_pair_.second]) {
-            if (mut_path[epistasis_pair_.first]) return theta_[num_pathways_];
+            if (mut_path[epistasis_pair_.first]) return theta_[epistasis_idx_];
         }
         if (mut_path[epistasis_pair_.first]) {
-            if (mut_path[epistasis_pair_.second]) return theta_[num_pathways_];
+            if (mut_path[epistasis_pair_.second]) return theta_[pleiotropy_idx_];
         }
         return 1.0;
     }
@@ -126,6 +125,8 @@ class GenotypeModel {
     std::valarray<double> denoms_;
     std::pair<size_t, size_t> epistasis_pair_;
     bool with_epistasis_ = false;
+    size_t epistasis_idx_ = 0u;
+    size_t pleiotropy_idx_ = epistasis_idx_;
 };
 
 } // namespace likeligrid

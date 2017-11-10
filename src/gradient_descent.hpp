@@ -31,16 +31,19 @@ class GradientDescent {
     GradientDescent(std::istream&,
         const size_t max_sites,
         const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
+        const bool pleiotropy=false,
         const unsigned int concurrency=1u);
     GradientDescent(std::istream&& ist,
         const size_t max_sites,
         const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
+        const bool pleiotropy=false,
         const unsigned int concurrency=1u)
-        : GradientDescent(ist, max_sites, epistasis_pair, concurrency){}
+        : GradientDescent(ist, max_sites, epistasis_pair, pleiotropy, concurrency){}
     GradientDescent(
         const std::string& infile,
         const size_t max_sites,
         const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
+        const bool pleiotropy=false,
         const unsigned int concurrency=1u);
     ~GradientDescent();
 

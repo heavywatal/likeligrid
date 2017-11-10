@@ -22,6 +22,7 @@ GradientDescent::~GradientDescent() = default;
 GradientDescent::GradientDescent(const std::string& infile,
     const size_t max_sites,
     const std::pair<size_t, size_t>& epistasis_pair,
+    const bool pleiotropy,
     const unsigned int concurrency)
     : concurrency_(concurrency) {HERE;
     std::string genotype_file;
@@ -32,8 +33,7 @@ GradientDescent::GradientDescent(const std::string& infile,
     std::cerr << "genotype: " << genotype_file << std::endl;
     model_ = std::make_unique<GenotypeModel>(genotype_file, max_sites);
     bool is_restarting = (max_sites != prev_max_sites);
-    if (epistasis_pair.first != epistasis_pair.second) {
-        model_->set_epistasis(epistasis_pair);
+    if (model_->set_epistasis(epistasis_pair, pleiotropy)) {
         if (prev_epistasis.empty()) {
             is_restarting = true;
         } else {
@@ -59,12 +59,11 @@ GradientDescent::GradientDescent(
     std::istream& ist,
     const size_t max_sites,
     const std::pair<size_t, size_t>& epistasis_pair,
+    const bool pleiotropy,
     const unsigned int concurrency)
     : model_(std::make_unique<GenotypeModel>(ist, max_sites)),
       concurrency_(concurrency) {HERE;
-    if (epistasis_pair.first != epistasis_pair.second) {
-        model_->set_epistasis(epistasis_pair);
-    }
+    model_->set_epistasis(epistasis_pair, pleiotropy);
     const std::valarray<double> new_start(1.0, model_->names().size());
     const double loglik = model_->calc_loglik(new_start);
     history_.emplace(new_start, loglik);

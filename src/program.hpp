@@ -39,6 +39,7 @@ class Program {
     std::string INFILE = "-";
     bool GRADIENT_MODE = false;
     std::vector<size_t> EPISTASIS_PAIR = {0u, 0u};
+    bool PLEIOTROPY = false;
 };
 
 } // namespace likeligrid

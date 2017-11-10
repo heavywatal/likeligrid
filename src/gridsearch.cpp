@@ -16,10 +16,8 @@
 
 namespace likeligrid {
 
-void GridSearch::init(const std::pair<size_t, size_t>& epistasis_pair) {HERE;
-    if (epistasis_pair.first != epistasis_pair.second) {
-        model_.set_epistasis(epistasis_pair);
-    }
+void GridSearch::init(const std::pair<size_t, size_t>& epistasis_pair, const bool pleiotropy) {HERE;
+    model_.set_epistasis(epistasis_pair, pleiotropy);
     mle_params_.resize(model_.names().size());
     mle_params_ = 1.0;
 }

@@ -71,21 +71,25 @@ void GenotypeModel::init(std::istream& ist, const size_t max_sites) {HERE;
     // std::cerr << "effects_: " << effects_ << std::endl;
 }
 
-void GenotypeModel::set_epistasis(const std::pair<size_t, size_t>& pair) {HERE;
+bool GenotypeModel::set_epistasis(const std::pair<size_t, size_t>& pair, const bool pleiotropy) {HERE;
+    if (pair.first == pair.second) return false;
+    epistasis_pair_ = pair;
+    pleiotropy_idx_ = epistasis_idx_ = num_pathways_;
     std::ostringstream oss;
     oss << names_.at(pair.first) << ":" << names_.at(pair.second);
     names_.push_back(oss.str());
     std::cerr << "epistasis: " << names_.back() << std::endl;
-    if (pair.first == pair.second) {
-        throw std::runtime_error("pair.first == pair.second");
+    if (pleiotropy) {
+        names_.push_back("pleiotropy");
+        ++pleiotropy_idx_;
+        std::cerr << "pleiotropy: true" << std::endl;
     }
-    epistasis_pair_ = pair;
-    with_epistasis_ = true;
+    return with_epistasis_ = true;
 }
 
 double GenotypeModel::calc_loglik(const std::valarray<double>& theta) {
     theta_ = theta;
-    if (with_epistasis_ && theta_.size() <= num_pathways_) {
+    if (theta_.size() <= epistasis_idx_) {
         throw std::runtime_error("theta_.size() <= num_pathways_");
     }
     denoms_.resize(max_sites_ + 1u);

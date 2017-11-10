@@ -37,7 +37,8 @@ po::options_description Program::options_desc() {HERE;
         ("parallel,j", po::value(&CONCURRENCY)->default_value(CONCURRENCY))
         ("max-sites,s", po::value(&MAX_SITES)->default_value(MAX_SITES))
         ("gradient,g", po::bool_switch(&GRADIENT_MODE))
-        ("epistasis,e", po::value(&EPISTASIS_PAIR)->default_value(EPISTASIS_PAIR)->multitoken());
+        ("epistasis,e", po::value(&EPISTASIS_PAIR)->default_value(EPISTASIS_PAIR)->multitoken())
+        ("pleiotropy,p", po::bool_switch(&PLEIOTROPY));
     return description;
 }
 
@@ -113,19 +114,22 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
 
 void Program::run() {HERE;
     std::pair<size_t, size_t> epistasis{EPISTASIS_PAIR[0u], EPISTASIS_PAIR[1u]};
+    if (PLEIOTROPY && (epistasis.first == epistasis.second)) {
+        throw std::runtime_error("PLEIOTROPY && (epistasis.first == epistasis.second)");
+    }
     try {
         if (GRADIENT_MODE) {
-            GradientDescent gradient_descent(INFILE, MAX_SITES, epistasis, CONCURRENCY);
+            GradientDescent gradient_descent(INFILE, MAX_SITES, epistasis, PLEIOTROPY, CONCURRENCY);
             fs::current_path(fs::path(INFILE).parent_path());
             wtl::ozfstream ost(gradient_descent.outfile());
             ost.precision(std::cout.precision());
             std::cerr << "outfile: " << ost.path() << std::endl;
             gradient_descent.run(ost);
         } else if (INFILE == "-") {
-            GridSearch searcher(std::cin, MAX_SITES, epistasis, CONCURRENCY);
+            GridSearch searcher(std::cin, MAX_SITES, epistasis, PLEIOTROPY, CONCURRENCY);
             searcher.run(false);
         } else {
-            GridSearch searcher(INFILE, MAX_SITES, epistasis, CONCURRENCY);
+            GridSearch searcher(INFILE, MAX_SITES, epistasis, PLEIOTROPY, CONCURRENCY);
             // after constructor success
             const std::string outdir = make_outdir();
             fs::current_path(outdir);
