@@ -19,7 +19,7 @@ namespace likeligrid {
 // std::unique_ptr needs to know GenotypeModel implementation
 GradientDescent::~GradientDescent() = default;
 
-GradientDescent::GradientDescent(const std::string& infile,
+GradientDescent::GradientDescent(const std::string& result_filename,
     const size_t max_sites,
     const std::pair<size_t, size_t>& epistasis_pair,
     const bool pleiotropy,
@@ -29,7 +29,7 @@ GradientDescent::GradientDescent(const std::string& infile,
     size_t prev_max_sites;
     std::string prev_epistasis;
     std::tie(genotype_file, prev_max_sites, prev_epistasis)
-        = read_results(infile);
+        = read_results(result_filename);
     std::cerr << "genotype: " << genotype_file << std::endl;
     model_ = std::make_unique<GenotypeModel>(genotype_file, max_sites);
     bool is_restarting = (max_sites != prev_max_sites);
@@ -56,12 +56,12 @@ GradientDescent::GradientDescent(const std::string& infile,
 }
 
 GradientDescent::GradientDescent(
-    std::istream& ist,
+    std::istream& ist_genotype,
     const size_t max_sites,
     const std::pair<size_t, size_t>& epistasis_pair,
     const bool pleiotropy,
     const unsigned int concurrency)
-    : model_(std::make_unique<GenotypeModel>(ist, max_sites)),
+    : model_(std::make_unique<GenotypeModel>(ist_genotype, max_sites)),
       concurrency_(concurrency) {HERE;
     model_->set_epistasis(epistasis_pair, pleiotropy);
     const std::valarray<double> new_start(1.0, model_->names().size());
