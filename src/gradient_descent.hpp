@@ -23,6 +23,7 @@ class lexicographical_less {
     }
 };
 
+//! existing keys are checked in empty_neighbors_of()
 using MapGrid = std::map<std::valarray<double>, double, lexicographical_less>;
 
 class GradientDescent {
