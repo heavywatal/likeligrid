@@ -1,6 +1,7 @@
 /*! @file program.cpp
     @brief Implementation of Program class
 */
+#include "version.hpp"
 #include "program.hpp"
 #include "pathtype.hpp"
 #include "genotype.hpp"
@@ -53,6 +54,9 @@ po::options_description Program::positional_desc() {HERE;
     auto description = general_desc();
     description.add(options_desc());
     // do not print positional arguments as options
+    std::cout << "commit " << GIT_COMMIT_HASH
+              << " [" << GIT_BRANCH << "]\n"
+              << "Date:  " << GIT_COMMIT_TIME << std::endl;    std::cout << "Usage: tek [options]\n" << std::endl;
     std::cout << "Usage: likeligrid [options] infile\n" << std::endl;
     description.print(std::cout);
     throw wtl::ExitSuccess();
