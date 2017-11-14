@@ -138,6 +138,23 @@ double GenotypeModel::lnp_sample(const bits_t& genotype) const {
     return std::log(p);
 }
 
+void GenotypeModel::mutate(const bits_t& genotype, const bits_t& pathtype, const double anc_p) {
+    const auto s = genotype.count() + 1u;
+    for (size_t j=0u; j<num_genes_; ++j) {
+        if (genotype[j]) continue;
+        const bits_t& mut_path = effects_[j];
+        double p = anc_p;
+        p *= w_gene_[j];
+        p *= discount_if_subset(pathtype, mut_path);
+        p *= with_epistasis_ ? epistasis(pathtype, mut_path) : 1.0;
+        denoms_[s] += p;
+        if (s < max_sites_) {
+            if (wtl::SIGINT_RAISED()) {throw wtl::KeyboardInterrupt();}
+            mutate(bits_t(genotype).set(j), pathtype | mut_path, p);
+        }
+    }
+}
+
 void GenotypeModel::benchmark(const size_t n) {
     const std::valarray<double> param(0.9, num_pathways_);
     double leaves = wtl::pow(static_cast<double>(num_genes_), static_cast<unsigned int>(max_sites_));

@@ -43,22 +43,7 @@ class GenotypeModel {
 
     double lnp_sample(const bits_t& genotype) const;
 
-    void mutate(const bits_t& genotype, const bits_t& pathtype, const double anc_p) {
-        const auto s = genotype.count() + 1u;
-        for (size_t j=0u; j<num_genes_; ++j) {
-            if (genotype[j]) continue;
-            const bits_t& mut_path = effects_[j];
-            double p = anc_p;
-            p *= w_gene_[j];
-            p *= discount_if_subset(pathtype, mut_path);
-            p *= with_epistasis_ ? epistasis(pathtype, mut_path) : 1.0;
-            denoms_[s] += p;
-            if (s < max_sites_) {
-                if (wtl::SIGINT_RAISED()) {throw wtl::KeyboardInterrupt();}
-                mutate(bits_t(genotype).set(j), pathtype | mut_path, p);
-            }
-        }
-    }
+    void mutate(const bits_t& genotype, const bits_t& pathtype, const double anc_p);
 
     double discount_if_subset(const bits_t& pathtype, const bits_t& mut_path) const {
         double p = 1.0;
