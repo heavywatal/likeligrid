@@ -1,3 +1,5 @@
+# issue #11
+
 library(tidyverse)
 loadNamespace('cowplot')
 
@@ -68,13 +70,23 @@ ggsave('mutation_order_prob.png', .plt, width=8, height=4.2)
 # #######1#########2#########3#########4#########5#########6#########7#########
 
 p = c(0.5, 0.3, 0.2)
+.idx = seq_along(p)
 
-sum(2 * p[1] * p[2] / (1 - sum(p ** 2)),
-    2 * p[2] * p[3] / (1 - sum(p ** 2)),
-    2 * p[3] * p[1] / (1 - sum(p ** 2)))
+c(AB= 2 * p[1] * p[2] / (1 - sum(p ** 2)),
+  BC= 2 * p[2] * p[3] / (1 - sum(p ** 2)),
+  CA= 2 * p[3] * p[1] / (1 - sum(p ** 2)))
 
-sum(p[1] * p[2] / (1 - p[1]) + p[2] * p[1] / (1 - p[2]),
-    p[2] * p[3] / (1 - p[2]) + p[3] * p[2] / (1 - p[3]),
-    p[3] * p[1] / (1 - p[3]) + p[1] * p[3] / (1 - p[1]))
+purrr::rerun(10000L, sample(.idx, 2, replace=TRUE, prob=p)) %>%
+purrr::map_chr(~{paste0(LETTERS[.x], collapse='')}) %>%
+table()
 
-purrr::rerun(3L, sample(seq_along(p), 2, replace=FALSE, prob=p))
+c(AB= p[1] * p[2] / (1 - p[1]),
+  BA= p[2] * p[1] / (1 - p[2]),
+  BC= p[2] * p[3] / (1 - p[2]),
+  CB= p[3] * p[2] / (1 - p[3]),
+  CA= p[3] * p[1] / (1 - p[3]),
+  AC= p[1] * p[3] / (1 - p[1]))
+
+purrr::rerun(10000L, sample(.idx, 2, replace=FALSE, prob=p)) %>%
+purrr::map_chr(~{paste0(LETTERS[.x], collapse='')}) %>%
+table()

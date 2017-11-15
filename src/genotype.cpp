@@ -94,7 +94,7 @@ double GenotypeModel::calc_loglik(const std::valarray<double>& theta) {
     }
     denoms_.resize(max_sites_ + 1u);
     denoms_ = 0.0;
-    mutate(bits_t(), bits_t(), 1.0);
+    mutate();
     // std::cerr << "denoms_: " << denoms_ << std::endl;
     double loglik = 0.0;
     for (const auto& genotype: genot_) {
@@ -138,19 +138,20 @@ double GenotypeModel::lnp_sample(const bits_t& genotype) const {
     return std::log(p);
 }
 
-void GenotypeModel::mutate(const bits_t& genotype, const bits_t& pathtype, const double anc_p) {
+void GenotypeModel::mutate(const bits_t& genotype, const bits_t& pathtype, const double anc_p, const double open_p) {
     const auto s = genotype.count() + 1u;
     for (size_t j=0u; j<num_genes_; ++j) {
         if (genotype[j]) continue;
         const bits_t& mut_path = effects_[j];
         double p = anc_p;
         p *= w_gene_[j];
+        p /= open_p;
         p *= discount_if_subset(pathtype, mut_path);
         p *= with_epistasis_ ? epistasis(pathtype, mut_path) : 1.0;
         denoms_[s] += p;
         if (s < max_sites_) {
             if (wtl::SIGINT_RAISED()) {throw wtl::KeyboardInterrupt();}
-            mutate(bits_t(genotype).set(j), pathtype | mut_path, p);
+            mutate(bits_t(genotype).set(j), pathtype | mut_path, p, open_p - w_gene_[j]);
         }
     }
 }

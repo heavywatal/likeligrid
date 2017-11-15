@@ -43,7 +43,8 @@ class GenotypeModel {
 
     double lnp_sample(const bits_t& genotype) const;
 
-    void mutate(const bits_t& genotype, const bits_t& pathtype, const double anc_p);
+    void mutate(const bits_t& genotype=bits_t(), const bits_t& pathtype=bits_t(),
+                const double anc_p=1.0, const double open_p=1.0);
 
     double discount_if_subset(const bits_t& pathtype, const bits_t& mut_path) const {
         double p = 1.0;
