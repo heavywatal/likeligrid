@@ -66,18 +66,21 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--dry-run', action='store_true')
     parser.add_argument('-j', '--jobs', type=int, default=wopt.cpu_count())
+    parser.add_argument('-p', '--parallel', type=int, default=1)
     parser.add_argument('-o', '--outdir', default='.stdout')
-    parser.add_argument('--begin', type=int, default=2)
+    parser.add_argument('--begin', type=int, default=4)
     parser.add_argument('--end', type=int, default=6)
     parser.add_argument('-e', '--epistasis', action='store_true')
     parser.add_argument('--tp53', action='store_true')
     parser.add_argument('infile', nargs='+')
     (args, rest) = parser.parse_known_args()
 
+    print("cpu_count(): {}".format(wopt.cpu_count()))
+    print('{} jobs * {} cores/job'.format(args.jobs, args.parallel))
     range_s = range(args.begin, args.end)
-    it = iter_args(args.infile, range_s, args.jobs, rest,
+    it = iter_args(args.infile, range_s, args.parallel, rest,
                    args.epistasis, args.tp53)
-    wopt.map_async(it, 1, args.dry_run, outdir=args.outdir)
+    wopt.map_async(it, args.jobs, args.dry_run, outdir=args.outdir)
     print('End of ' + __file__)
 
 
