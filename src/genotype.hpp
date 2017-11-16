@@ -46,7 +46,7 @@ class GenotypeModel {
     void mutate(const bits_t& genotype=bits_t(), const bits_t& pathtype=bits_t(),
                 const double anc_p=1.0, const double open_p=1.0);
 
-    double discount_if_subset(const bits_t& pathtype, const bits_t& mut_path) const {
+    double theta_if_subset(const bits_t& pathtype, const bits_t& mut_path) const {
         double p = 1.0;
         for (size_t i=0u; i<num_pathways_; ++i) {
             if (mut_path[i]) {
@@ -60,7 +60,7 @@ class GenotypeModel {
         return p;
     }
 
-    double epistasis(const bits_t& pathtype, const bits_t& mut_path) const {
+    double theta_if_paired(const bits_t& pathtype, const bits_t& mut_path) const {
         if (pathtype[epistasis_pair_.first]) {
             if (pathtype[epistasis_pair_.second]) return 1.0;
             if (mut_path[epistasis_pair_.second]) return theta_[epistasis_idx_];
@@ -74,13 +74,13 @@ class GenotypeModel {
         return 1.0;
     }
 
-    double discount(const std::valarray<size_t>& mut_route) const {
+    double prod_theta(const std::valarray<size_t>& mut_route) const {
         double p = 1.0;
         bits_t pathtype;
         for (const auto j: mut_route) {
             const auto& mut_path = effects_[j];
-            p *= discount_if_subset(pathtype, mut_path);
-            p *= epistasis(pathtype, mut_path);
+            p *= theta_if_subset(pathtype, mut_path);
+            if (epistasis_) {p *= theta_if_paired(pathtype, mut_path);}
             pathtype |= mut_path;
         }
         return p;
@@ -110,8 +110,8 @@ class GenotypeModel {
     std::valarray<double> theta_;
     std::valarray<double> denoms_;
     std::pair<size_t, size_t> epistasis_pair_;
-    bool with_epistasis_ = false;
-    size_t epistasis_idx_ = 0u;
+    bool epistasis_ = false;
+    size_t epistasis_idx_ = -1u;
     size_t pleiotropy_idx_ = epistasis_idx_;
 };
 

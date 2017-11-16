@@ -84,14 +84,11 @@ bool GenotypeModel::set_epistasis(const std::pair<size_t, size_t>& pair, const b
         ++pleiotropy_idx_;
         std::cerr << "pleiotropy: true" << std::endl;
     }
-    return with_epistasis_ = true;
+    return epistasis_ = true;
 }
 
 double GenotypeModel::calc_loglik(const std::valarray<double>& theta) {
     theta_ = theta;
-    if (theta_.size() <= epistasis_idx_) {
-        throw std::runtime_error("theta_.size() <= num_pathways_");
-    }
     denoms_.resize(max_sites_ + 1u);
     denoms_ = 0.0;
     mutate();
@@ -133,7 +130,7 @@ double GenotypeModel::lnp_sample(const bits_t& genotype) const {
     const double p_basic = slice_prod(w_gene_, genotype);
     auto mut_route = to_indices(genotype);
     do {
-        p += p_basic * discount(mut_route);
+        p += p_basic * prod_theta(mut_route);
     } while (std::next_permutation(std::begin(mut_route), std::end(mut_route)));
     return std::log(p);
 }
@@ -146,8 +143,8 @@ void GenotypeModel::mutate(const bits_t& genotype, const bits_t& pathtype, const
         double p = anc_p;
         p *= w_gene_[j];
         p /= open_p;
-        p *= discount_if_subset(pathtype, mut_path);
-        p *= with_epistasis_ ? epistasis(pathtype, mut_path) : 1.0;
+        p *= theta_if_subset(pathtype, mut_path);
+        if (epistasis_) {p *= theta_if_paired(pathtype, mut_path);}
         denoms_[s] += p;
         if (s < max_sites_) {
             if (wtl::SIGINT_RAISED()) {throw wtl::KeyboardInterrupt();}
