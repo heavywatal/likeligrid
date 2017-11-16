@@ -88,9 +88,10 @@ MapGrid::iterator GradientDescent::find_better(const MapGrid::iterator& prev_it)
     };
     std::vector<std::future<std::pair<std::valarray<double>, double>>> futures;
     futures.reserve(concurrency_);
+    wtl::ThreadPool pool(concurrency_);
     const auto candidates = empty_neighbors_of(prev_it->first);
     for (const auto& theta: candidates) {
-        futures.push_back(std::async(std::launch::async, task, *model_, theta));
+        futures.push_back(pool.submit<std::pair<std::valarray<double>, double>>(task, *model_, theta));
         if ((futures.size() == concurrency_) || (&theta == &candidates.back())) {
             for (auto& ftr: futures) {
                 auto result_it = history_.insert(ftr.get()).first;
