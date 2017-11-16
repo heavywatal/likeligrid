@@ -111,7 +111,7 @@ void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
     std::vector<std::future<std::string>> futures;
     futures.reserve(gen.max_count() - skip_);
     for (const auto& th_path: gen(skip_)) {
-        futures.push_back(pool.submit<std::string>(task, th_path));
+        futures.push_back(pool.submit(task, th_path));
     }
 
     auto buffer = wtl::make_oss();
