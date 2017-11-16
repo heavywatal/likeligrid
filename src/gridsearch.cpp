@@ -98,9 +98,7 @@ void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
         write_header(ost, gen.max_count());
     }
 
-    wtl::Semaphore semaphore(concurrency_);
-    auto task = [this,&semaphore](const std::valarray<double> th_path) {
-        std::lock_guard<wtl::Semaphore> scope_unlock(semaphore, std::adopt_lock);
+    auto task = [this](const std::valarray<double> th_path) {
         // argument and model are copied for each thread
         auto buffer = wtl::make_oss();
         auto model_copy = this->model_;
@@ -109,30 +107,34 @@ void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
         return buffer.str();
     };
 
-    std::deque<std::future<std::string>> futures;
-    const auto min_interval = std::chrono::seconds(1);
-    auto next_time = std::chrono::system_clock::now() + min_interval;
-    size_t stars = 0u;
+    wtl::ThreadPool pool(concurrency_);
+    std::vector<std::future<std::string>> futures;
+    futures.reserve(gen.max_count() - skip_);
     for (const auto& th_path: gen(skip_)) {
-        semaphore.lock();
-        futures.push_back(std::async(std::launch::async, task, th_path));
+        futures.push_back(pool.submit<std::string>(task, th_path));
+    }
+
+    auto buffer = wtl::make_oss();
+    size_t stars = 0u;
+    size_t i = skip_;
+    const auto min_interval = std::chrono::seconds(1);
+    auto next_time = std::chrono::system_clock::now();
+    for (auto& ftr: futures) {
+        buffer << ftr.get();
+        ++i;
         auto now = std::chrono::system_clock::now();
-        if (now > next_time) {
+        if (now > next_time || &ftr == &futures.back()) {
             next_time = now + min_interval;
-            while (!futures.empty() && wtl::is_ready(futures.front())) {
-                ost << futures.front().get();
-                futures.pop_front();
-            }
-            for (size_t n= static_cast<size_t>(0.2 * gen.percent()); stars<n; ++stars) {
+            ost << buffer.str();
+            buffer.str("");
+            buffer.clear();
+            for (size_t n= static_cast<size_t>(20.0 * i / gen.max_count()); stars<n; ++stars) {
                 std::cerr << "*";
             }
         }
         if (wtl::SIGINT_RAISED()) {throw wtl::KeyboardInterrupt();}
     }
     std::cerr << "\n";
-    for (auto& ftr: futures) {
-        ost << ftr.get();
-    }
 }
 
 std::string GridSearch::init_meta() {HERE;
