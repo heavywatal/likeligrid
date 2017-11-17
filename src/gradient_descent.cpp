@@ -19,61 +19,41 @@ namespace likeligrid {
 // std::unique_ptr needs to know GenotypeModel implementation
 GradientDescent::~GradientDescent() = default;
 
-GradientDescent::GradientDescent(const std::string& result_filename,
+GradientDescent::GradientDescent(
+    std::istream& ist,
     const size_t max_sites,
     const std::pair<size_t, size_t>& epistasis_pair,
     const bool pleiotropy,
     const unsigned int concurrency)
-    : concurrency_(concurrency) {HERE;
-    std::string genotype_file;
-    size_t prev_max_sites;
-    std::string prev_epistasis;
-    std::tie(genotype_file, prev_max_sites, prev_epistasis)
-        = read_results(result_filename);
-    std::cerr << "genotype: " << genotype_file << std::endl;
-    model_ = std::make_unique<GenotypeModel>(genotype_file, max_sites);
-    bool is_restarting = (max_sites != prev_max_sites);
-    if (model_->set_epistasis(epistasis_pair, pleiotropy)) {
-        if (prev_epistasis.empty()) {
-            is_restarting = true;
-        } else {
-            if (model_->names().back() != prev_epistasis) {
-                throw std::runtime_error("epistasis_name != prev_epistasis");
-            }
-        }
-    }
-    const auto it = const_max_iterator();
-    std::cerr << "old best: " << *it << std::endl;
-    if (is_restarting) {
-        const auto& old_best = it->first;
-        std::valarray<double> new_start(1.0, model_->names().size());
-        std::copy(std::begin(old_best), std::end(old_best), std::begin(new_start));
-        history_.clear();
-        const double loglik = model_->calc_loglik(new_start);
-        history_.emplace(new_start, loglik);
-        std::cerr << "new start: " << *history_.begin() << std::endl;
-    }
+    : model_(std::make_unique<GenotypeModel>(ist, max_sites)),
+      concurrency_(concurrency)
+    {HERE;
+    model_->set_epistasis(epistasis_pair, pleiotropy);
 }
 
 GradientDescent::GradientDescent(
-    std::istream& ist_genotype,
+    const std::string& genotype_file,
     const size_t max_sites,
     const std::pair<size_t, size_t>& epistasis_pair,
     const bool pleiotropy,
     const unsigned int concurrency)
-    : model_(std::make_unique<GenotypeModel>(ist_genotype, max_sites)),
-      concurrency_(concurrency) {HERE;
+    : model_(std::make_unique<GenotypeModel>(genotype_file, max_sites)),
+      concurrency_(concurrency)
+    {HERE;
     model_->set_epistasis(epistasis_pair, pleiotropy);
-    const std::valarray<double> new_start(1.0, model_->names().size());
-    const double loglik = model_->calc_loglik(new_start);
-    history_.emplace(new_start, loglik);
 }
 
-void GradientDescent::run(std::ostream& ost) {HERE;
+void GradientDescent::run(std::ostream& ost, const std::valarray<double>& starting_point) {HERE;
     auto at_exit = wtl::scope_exit([&ost,this](){
         std::cerr << "\n" << *const_max_iterator() << std::endl;
         write(ost);
     });
+
+    std::valarray<double> new_start(1.0, model_->names().size());
+    std::copy(std::begin(starting_point), std::end(starting_point), std::begin(new_start));
+    history_.emplace(new_start, model_->calc_loglik(new_start));
+    std::cerr << "start: " << *history_.begin() << std::endl;
+
     for (auto it = max_iterator();
          it != history_.end();
          it = find_better(it)) {
@@ -193,8 +173,8 @@ R"({
   "annotation": ["0011", "1100"],
   "sample": ["0011", "0101", "1001", "0110", "1010", "1100"]
 })";
-    GradientDescent searcher(sst, 4, {0, 1});
-    searcher.run(std::cout);
+    GradientDescent searcher(sst, 4, {0, 1}, false);
+    searcher.run(std::cout, {0.99, 1.01});
 }
 
 } // namespace likeligrid

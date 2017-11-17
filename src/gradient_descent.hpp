@@ -29,28 +29,20 @@ using MapGrid = std::map<std::valarray<double>, double, lexicographical_less>;
 class GradientDescent {
   public:
     GradientDescent() = delete;
-    //! start from scratch
-    GradientDescent(std::istream& ist_genotype,
+    GradientDescent(std::istream& ist,
         const size_t max_sites,
         const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
         const bool pleiotropy=false,
         const unsigned int concurrency=1u);
-    GradientDescent(std::istream&& ist_genotype,
-        const size_t max_sites,
-        const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
-        const bool pleiotropy=false,
-        const unsigned int concurrency=1u)
-        : GradientDescent(ist_genotype, max_sites, epistasis_pair, pleiotropy, concurrency){}
-    //! start from the previous peak
     GradientDescent(
-        const std::string& result_filename,
+        const std::string& infile,
         const size_t max_sites,
         const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
         const bool pleiotropy=false,
         const unsigned int concurrency=1u);
     ~GradientDescent();
 
-    void run(std::ostream&);
+    void run(std::ostream&, const std::valarray<double>& starting_point={});
 
     std::string outfile() const;
 

@@ -123,12 +123,25 @@ void Program::run() {HERE;
     }
     try {
         if (GRADIENT_MODE) {
+            std::valarray<double> mle_params;
+            std::ostringstream outfile;
+            if (wtl::endswith(INFILE, ".tsv.gz")) {// previous result
+                std::string previous = fs::path(INFILE).filename().string();
+                wtl::izfstream ist(INFILE);
+                size_t max_sites;
+                std::tie(INFILE, max_sites, std::ignore, std::ignore) = read_metadata(ist);
+                std::tie(std::ignore, std::ignore, mle_params) = read_body(ist);
+                outfile << "grad-from-s" << max_sites << "-" << previous;
+            } else {
+                outfile << "grad-from-center.tsv.gz";
+            }
             GradientDescent gradient_descent(INFILE, MAX_SITES, epistasis, PLEIOTROPY, CONCURRENCY);
-            fs::current_path(fs::path(INFILE).parent_path());
-            wtl::ozfstream ost(gradient_descent.outfile());
+            const std::string outdir = make_outdir();
+            fs::current_path(outdir);
+            wtl::ozfstream ost(outfile.str());
             ost.precision(std::cout.precision());
             std::cerr << "outfile: " << ost.path() << std::endl;
-            gradient_descent.run(ost);
+            gradient_descent.run(ost, mle_params);
         } else if (INFILE == "-") {
             GridSearch searcher(std::cin, MAX_SITES, epistasis, PLEIOTROPY, CONCURRENCY);
             searcher.run(false);
@@ -151,6 +164,7 @@ std::string Program::make_outdir() const {
     std::regex_search(INFILE, mobj, std::regex("([^/]+?)\\.[^/]+$"));
     std::ostringstream oss;
     oss << mobj.str(1) << "-s" << MAX_SITES;
+    if (GRADIENT_MODE) {oss << "-g";}
     if (EPISTASIS_PAIR[0u] != EPISTASIS_PAIR[1u]) {
         oss << "-e" << EPISTASIS_PAIR[0u]
             <<  "x" << EPISTASIS_PAIR[1u];
