@@ -39,7 +39,7 @@ void GridSearch::run_fout() {HERE;
         std::cerr << model_.names()[j] << ": " << axes[j] << std::endl;
     }
     {
-        wtl::ozfstream fout(outfile, std::ios::out | std::ios::app);
+        wtl::ozfstream fout(outfile, std::ios_base::out | std::ios_base::app);
         std::cerr << "Writing: " << outfile << std::endl;
         run_impl(fout, wtl::itertools::product(axes));
     }
@@ -139,7 +139,7 @@ void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
 
 std::string GridSearch::init_meta() {HERE;
     if (stage_ >= STEPS.size()) return "";
-    auto oss = wtl::make_oss(2u, std::ios::fixed);
+    auto oss = wtl::make_oss(2u, std::ios_base::fixed);
     oss << "grid-" << STEPS.at(stage_) << ".tsv.gz";
     std::string outfile = oss.str();
     try {
@@ -150,8 +150,8 @@ std::string GridSearch::init_meta() {HERE;
             ++stage_;
             outfile = init_meta();
         }
-    } catch (std::ios::failure& e) {
-        if (errno != 2u) throw;
+    } catch (std::ios_base::failure& e) {
+        if (errno != ENOENT) throw e;
     }
     return outfile;
 }
