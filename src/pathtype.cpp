@@ -5,6 +5,7 @@
 #include "pathtype.hpp"
 
 #include <functional>
+#include <stdexcept>
 
 #include <wtl/debug.hpp>
 #include <wtl/exception.hpp>
@@ -57,7 +58,9 @@ PathtypeModel::PathtypeModel(std::istream&& ist, const size_t max_sites) {HERE;
     std::cerr << "w_pathway_: " << w_pathway_ << std::endl;
     std::cerr << "a_pathway_: " << a_pathway_ << std::endl;
     std::cerr << "lnp_const_: " << lnp_const_ << std::endl;
-    if (std::isnan(lnp_const_)) throw lnpnan_error();
+    if (std::isnan(lnp_const_)) {
+        throw std::runtime_error("lnp is nan; maybe some pathways have no mutation\n");
+    }
 
     index_axes_.reserve(nsam_with_s_.size());
     std::vector<size_t> indices(a_pathway_.size());

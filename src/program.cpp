@@ -154,8 +154,6 @@ void Program::run() {HERE;
         }
     } catch (const wtl::KeyboardInterrupt& e) {
         std::cerr << e.what() << std::endl;
-    } catch (const lnpnan_error& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
     }
 }
 
