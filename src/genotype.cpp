@@ -6,6 +6,7 @@
 #include <json.hpp>
 
 #include <wtl/debug.hpp>
+#include <wtl/chrono.hpp>
 #include <wtl/iostr.hpp>
 #include <wtl/zfstream.hpp>
 #include <wtl/algorithm.hpp>

@@ -11,6 +11,7 @@
 #include <wtl/exception.hpp>
 #include <wtl/debug.hpp>
 #include <wtl/iostr.hpp>
+#include <wtl/chrono.hpp>
 #include <wtl/getopt.hpp>
 #include <wtl/zfstream.hpp>
 
@@ -87,7 +88,7 @@ void Program::test(const int flag) {HERE;
 }
 
 Program::Program(const std::vector<std::string>& arguments) {HERE;
-    std::cout << wtl::join(arguments, " ") << std::endl;
+    wtl::join(arguments, std::cout, " ") << std::endl;
     std::ios::sync_with_stdio(false);
     std::cin.tie(0);
     std::cout.precision(15);

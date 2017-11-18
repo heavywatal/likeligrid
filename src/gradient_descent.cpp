@@ -120,10 +120,11 @@ void GradientDescent::write(std::ostream& ost) {HERE;
     ost << "##max_sites=" << model_->max_sites() << "\n";
     ost << "##max_count=" << 0u << "\n";
     ost << "##step=" << 0.01 << "\n";
-    ost << "loglik\t" << wtl::join(model_->names(), "\t") << "\n";
+    ost << "loglik\t";
+    wtl::join(model_->names(), ost, "\t") << "\n";
     for (const auto& p: history_) {
-        ost << p.second << "\t"
-            << wtl::str_join(p.first, "\t") << "\n";
+        ost << p.second << "\t";
+        wtl::join(p.first, ost, "\t") << "\n";
     }
 }
 

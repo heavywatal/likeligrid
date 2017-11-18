@@ -102,8 +102,8 @@ void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
         // argument and model are copied for each thread
         auto buffer = wtl::make_oss();
         auto model_copy = this->model_;
-        buffer << model_copy.calc_loglik(th_path) << "\t"
-               << wtl::str_join(th_path, "\t") << "\n";
+        buffer << model_copy.calc_loglik(th_path) << "\t";
+        wtl::join(th_path, buffer, "\t") << "\n";
         return buffer.str();
     };
 
@@ -180,7 +180,8 @@ void GridSearch::write_header(std::ostream& ost, const size_t max_count) const {
     ost << "##max_sites=" << model_.max_sites() << "\n";
     ost << "##max_count=" << max_count << "\n";
     ost << "##step=" << STEPS.at(stage_) << "\n";
-    ost << "loglik\t" << wtl::join(model_.names(), "\t") << "\n";
+    ost << "loglik\t";
+    wtl::join(model_.names(), ost, "\t") << "\n";
 }
 
 void GridSearch::test() {HERE;
