@@ -27,12 +27,12 @@ def iter_args(infiles, range_s, concurrency, rest, epistasis, tp53):
                     yield const + ['-e {} {}'.format(*x)] + args + [f]
             elif tp53:
                 pair = tp53_pleiotropic_pair(f)
-                yield const + ['-e {} {}'.format(*pair)] + args + [f]
+                yield const + ['-e {} {}'.format(*pair), '-p'] + args + [f]
             else:
                 yield const + args + [f]
 
 
-def count_pathways_tsv(infile):
+def read_pathways_tsv(infile):
     """Read result file"""
     with gzip.open(infile, 'rt') as fin:
         for line in fin:
@@ -41,6 +41,14 @@ def count_pathways_tsv(infile):
             header = line.rstrip().split('\t')
             break
     header.pop(0)  # loglik
+    return header
+
+
+def count_pathways_tsv(infile):
+    """Read result file"""
+    header = read_pathways_tsv(infile)
+    if header[-1] == 'pleiotropy':
+        header.pop(-1)
     if ':' in header[-1]:
         header.pop(-1)
     return len(header)
@@ -54,6 +62,12 @@ def count_pathways_json(infile):
 
 
 def tp53_pleiotropic_pair(infile):
+    """Read result file"""
+    columns = read_pathways_tsv(infile)
+    return (columns.index('Cycle'), columns.index('Damage'))
+
+
+def tp53_pleiotropic_pair_json(infile):
     """Read genotype file"""
     with gzip.open(infile, 'r') as fin:
         d = json.load(fin)

@@ -168,6 +168,7 @@ std::string Program::make_outdir() const {
         oss << "-e" << EPISTASIS_PAIR[0u]
             <<  "x" << EPISTASIS_PAIR[1u];
     }
+    if (PLEIOTROPY) {oss << "-p";}
     const std::string outdir = oss.str();
     fs::create_directory(outdir);
     return outdir;
