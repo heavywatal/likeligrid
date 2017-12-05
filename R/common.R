@@ -1,10 +1,13 @@
 read_metadata = function(.dir) {
     tibble(indir= list.dirs(.dir, recursive=FALSE)) %>%
     dplyr::mutate(label= basename(indir)) %>%
-    tidyr::separate(label, c('TCGA', 'type', 'definition', 's', 'epistasis'), '-', fill='right', remove=FALSE) %>%
-    dplyr::select(-TCGA) %>%
-    dplyr::filter(!is.na(type)) %>%
-    dplyr::mutate(s=str_replace(s, '^s', '') %>% parse_integer())
+    tidyr::separate(label, c('TCGA', 'type', 'definition', 'rest'), '-', remove=FALSE, extra='merge', fill='right') %>%
+    dplyr::mutate(rest= paste0('-', rest),
+      s= str_extract(rest, '(?<=-s)\\d') %>% parse_integer(),
+      gradient= str_detect(rest, '-g'),
+      epistasis= str_extract(rest, '(?<=-e)[^-]+')) %>%
+    dplyr::select(-TCGA, -rest) %>%
+    dplyr::filter(!is.na(type))
 }
 
 read_likeligrid = function(file) {
