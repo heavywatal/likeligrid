@@ -42,9 +42,9 @@ class GradientDescent {
         const unsigned int concurrency=1u);
     ~GradientDescent();
 
-    void run(std::ostream&, const std::valarray<double>& starting_point={});
+    void run(std::ostream&);
 
-    std::string outfile() const;
+    std::string outfile() const {return outfile_;};
 
     static void test();
 
@@ -59,8 +59,10 @@ class GradientDescent {
     MapGrid::iterator max_iterator();
     MapGrid::const_iterator const_max_iterator() const;
 
-    MapGrid history_;
     std::unique_ptr<GenotypeModel> model_;
+    std::valarray<double> starting_point_;
+    MapGrid history_;
+    std::string outfile_;
 
     const unsigned int concurrency_;
 };
