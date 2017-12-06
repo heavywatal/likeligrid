@@ -5,7 +5,8 @@ read_metadata = function(.dir) {
     dplyr::mutate(rest= paste0('-', rest),
       s= str_extract(rest, '(?<=-s)\\d') %>% parse_integer(),
       gradient= str_detect(rest, '-g'),
-      epistasis= str_extract(rest, '(?<=-e)[^-]+')) %>%
+      epistasis= str_extract(rest, '(?<=-e)[^-]+'),
+      pleiotropy= str_detect(rest, '-p')) %>%
     dplyr::select(-TCGA, -rest) %>%
     dplyr::filter(!is.na(type))
 }
@@ -48,7 +49,7 @@ tilde_epistasis = function(.names) {
 }
 # c('A', 'B', 'A:B', 'pleiotropy') %>% tilde_epistasis()
 
-.const.chisq = tibble(alpha=c(0.9, 0.95, 0.99), y=qchisq(alpha, 1) * 0.5)
+.const.chisq = tibble(alpha=c(0.95, 0.99), y=qchisq(alpha, 1) * 0.5)
 
 plot_landscape = function(uniaxis, limits=tibble(), gradient=tibble(), label='', ...) {
     if (gradient %>% inherits('list')) {
