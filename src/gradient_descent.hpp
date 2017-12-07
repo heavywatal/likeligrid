@@ -44,7 +44,7 @@ class GradientDescent {
 
     void run(std::ostream&);
 
-    std::string outfile() const {return outfile_;};
+    std::string outfile() const {return outfile_;}
 
     static void test();
 
