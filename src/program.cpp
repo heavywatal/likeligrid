@@ -124,6 +124,11 @@ void Program::run() {HERE;
     }
     try {
         if (GRADIENT_MODE) {
+            if (INFILE == "-") {
+                GradientDescent searcher(std::cin, MAX_SITES, epistasis, PLEIOTROPY, CONCURRENCY);
+                searcher.run(std::cout);
+                return;
+            }
             GradientDescent searcher(INFILE, MAX_SITES, epistasis, PLEIOTROPY, CONCURRENCY);
             const auto outfile = fs::path(make_outdir()) / searcher.outfile();
             std::cerr << "outfile: " << outfile << std::endl;
