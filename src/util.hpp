@@ -64,6 +64,22 @@ read_metadata(std::istream& ist) {
     return std::make_tuple(genotype_file, max_sites, max_count, step);
 }
 
+inline double d2_from_neutral(std::valarray<double> v) {
+    v -= 1.0;
+    v *= v;
+    return v.sum();
+}
+
+inline double d2_from_neutral(const std::vector<double>& v) {
+    double d = 0.0;
+    for (auto x: v) {
+        x -= 1.0;
+        x *= x;
+        d += x;
+    }
+    return d;
+}
+
 inline std::tuple<size_t, std::vector<std::string>, std::valarray<double>>
 read_body(std::istream& ist) {
     std::string buffer;
@@ -81,6 +97,11 @@ read_body(std::istream& ist) {
         if (*it > max_ll) {
             max_ll = *it;
             mle.assign(++it, std::istream_iterator<double>());
+        } else if (*it == max_ll) {
+            std::vector<double> chalenger(++it, std::istream_iterator<double>());
+            if (d2_from_neutral(chalenger) < d2_from_neutral(mle)) {
+                mle.swap(chalenger);
+            }
         }
     }
     std::valarray<double> mle_params(mle.data(), mle.size());
