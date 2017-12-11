@@ -94,14 +94,15 @@ read_body(std::istream& ist) {
         ++nrow;
         std::istringstream iss(buffer);
         std::istream_iterator<double> it(iss);
-        if (*it > max_ll) {
-            max_ll = *it;
-            mle.assign(++it, std::istream_iterator<double>());
-        } else if (wtl::approx(*it, max_ll)) {
+        if (wtl::approx(*it, max_ll)) {
             std::vector<double> chalenger(++it, std::istream_iterator<double>());
             if (d2_from_neutral(chalenger) < d2_from_neutral(mle)) {
+                max_ll = *it;
                 mle.swap(chalenger);
             }
+        } else if (*it > max_ll) {
+            max_ll = *it;
+            mle.assign(++it, std::istream_iterator<double>());
         }
     }
     std::valarray<double> mle_params(mle.data(), mle.size());

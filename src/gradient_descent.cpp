@@ -78,6 +78,16 @@ void GradientDescent::run(std::ostream& ost) {HERE;
     }
 }
 
+struct less_loglik_or_tie_farther {
+    bool operator()(const MapGrid::value_type& x, const MapGrid::value_type& y) const {
+        if (wtl::approx(x.second, y.second)) {
+            return d2_from_neutral(x.first) > d2_from_neutral(y.first);
+        } else {
+            return x.second < y.second;
+        }
+    }
+};
+
 MapGrid::iterator GradientDescent::find_better(const MapGrid::iterator& prev_it) {
     static wtl::ThreadPool pool(concurrency_);
     auto task = [](GenotypeModel model, const std::valarray<double> theta) {
@@ -94,12 +104,8 @@ MapGrid::iterator GradientDescent::find_better(const MapGrid::iterator& prev_it)
             for (auto& ftr: futures) {
                 auto result_it = history_.insert(ftr.get()).first;
                 std::cerr << "." << std::flush;
-                if (result_it->second > better_it->second) {
+                if (less_loglik_or_tie_farther{}(*better_it, *result_it)) {
                     better_it = result_it;
-                } else if (wtl::approx(result_it->second, better_it->second)) {
-                    if (d2_from_neutral(result_it->first) < d2_from_neutral(better_it->first)) {
-                        better_it = result_it;
-                    }
                 }
             }
             if (better_it != prev_it) {
@@ -164,17 +170,11 @@ std::tuple<std::string, size_t, std::string> GradientDescent::read_results(const
 }
 
 MapGrid::iterator GradientDescent::max_iterator() {HERE;
-    return std::max_element(std::begin(history_), std::end(history_),
-        [](MapGrid::value_type& x, MapGrid::value_type& y){
-            return x.second < y.second;
-        });
+    return std::max_element(std::begin(history_), std::end(history_), less_loglik_or_tie_farther());
 }
 
 MapGrid::const_iterator GradientDescent::const_max_iterator() const {HERE;
-    return std::max_element(std::begin(history_), std::end(history_),
-        [](const MapGrid::value_type& x, const MapGrid::value_type& y){
-            return x.second < y.second;
-        });
+    return std::max_element(std::begin(history_), std::end(history_), less_loglik_or_tie_farther());
 }
 
 void GradientDescent::test() {HERE;
