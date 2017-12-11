@@ -44,46 +44,46 @@ class GenotypeModel {
     double lnp_sample(const bits_t& genotype) const;
 
     void mutate(const bits_t& genotype=bits_t(), const bits_t& pathtype=bits_t(),
-                const double anc_p=1.0, const double open_p=1.0);
+                const double anc_lnp=0.0, const double open_lnp=0.0);
 
-    double theta_if_subset(const bits_t& pathtype, const bits_t& mut_path) const {
-        double p = 1.0;
+    double ln_theta_if_subset(const bits_t& pathtype, const bits_t& mut_path) const {
+        double lnp = 0.0;
         for (size_t i=0u; i<num_pathways_; ++i) {
             if (mut_path[i]) {
                 if (pathtype[i]) {
-                    p *= theta_[i];
+                    lnp += ln_theta_[i];
                 } else {
-                    return 1.0;
+                    return 0.0;
                 }
             }
         }
-        return p;
+        return lnp;
     }
 
-    double theta_if_paired(const bits_t& pathtype, const bits_t& mut_path) const {
+    double ln_theta_if_paired(const bits_t& pathtype, const bits_t& mut_path) const {
         if (pathtype[epistasis_pair_.first]) {
-            if (pathtype[epistasis_pair_.second]) return 1.0;
-            if (mut_path[epistasis_pair_.second]) return theta_[epistasis_idx_];
+            if (pathtype[epistasis_pair_.second]) return 0.0;
+            if (mut_path[epistasis_pair_.second]) return ln_theta_[epistasis_idx_];
         }
         if (pathtype[epistasis_pair_.second]) {
-            if (mut_path[epistasis_pair_.first]) return theta_[epistasis_idx_];
+            if (mut_path[epistasis_pair_.first]) return ln_theta_[epistasis_idx_];
         }
         if (mut_path[epistasis_pair_.first]) {
-            if (mut_path[epistasis_pair_.second]) return theta_[pleiotropy_idx_];
+            if (mut_path[epistasis_pair_.second]) return ln_theta_[pleiotropy_idx_];
         }
-        return 1.0;
+        return 0.0;
     }
 
-    double prod_theta(const std::valarray<size_t>& mut_route) const {
-        double p = 1.0;
+    double sum_ln_theta(const std::valarray<size_t>& mut_route) const {
+        double lnp = 0.0;
         bits_t pathtype;
         for (const auto j: mut_route) {
             const auto& mut_path = effects_[j];
-            p *= theta_if_subset(pathtype, mut_path);
-            if (epistasis_) {p *= theta_if_paired(pathtype, mut_path);}
+            lnp += ln_theta_if_subset(pathtype, mut_path);
+            if (epistasis_) {lnp += ln_theta_if_paired(pathtype, mut_path);}
             pathtype |= mut_path;
         }
-        return p;
+        return lnp;
     }
 
     bits_t translate(const size_t& mut_idx) const {
@@ -100,15 +100,15 @@ class GenotypeModel {
     size_t num_pathways_;
     std::vector<bits_t> annot_;
     std::vector<bits_t> genot_;
-    std::valarray<double> w_gene_;
+    std::valarray<double> ln_w_gene_;
     size_t num_genes_;
     std::vector<size_t> nsam_with_s_;
     size_t max_sites_;
     std::vector<bits_t> effects_;
 
     // updated in calc_loglik()
-    std::valarray<double> theta_;
-    std::valarray<double> denoms_;
+    std::valarray<double> ln_theta_;
+    std::valarray<double> ln_denoms_;
     std::pair<size_t, size_t> epistasis_pair_;
     bool epistasis_ = false;
     size_t epistasis_idx_ = -1u;

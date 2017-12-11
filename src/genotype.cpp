@@ -60,9 +60,11 @@ void GenotypeModel::init(std::istream& ist, const size_t max_sites) {HERE;
     } else {
         std::cerr << "Note: -s is too large" << std::endl;
     }
-    w_gene_ = s_gene / s_gene.sum();
-    std::cerr << "s_gene : " << s_gene << std::endl;
-    std::cerr << "w_gene_: " << w_gene_ << std::endl;
+    const std::valarray<double> w_gene = s_gene / s_gene.sum();
+    ln_w_gene_ = std::log(w_gene);
+    std::cerr << "s_gene: " << s_gene << std::endl;
+    std::cerr << "w_gene: " << w_gene << std::endl;
+    std::cerr << "ln_w_gene_: " << ln_w_gene_ << std::endl;
 
     max_sites_ = nsam_with_s_.size() - 1u;
     effects_.reserve(num_genes_);
@@ -89,20 +91,19 @@ bool GenotypeModel::set_epistasis(const std::pair<size_t, size_t>& pair, const b
 }
 
 double GenotypeModel::calc_loglik(const std::valarray<double>& theta) {
-    theta_ = theta;
-    denoms_.resize(max_sites_ + 1u);
-    denoms_ = 0.0;
-    mutate();
+    ln_theta_ = std::log(theta);
     // std::cerr << "denoms_: " << denoms_ << std::endl;
     double loglik = 0.0;
     for (const auto& genotype: genot_) {
         loglik += lnp_sample(genotype);
     }
-    const auto lnD = std::log(denoms_);
-    // std::cerr << "lnD: " << lnD << std::endl;
+    ln_denoms_.resize(max_sites_ + 1u);
+    ln_denoms_ = -std::numeric_limits<double>::infinity();
+    mutate();
+    // std::cerr << "lnD: " << ln_denoms_ << std::endl;
     // -inf, 0, D2, D3, ...
     for (size_t s=2u; s<=max_sites_; ++s) {
-        loglik -= nsam_with_s_[s] * lnD[s];
+        loglik -= nsam_with_s_[s] * ln_denoms_[s];
     }
     return loglik;
 }
@@ -118,38 +119,48 @@ inline std::valarray<size_t> to_indices(const bits_t& bits) {
     return indices;
 }
 
-inline double slice_prod(const std::valarray<double>& coefs, const bits_t& bits) {
-    double p = 1.0;
-    for (size_t i=0; i<coefs.size(); ++i) {
-        if (bits[i]) p *= coefs[i];
+inline double slice_sum(const std::valarray<double>& ln_coefs, const bits_t& bits) {
+    double lnp = 0.0;
+    for (size_t i=0; i<ln_coefs.size(); ++i) {
+        if (bits[i]) lnp += ln_coefs[i];
     }
-    return p;
+    return lnp;
+}
+
+inline double add_lnp(const double lnx, const double lny) {
+    return lnx > lny
+           ? lnx + std::log1p(std::exp(lny - lnx))
+           : lny + std::log1p(std::exp(lnx - lny));
+}
+
+inline double sub_lnp(double lnx, const double lny) {
+    return lnx + std::log1p(-std::exp(lny - lnx));
 }
 
 double GenotypeModel::lnp_sample(const bits_t& genotype) const {
-    double p = 0.0;
-    const double p_basic = slice_prod(w_gene_, genotype);
+    double lnp = -std::numeric_limits<double>::infinity();
+    const double lnp_basic = slice_sum(ln_w_gene_, genotype);
     auto mut_route = to_indices(genotype);
     do {
-        p += p_basic * prod_theta(mut_route);
+        lnp = add_lnp(lnp, lnp_basic + sum_ln_theta(mut_route));
     } while (std::next_permutation(std::begin(mut_route), std::end(mut_route)));
-    return std::log(p);
+    return lnp;
 }
 
-void GenotypeModel::mutate(const bits_t& genotype, const bits_t& pathtype, const double anc_p, const double open_p) {
+void GenotypeModel::mutate(const bits_t& genotype, const bits_t& pathtype, const double anc_lnp, const double open_lnp) {
     const auto s = genotype.count() + 1u;
     for (size_t j=0u; j<num_genes_; ++j) {
         if (genotype[j]) continue;
         const bits_t& mut_path = effects_[j];
-        double p = anc_p;
-        p *= w_gene_[j];
-        p /= open_p;
-        p *= theta_if_subset(pathtype, mut_path);
-        if (epistasis_) {p *= theta_if_paired(pathtype, mut_path);}
-        denoms_[s] += p;
+        double lnp = anc_lnp;
+        lnp += ln_w_gene_[j];
+        lnp -= open_lnp;
+        lnp += ln_theta_if_subset(pathtype, mut_path);
+        if (epistasis_) {lnp += ln_theta_if_paired(pathtype, mut_path);}
+        ln_denoms_[s] = add_lnp(ln_denoms_[s], lnp);
         if (s < max_sites_) {
             if (wtl::SIGINT_RAISED()) {throw wtl::KeyboardInterrupt();}
-            mutate(bits_t(genotype).set(j), pathtype | mut_path, p, open_p - w_gene_[j]);
+            mutate(bits_t(genotype).set(j), pathtype | mut_path, lnp, sub_lnp(open_lnp, ln_w_gene_[j]));
         }
     }
 }
