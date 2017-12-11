@@ -79,14 +79,14 @@ void GradientDescent::run(std::ostream& ost) {HERE;
 }
 
 MapGrid::iterator GradientDescent::find_better(const MapGrid::iterator& prev_it) {
-    auto better_it = prev_it;
+    static wtl::ThreadPool pool(concurrency_);
     auto task = [](GenotypeModel model, const std::valarray<double> theta) {
         // arguments are copied for each thread
         return std::make_pair(theta, model.calc_loglik(theta));
     };
     std::vector<std::future<std::pair<std::valarray<double>, double>>> futures;
     futures.reserve(concurrency_);
-    wtl::ThreadPool pool(concurrency_);
+    auto better_it = prev_it;
     const auto candidates = empty_neighbors_of(prev_it->first);
     for (const auto& theta: candidates) {
         futures.push_back(pool.submit(task, *model_, theta));

@@ -107,7 +107,7 @@ void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
         return buffer.str();
     };
 
-    wtl::ThreadPool pool(concurrency_);
+    static wtl::ThreadPool pool(concurrency_);
     std::vector<std::future<std::string>> futures;
     futures.reserve(gen.max_count() - skip_);
     for (const auto& th_path: gen(skip_)) {
