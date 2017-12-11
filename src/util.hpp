@@ -97,7 +97,7 @@ read_body(std::istream& ist) {
         if (*it > max_ll) {
             max_ll = *it;
             mle.assign(++it, std::istream_iterator<double>());
-        } else if (*it == max_ll) {
+        } else if (wtl::approx(*it, max_ll)) {
             std::vector<double> chalenger(++it, std::istream_iterator<double>());
             if (d2_from_neutral(chalenger) < d2_from_neutral(mle)) {
                 mle.swap(chalenger);

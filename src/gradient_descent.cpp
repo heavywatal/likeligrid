@@ -96,7 +96,7 @@ MapGrid::iterator GradientDescent::find_better(const MapGrid::iterator& prev_it)
                 std::cerr << "." << std::flush;
                 if (result_it->second > better_it->second) {
                     better_it = result_it;
-                } else if (result_it->second == better_it->second) {
+                } else if (wtl::approx(result_it->second, better_it->second)) {
                     if (d2_from_neutral(result_it->first) < d2_from_neutral(better_it->first)) {
                         better_it = result_it;
                     }
