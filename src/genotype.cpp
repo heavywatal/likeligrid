@@ -127,14 +127,12 @@ inline double slice_sum(const std::valarray<double>& ln_coefs, const bits_t& bit
     return lnp;
 }
 
-inline double add_lnp(const double lnx, const double lny) {
-    return lnx > lny
-           ? lnx + std::log1p(std::exp(lny - lnx))
-           : lny + std::log1p(std::exp(lnx - lny));
+inline double add_lnp(const double ln_bigger, const double ln_smaller) {
+    return ln_bigger + std::log1p(std::exp(ln_smaller - ln_bigger));
 }
 
-inline double sub_lnp(double lnx, const double lny) {
-    return lnx + std::log1p(-std::exp(lny - lnx));
+inline double sub_lnp(const double ln_bigger, const double ln_smaller) {
+    return ln_bigger + std::log1p(-std::exp(ln_smaller - ln_bigger));
 }
 
 double GenotypeModel::lnp_sample(const bits_t& genotype) const {
@@ -142,7 +140,7 @@ double GenotypeModel::lnp_sample(const bits_t& genotype) const {
     const double lnp_basic = slice_sum(ln_w_gene_, genotype);
     auto mut_route = to_indices(genotype);
     do {
-        lnp = add_lnp(lnp, lnp_basic + sum_ln_theta(mut_route));
+        lnp = add_lnp(lnp_basic + sum_ln_theta(mut_route), lnp);
     } while (std::next_permutation(std::begin(mut_route), std::end(mut_route)));
     return lnp;
 }
@@ -151,13 +149,14 @@ void GenotypeModel::mutate(const bits_t& genotype, const bits_t& pathtype, const
     const auto s = genotype.count() + 1u;
     for (size_t j=0u; j<num_genes_; ++j) {
         if (genotype[j]) continue;
+        if (ln_w_gene_[j] == -std::numeric_limits<double>::infinity()) continue;
         const bits_t& mut_path = effects_[j];
         double lnp = anc_lnp;
         lnp += ln_w_gene_[j];
         lnp -= open_lnp;
         lnp += ln_theta_if_subset(pathtype, mut_path);
         if (epistasis_) {lnp += ln_theta_if_paired(pathtype, mut_path);}
-        ln_denoms_[s] = add_lnp(ln_denoms_[s], lnp);
+        ln_denoms_[s] = add_lnp(lnp, ln_denoms_[s]);
         if (s < max_sites_) {
             if (wtl::SIGINT_RAISED()) {throw wtl::KeyboardInterrupt();}
             mutate(bits_t(genotype).set(j), pathtype | mut_path, lnp, sub_lnp(open_lnp, ln_w_gene_[j]));
