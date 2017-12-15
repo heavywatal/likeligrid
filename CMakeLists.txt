@@ -53,36 +53,16 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 message("CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
 
-if(APPLE)
-    set(CMAKE_INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib")
-    set(CMAKE_SHARED_LINKER_FLAGS "-install_name ${CMAKE_INSTALL_PREFIX}/lib/lib${PROJECT_NAME}.dylib")
-else()
-    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-    set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-soname,${CMAKE_INSTALL_PREFIX}/lib/lib${PROJECT_NAME}.so")
-endif()
-
 aux_source_directory(src srcfiles)
 message("Source files: ${srcfiles}")
 
-add_executable(${PROJECT_NAME} main.cpp)
-add_library(lib${PROJECT_NAME} SHARED ${srcfiles})
-
-target_link_libraries(${PROJECT_NAME} lib${PROJECT_NAME})
-target_link_libraries(lib${PROJECT_NAME} ${Boost_LIBRARIES} sfmt)
-set_target_properties(lib${PROJECT_NAME} PROPERTIES
-  NO_SONAME TRUE
-  PREFIX ""
-)
+add_executable(${PROJECT_NAME} main.cpp ${srcfiles})
+target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES} sfmt)
 
 if(PROFILE)
   target_link_libraries(${PROJECT_NAME} profiler)
 endif()
 
-install(TARGETS ${PROJECT_NAME} lib${PROJECT_NAME}
+install(TARGETS ${PROJECT_NAME}
   RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
 )
-
-install(DIRECTORY src/
-  DESTINATION include/${PROJECT_NAME}
-  FILES_MATCHING PATTERN "*.hpp")
