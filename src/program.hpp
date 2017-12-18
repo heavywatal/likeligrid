@@ -32,7 +32,7 @@ class Program {
     boost::program_options::options_description positional_desc();
     [[noreturn]] void help_and_exit();
     void test(const int flag);
-    std::string make_outdir() const;
+    std::string make_outdir(const std::string& prefix) const;
 
     unsigned int CONCURRENCY = 1u;
     size_t MAX_SITES = 3u;

@@ -117,6 +117,20 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
     test(vm["test"].as<int>());
 }
 
+inline std::string extract_prefix(const std::string& spath) {
+    fs::path path(spath);
+    for (fs::path p=path.filename(); !p.extension().empty(); p=p.stem()) {
+        if (p.extension().string() == ".json") {
+            return p.stem().string();
+        }
+    }
+    std::smatch mobj;
+    if (std::regex_search(path.parent_path().string(), mobj, std::regex("([\\w-]+)-s\\d"))) {
+        return mobj[1];
+    }
+    throw std::runtime_error("Cannot extract prefix: " + spath);
+}
+
 void Program::run() {HERE;
     std::pair<size_t, size_t> epistasis{EPISTASIS_PAIR[0u], EPISTASIS_PAIR[1u]};
     if (PLEIOTROPY && (epistasis.first == epistasis.second)) {
@@ -130,7 +144,7 @@ void Program::run() {HERE;
                 return;
             }
             GradientDescent searcher(INFILE, MAX_SITES, epistasis, PLEIOTROPY, CONCURRENCY);
-            const auto outfile = fs::path(make_outdir()) / searcher.outfile();
+            const auto outfile = fs::path(make_outdir(extract_prefix(INFILE))) / searcher.outfile();
             std::cerr << "outfile: " << outfile << std::endl;
             wtl::ozfstream ost(outfile.string());
             ost.precision(std::cout.precision());
@@ -141,7 +155,7 @@ void Program::run() {HERE;
         } else {
             GridSearch searcher(INFILE, MAX_SITES, epistasis, PLEIOTROPY, CONCURRENCY);
             // after constructor success
-            const std::string outdir = make_outdir();
+            const std::string outdir = make_outdir(extract_prefix(INFILE));
             fs::current_path(outdir);
             searcher.run(true);
         }
@@ -150,11 +164,9 @@ void Program::run() {HERE;
     }
 }
 
-std::string Program::make_outdir() const {
-    std::smatch mobj;
-    std::regex_search(INFILE, mobj, std::regex("([^/]+?)\\.[^/]+$"));
+std::string Program::make_outdir(const std::string& prefix) const {
     std::ostringstream oss;
-    oss << mobj.str(1) << "-s" << MAX_SITES;
+    oss << prefix << "-s" << MAX_SITES;
     if (GRADIENT_MODE) {oss << "-g";}
     if (EPISTASIS_PAIR[0u] != EPISTASIS_PAIR[1u]) {
         oss << "-e" << EPISTASIS_PAIR[0u]
