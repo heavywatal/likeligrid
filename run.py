@@ -76,11 +76,7 @@ def tp53_pleiotropic_pair_json(infile):
 
 
 def main():
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-n', '--dry-run', action='store_true')
-    parser.add_argument('-j', '--jobs', type=int, default=wopt.cpu_count())
-    parser.add_argument('-p', '--parallel', type=int, default=1)
+    parser = wopt.ArgumentParser()
     parser.add_argument('-o', '--outdir', default='.stdout')
     parser.add_argument('--begin', type=int, default=4)
     parser.add_argument('--end', type=int, default=6)
