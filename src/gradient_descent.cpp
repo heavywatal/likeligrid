@@ -166,7 +166,7 @@ std::tuple<std::string, size_t, std::string> GradientDescent::read_results(const
         std::vector<double> vec(++it, std::istream_iterator<double>());
         history_.emplace(std::valarray<double>(vec.data(), vec.size()), loglik);
     }
-    return {genotype_file, prev_max_sites, epistasis_name};
+    return std::tuple<std::string, size_t, std::string>{genotype_file, prev_max_sites, epistasis_name};
 }
 
 MapGrid::iterator GradientDescent::max_iterator() {HERE;
