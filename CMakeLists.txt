@@ -5,27 +5,31 @@ include(GNUInstallDirs)
 option(PROFILE "Use gperftools" FALSE)
 set(CMAKE_VERBOSE_MAKEFILE TRUE)
 
-set(CMAKE_VERBOSE_MAKEFILE TRUE)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_EXTENSIONS FALSE)
-set(CMAKE_CXX_FLAGS "-O3 -march=native -Wall -Wextra -Wpedantic")
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG")
-if (NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
-endif()
 
-include_directories(~/local/include)
-include_directories(/usr/local/include)
-link_directories(~/local/lib)
-link_directories(/usr/local/lib)
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+  add_compile_options(-g)
+else()
+  add_definitions(-DNDEBUG)
+endif()
+add_compile_options(-O3 -march=native -Wall -Wextra -Wpedantic)
+
+find_package(wtl)
+find_package(sfmt)
 
 set(Boost_NO_BOOST_CMAKE TRUE)
 find_package(Boost REQUIRED COMPONENTS program_options context iostreams filesystem system)
+include_directories(${Boost_INCLUDE_DIRS})
+link_directories(${Boost_LIBRARY_DIRS})
 message("Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
 message("Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
+
 message("CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
+if(${CMAKE_INSTALL_PREFIX} MATCHES linuxbrew)
+  set(CMAKE_INSTALL_LIBDIR lib)
+endif()
 
 execute_process(
   COMMAND git rev-parse --abbrev-ref HEAD
@@ -56,8 +60,7 @@ aux_source_directory(src srcfiles)
 message("Source files: ${srcfiles}")
 
 add_executable(${PROJECT_NAME} main.cpp ${srcfiles})
-target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES} sfmt)
-
+target_link_libraries(${PROJECT_NAME} wtl sfmt ${Boost_LIBRARIES})
 if(PROFILE)
   target_link_libraries(${PROJECT_NAME} profiler)
 endif()
