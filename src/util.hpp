@@ -37,7 +37,7 @@ make_vicinity(const std::valarray<double>& center, const size_t breaks, const do
 }
 
 inline size_t guess_stage(const double step) {
-    const auto it = std::find_if(STEPS.begin(), STEPS.end(), wtl::approx(step));
+    const auto it = std::find_if(STEPS.begin(), STEPS.end(), wtl::Approx(step));
     if (it == STEPS.end()) throw std::runtime_error("invalid step size");
     return static_cast<size_t>(it - STEPS.begin());
 }
