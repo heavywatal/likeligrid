@@ -1,6 +1,5 @@
-link_libraries(${PROJECT_NAME} wtl ${Boost_LIBRARIES})
+link_libraries(${PROJECT_NAME} wtl)
 
-include_directories(${Boost_INCLUDE_DIRS})
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR} source_files)
 foreach(src IN LISTS source_files)
   get_filename_component(name_we ${src} NAME_WE)

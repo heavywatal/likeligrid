@@ -11,6 +11,7 @@
 #include <wtl/numeric.hpp>
 #include <wtl/math.hpp>
 #include <wtl/concurrent.hpp>
+#include <wtl/itertools.hpp>
 
 #include <boost/math/distributions/chi_squared.hpp>
 

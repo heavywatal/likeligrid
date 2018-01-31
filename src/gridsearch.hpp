@@ -11,7 +11,9 @@
 #include <vector>
 #include <valarray>
 
-#include <wtl/itertools.hpp>
+namespace wtl {namespace itertools {
+  template <class T> class Generator;
+}}
 
 namespace likeligrid {
 

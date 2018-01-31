@@ -2,6 +2,7 @@
     @brief Implementation of GenotypeModel class
 */
 #include "genotype.hpp"
+#include "util.hpp"
 
 #include <wtl/debug.hpp>
 #include <wtl/chrono.hpp>
@@ -9,6 +10,7 @@
 #include <wtl/zfstream.hpp>
 #include <wtl/algorithm.hpp>
 #include <wtl/math.hpp>
+#include <wtl/exception.hpp>
 
 #include <json.hpp>
 

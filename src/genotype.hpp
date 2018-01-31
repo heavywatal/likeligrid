@@ -6,9 +6,6 @@
 #define LIKELIGRID_GENOTYPE_HPP_
 
 #include "typedef.hpp"
-#include "util.hpp"
-
-#include <wtl/exception.hpp>
 
 #include <string>
 #include <vector>
