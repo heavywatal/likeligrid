@@ -12,6 +12,8 @@
 #include <wtl/math.hpp>
 #include <wtl/concurrent.hpp>
 
+#include <boost/math/distributions/chi_squared.hpp>
+
 #include <chrono>
 
 namespace likeligrid {
@@ -182,18 +184,6 @@ void GridSearch::write_header(std::ostream& ost, const size_t max_count) const {
     ost << "##step=" << STEPS.at(stage_) << "\n";
     ost << "loglik\t";
     wtl::join(model_.names(), ost, "\t") << "\n";
-}
-
-void GridSearch::test() {HERE;
-    std::stringstream sst;
-    sst <<
-R"({
-  "pathway": ["A", "B"],
-  "annotation": ["0011", "1100"],
-  "sample": ["0011", "0101", "1001", "0110", "1010", "1100"]
-})";
-    GridSearch searcher(sst, 4u, {0, 1});
-    searcher.run_cout();
 }
 
 } // namespace likeligrid

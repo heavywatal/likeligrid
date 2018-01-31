@@ -63,30 +63,6 @@ po::options_description Program::positional_desc() {HERE;
     throw wtl::ExitSuccess();
 }
 
-//! Unit test for each class
-void Program::test(const int flag) {HERE;
-    switch (flag) {
-      case 0:
-        break;
-      case 1:
-        GridSearch::test();
-        GradientDescent::test();
-        throw wtl::ExitSuccess();
-      case 2:
-        GenotypeModel::test();
-        PathtypeModel::test();
-        throw wtl::ExitSuccess();
-      case 3: {
-        wtl::izfstream ist(INFILE);
-        GenotypeModel model(ist, MAX_SITES);
-        model.benchmark(CONCURRENCY);
-        throw wtl::ExitSuccess();
-      }
-      default:
-        throw std::runtime_error("Unknown argument for --test");
-    }
-}
-
 Program::Program(const std::vector<std::string>& arguments) {HERE;
     wtl::join(arguments, std::cout, " ") << std::endl;
     std::ios::sync_with_stdio(false);
@@ -114,7 +90,11 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
         std::cerr << wtl::iso8601datetime() << std::endl;
         std::cerr << wtl::flags_into_string(vm) << std::endl;
     }
-    test(vm["test"].as<int>());
+    if (vm["test"].as<int>()) {
+        wtl::izfstream ist(INFILE);
+        GenotypeModel model(ist, MAX_SITES);
+        model.benchmark(CONCURRENCY);
+    }
 }
 
 inline std::string extract_prefix(const std::string& spath) {

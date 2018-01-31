@@ -36,8 +36,6 @@ class GenotypeModel {
     const std::pair<size_t, size_t>& epistasis_pair() const {return epistasis_pair_;}
     size_t max_sites() const {return max_sites_;}
 
-    static void test();
-
   private:
     void init(std::istream&, const size_t max_sites);
 

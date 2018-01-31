@@ -45,8 +45,7 @@ class GradientDescent {
     void run(std::ostream&);
 
     std::string outfile() const {return outfile_;}
-
-    static void test();
+    MapGrid::const_iterator const_max_iterator() const;
 
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
@@ -57,7 +56,6 @@ class GradientDescent {
     std::tuple<std::string, size_t, std::string> read_results(const std::string&);
 
     MapGrid::iterator max_iterator();
-    MapGrid::const_iterator const_max_iterator() const;
 
     std::unique_ptr<GenotypeModel> model_;
     std::valarray<double> starting_point_;

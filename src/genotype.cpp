@@ -3,14 +3,14 @@
 */
 #include "genotype.hpp"
 
-#include <json.hpp>
-
 #include <wtl/debug.hpp>
 #include <wtl/chrono.hpp>
 #include <wtl/iostr.hpp>
 #include <wtl/zfstream.hpp>
 #include <wtl/algorithm.hpp>
 #include <wtl/math.hpp>
+
+#include <json.hpp>
 
 namespace likeligrid {
 
@@ -174,18 +174,6 @@ void GenotypeModel::benchmark(const size_t n) {
     wtl::benchmark([&]() {
         calc_loglik(param);
     }, "", n);
-}
-
-void GenotypeModel::test() {HERE;
-    std::stringstream sst;
-    sst <<
-R"({
-  "pathway": ["A", "B"],
-  "annotation": ["0011", "1100"],
-  "sample": ["0011", "0101", "1001", "0110", "1010", "1100"]
-})";
-    GenotypeModel model(sst, 4u);
-    std::cerr << model.calc_loglik({1.0, 1.0}) << std::endl;
 }
 
 } // namespace likeligrid

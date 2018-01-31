@@ -5,8 +5,6 @@
 #ifndef LIKELIGRID_UTIL_HPP_
 #define LIKELIGRID_UTIL_HPP_
 
-#include <boost/math/distributions/chi_squared.hpp>
-
 #include <wtl/iostr.hpp>
 #include <wtl/numeric.hpp>
 

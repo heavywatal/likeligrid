@@ -177,17 +177,4 @@ MapGrid::const_iterator GradientDescent::const_max_iterator() const {HERE;
     return std::max_element(std::begin(history_), std::end(history_), less_loglik_or_tie_farther());
 }
 
-void GradientDescent::test() {HERE;
-    std::stringstream sst;
-    sst <<
-R"({
-  "pathway": ["A", "B"],
-  "annotation": ["0011", "1100"],
-  "sample": ["0011", "0101", "1001", "0110", "1010", "1100"]
-})";
-    GradientDescent searcher(sst, 4, {0, 1}, false);
-    searcher.run(std::cout);
-    std::cout << *searcher.max_iterator() << std::endl;
-}
-
 } // namespace likeligrid

@@ -45,18 +45,16 @@ class GridSearch {
     }
 
     void run(const bool writing=true);
+    void run_cout();
 
     void read_results(const std::string&);
 
     const std::valarray<double>& mle_params() const {return mle_params_;}
 
-    static void test();
-
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
     void init(const std::pair<size_t, size_t>&, const bool pleiotropy);
     void run_fout();
-    void run_cout();
     void run_impl(std::ostream&, wtl::itertools::Generator<std::valarray<double>>&&);
     void search_limits();
     std::string init_meta();

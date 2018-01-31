@@ -8,11 +8,7 @@
 #include <string>
 #include <vector>
 
-namespace boost {
-    namespace program_options {
-        class options_description;
-    }
-}
+namespace boost {namespace program_options {class options_description;}}
 
 namespace likeligrid {
 
@@ -31,7 +27,6 @@ class Program {
     boost::program_options::options_description options_desc();
     boost::program_options::options_description positional_desc();
     [[noreturn]] void help_and_exit();
-    void test(const int flag);
     std::string make_outdir(const std::string& prefix) const;
 
     unsigned int CONCURRENCY = 1u;

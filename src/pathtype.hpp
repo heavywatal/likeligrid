@@ -23,8 +23,6 @@ class PathtypeModel {
     double calc_loglik(const std::valarray<double>& th_path) const;
     const std::vector<std::string>& names() const {return names_;}
 
-    static void test();
-
     /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
   private:
     double calc_denom(
