@@ -12,7 +12,7 @@
 #include <wtl/math.hpp>
 #include <wtl/exception.hpp>
 
-#include <json.hpp>
+#include <nlohmann/json.hpp>
 
 namespace likeligrid {
 
