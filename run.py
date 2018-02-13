@@ -7,6 +7,7 @@ import wtl.options as wopt
 import gzip
 import json
 import itertools
+import re
 
 program = 'likeligrid'
 
@@ -27,6 +28,10 @@ def iter_args(infiles, range_s, concurrency, rest, epistasis, tp53):
                     yield const + ['-e {} {}'.format(*x)] + args + [f]
             elif tp53:
                 pair = tp53_pleiotropic_pair(f)
+                if re.search(r'-e\dx\d', f):
+                    # filter correct pairs from globbed infiles
+                    if not re.search('-e{}x{}'.format(*pair), f):
+                        continue
                 yield const + ['-e {} {}'.format(*pair), '-p'] + args + [f]
             else:
                 yield const + args + [f]
