@@ -82,9 +82,7 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
               positional(positional).run(), vm);
     if (vm["help"].as<bool>()) {help_and_exit();}
     po::notify(vm);
-    if (EPISTASIS_PAIR.size() != 2u) {
-        throw std::runtime_error("EPISTASIS_PAIR.size() != 2U");
-    }
+    WTL_ASSERT(EPISTASIS_PAIR.size() == 2u);
 
     if (vm["verbose"].as<bool>()) {
         std::cerr << wtl::iso8601datetime() << std::endl;
@@ -113,9 +111,7 @@ inline std::string extract_prefix(const std::string& spath) {
 
 void Program::run() {HERE;
     std::pair<size_t, size_t> epistasis{EPISTASIS_PAIR[0u], EPISTASIS_PAIR[1u]};
-    if (PLEIOTROPY && (epistasis.first == epistasis.second)) {
-        throw std::runtime_error("PLEIOTROPY && (epistasis.first == epistasis.second)");
-    }
+    WTL_ASSERT(!PLEIOTROPY || (epistasis.first != epistasis.second));
     try {
         if (GRADIENT_MODE) {
             if (INFILE == "-") {
