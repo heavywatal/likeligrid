@@ -29,7 +29,7 @@ inline po::options_description general_desc() {HERE;
     description.add_options()
         ("help,h", po::bool_switch(), "print this help")
         ("verbose,v", po::bool_switch(), "verbose output")
-        ("test", po::value<int>()->default_value(0)->implicit_value(1));
+        ("test", po::bool_switch());
     return description;
 }
 
@@ -88,10 +88,11 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
         std::cerr << wtl::iso8601datetime() << std::endl;
         std::cerr << wtl::flags_into_string(vm) << std::endl;
     }
-    if (vm["test"].as<int>()) {
+    if (vm["test"].as<bool>()) {
         wtl::izfstream ist(INFILE);
         GenotypeModel model(ist, MAX_SITES);
         model.benchmark(CONCURRENCY);
+        throw wtl::ExitSuccess();
     }
 }
 
