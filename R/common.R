@@ -65,7 +65,7 @@ plot_landscape = function(uniaxis, limits=tibble(), gradient=tibble(), label='',
     if (nrow(limits) > 0L) {
         .p = .p + geom_point(data=limits %>% mutate(pathway= tilde_epistasis(pathway)), alpha=0.5)
     }
-    if (nrow(gradient) > 0L) {
+    if (inherits(gradient, 'data.frame') && nrow(gradient) > 0L) {
         if (nrow(gradient) > 100L) {
             gradient = gradient %>%
                 dplyr::arrange(desc(loglik)) %>%
