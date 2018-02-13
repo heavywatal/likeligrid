@@ -1,11 +1,7 @@
 /*! @file pathtype.cpp
     @brief Implementation of PathtypeModel class
 */
-#include "typedef.hpp"
 #include "pathtype.hpp"
-
-#include <functional>
-#include <stdexcept>
 
 #include <wtl/debug.hpp>
 #include <wtl/exception.hpp>
@@ -15,6 +11,10 @@
 #include <wtl/numeric.hpp>
 #include <wtl/math.hpp>
 
+#include <functional>
+#include <stdexcept>
+#include <cstdint>
+
 namespace likeligrid {
 
 PathtypeModel::PathtypeModel(const std::string& infile, const size_t max_sites):
@@ -22,7 +22,7 @@ PathtypeModel::PathtypeModel(const std::string& infile, const size_t max_sites):
 
 PathtypeModel::PathtypeModel(std::istream&& ist, const size_t max_sites) {HERE;
     names_ = wtl::read_header(ist);
-    auto pathtypes = wtl::read_valarrays<uint>(ist);
+    auto pathtypes = wtl::read_valarrays<uint_fast32_t>(ist);
     const auto raw_s_sample = wtl::row_sums(pathtypes);
     nsam_with_s_.assign(raw_s_sample.max() + 1u, 0u);
     for (const auto s: raw_s_sample) {
@@ -38,7 +38,7 @@ PathtypeModel::PathtypeModel(std::istream&& ist, const size_t max_sites) {HERE;
     while (nsam_with_s_.back() == 0u) {
         nsam_with_s_.pop_back();
     }
-    const uint final_max_s = static_cast<uint>(nsam_with_s_.size()) - 1u;
+    const auto final_max_s = static_cast<uint_fast32_t>(nsam_with_s_.size()) - 1u;
     pathtypes = wtl::filter(pathtypes, raw_s_sample <= final_max_s);
 
     const auto s_pathway = wtl::cast<double>(wtl::col_sums(pathtypes));
@@ -88,7 +88,7 @@ double PathtypeModel::calc_denom(
     if (num_mutations < 2u) return 1.0;
     auto iter = wtl::itertools::product(index_axes_[num_mutations]);
     double sum_prob = 0.0;
-    bits_t bits(th_pathway.size());
+    std::bitset<128> bits(th_pathway.size());
 
     for (const auto& indices: iter()) {
         double p = 1.0;

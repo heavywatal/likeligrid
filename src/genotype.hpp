@@ -5,13 +5,14 @@
 #ifndef LIKELIGRID_GENOTYPE_HPP_
 #define LIKELIGRID_GENOTYPE_HPP_
 
-#include "typedef.hpp"
-
 #include <string>
 #include <vector>
 #include <valarray>
+#include <bitset>
 
 namespace likeligrid {
+
+using bits_t = std::bitset<128>;
 
 class GenotypeModel {
   public:
