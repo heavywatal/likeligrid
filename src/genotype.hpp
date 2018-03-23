@@ -16,17 +16,17 @@ using bits_t = std::bitset<128>;
 
 class GenotypeModel {
   public:
-    GenotypeModel(std::istream& ist, const size_t max_sites) {
+    GenotypeModel(std::istream& ist, size_t max_sites) {
         init(ist, max_sites);
     }
-    GenotypeModel(std::istream&& ist, const size_t max_sites)
+    GenotypeModel(std::istream&& ist, size_t max_sites)
     : GenotypeModel(ist, max_sites) {}
-    GenotypeModel(const std::string&, const size_t max_sites);
+    GenotypeModel(const std::string&, size_t max_sites);
 
-    bool set_epistasis(const std::pair<size_t, size_t>& pair, const bool pleiotropy=false);
+    bool set_epistasis(const std::pair<size_t, size_t>& pair, bool pleiotropy=false);
 
     double calc_loglik(const std::valarray<double>& theta);
-    void benchmark(const size_t);
+    void benchmark(size_t);
 
     // getter
     const std::string& filename() const {return filename_;}
@@ -35,12 +35,12 @@ class GenotypeModel {
     size_t max_sites() const {return max_sites_;}
 
   private:
-    void init(std::istream&, const size_t max_sites);
+    void init(std::istream&, size_t max_sites);
 
     double lnp_sample(const bits_t& genotype) const;
 
     void mutate(const bits_t& genotype=bits_t(), const bits_t& pathtype=bits_t(),
-                const double anc_lnp=0.0, const double open_lnp=0.0);
+                double anc_lnp=0.0, double open_lnp=0.0);
 
     double ln_theta_if_subset(const bits_t& pathtype, const bits_t& mut_path) const {
         double lnp = 0.0;
@@ -82,7 +82,7 @@ class GenotypeModel {
         return lnp;
     }
 
-    bits_t translate(const size_t& mut_idx) const {
+    bits_t translate(size_t mut_idx) const {
         bits_t mut_path;
         for (size_t j=0u; j<num_pathways_; ++j) {
             mut_path.set(j, annot_[j][mut_idx]);

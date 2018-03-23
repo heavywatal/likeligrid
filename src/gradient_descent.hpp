@@ -30,16 +30,16 @@ class GradientDescent {
   public:
     GradientDescent() = delete;
     GradientDescent(std::istream& ist,
-        const size_t max_sites,
+        size_t max_sites,
         const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
-        const bool pleiotropy=false,
-        const unsigned int concurrency=1u);
+        bool pleiotropy=false,
+        unsigned int concurrency=1u);
     GradientDescent(
         const std::string& infile,
-        const size_t max_sites,
+        size_t max_sites,
         const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
-        const bool pleiotropy=false,
-        const unsigned int concurrency=1u);
+        bool pleiotropy=false,
+        unsigned int concurrency=1u);
     ~GradientDescent();
 
     void run(std::ostream&);

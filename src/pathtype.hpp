@@ -15,10 +15,10 @@ namespace likeligrid {
 class PathtypeModel {
   public:
     PathtypeModel() = default;
-    PathtypeModel(std::istream&&, const size_t max_sites);
+    PathtypeModel(std::istream&&, size_t max_sites);
     PathtypeModel(
         const std::string& infile,
-        const size_t max_sites=255u);
+        size_t max_sites=255u);
 
     double calc_loglik(const std::valarray<double>& th_path) const;
     const std::vector<std::string>& names() const {return names_;}
@@ -28,7 +28,7 @@ class PathtypeModel {
     double calc_denom(
         const std::valarray<double>& w_pathway,
         const std::valarray<double>& th_pathway,
-        const size_t num_mutations) const;
+        size_t num_mutations) const;
 
     std::vector<std::string> names_;
     std::valarray<double> w_pathway_;
