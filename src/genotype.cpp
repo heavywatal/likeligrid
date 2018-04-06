@@ -173,7 +173,7 @@ void GenotypeModel::benchmark(const size_t n) {
     std::cerr << "width: " << num_genes_ << std::endl;
     std::cerr << "depth: " << max_sites_ << std::endl;
     std::cerr << "w ^ d: " << leaves * 1e-6 << " M" <<std::endl;
-    wtl::benchmark([&param]() {calc_loglik(param);}, "", n);
+    wtl::benchmark([&param,this]() {calc_loglik(param);}, "", n);
 }
 
 } // namespace likeligrid
