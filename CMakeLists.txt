@@ -11,6 +11,7 @@ message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
 
 find_package(wtl)
 find_package(sfmt)
+find_package(Threads)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
@@ -31,7 +32,7 @@ endif()
 add_subdirectory(src)
 
 add_executable(${PROJECT_NAME}-exe main.cpp $<TARGET_OBJECTS:obj>)
-target_link_libraries(${PROJECT_NAME}-exe PRIVATE wtl sfmt ${Boost_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}-exe PRIVATE wtl sfmt ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 if(PROFILE)
   target_link_libraries(${PROJECT_NAME}-exe PRIVATE profiler)
 endif()
