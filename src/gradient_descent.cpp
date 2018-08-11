@@ -9,7 +9,7 @@
 #include <wtl/exception.hpp>
 #include <wtl/debug.hpp>
 #include <wtl/iostr.hpp>
-#include <wtl/zfstream.hpp>
+#include <wtl/zlib.hpp>
 #include <wtl/itertools.hpp>
 #include <wtl/concurrent.hpp>
 #include <wtl/scope.hpp>
@@ -47,7 +47,7 @@ GradientDescent::GradientDescent(
     std::string genotype_file = infile;
     if (wtl::endswith(infile, ".tsv.gz")) {// previous result
         std::string previous = fs::path(infile).filename().string();
-        wtl::izfstream ist(infile);
+        wtl::zlib::ifstream ist(infile);
         size_t prev_max_sites;
         std::tie(genotype_file, prev_max_sites, std::ignore, std::ignore) = read_metadata(ist);
         std::tie(std::ignore, std::ignore, starting_point_) = read_body(ist);
@@ -146,7 +146,7 @@ void GradientDescent::write(std::ostream& ost) {HERE;
 }
 
 std::tuple<std::string, size_t, std::string> GradientDescent::read_results(const std::string& infile) {HERE;
-    wtl::izfstream ist(infile);
+    wtl::zlib::ifstream ist(infile);
     std::string genotype_file;
     size_t prev_max_sites;
     std::tie(genotype_file, prev_max_sites, std::ignore, std::ignore) = read_metadata(ist);

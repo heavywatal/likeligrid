@@ -7,7 +7,7 @@
 #include <wtl/exception.hpp>
 #include <wtl/debug.hpp>
 #include <wtl/iostr.hpp>
-#include <wtl/zfstream.hpp>
+#include <wtl/zlib.hpp>
 #include <wtl/numeric.hpp>
 #include <wtl/math.hpp>
 #include <wtl/concurrent.hpp>
@@ -42,7 +42,7 @@ void GridSearch::run_fout() {HERE;
         std::cerr << model_.names()[j] << ": " << axes[j] << std::endl;
     }
     {
-        wtl::ozfstream fout(outfile, std::ios_base::out | std::ios_base::app);
+        wtl::zlib::ofstream fout(outfile, std::ios_base::out | std::ios_base::app);
         std::cerr << "Writing: " << outfile << std::endl;
         run_impl(fout, wtl::itertools::product(axes));
     }
@@ -75,7 +75,7 @@ void GridSearch::search_limits() {HERE;
         std::cerr << outfile << std::endl;
         std::stringstream sst;
         run_impl(sst, wtl::itertools::uniaxis(axis, mle_params_, i));
-        wtl::ozfstream(outfile) << sst.str();
+        wtl::zlib::ofstream(outfile) << sst.str();
         const auto logliks = read_loglik(sst, axis.size());
         const double threshold = logliks.max() - diff95;
         const std::valarray<double> range = axis[logliks > threshold];
@@ -89,7 +89,7 @@ void GridSearch::search_limits() {HERE;
         const std::string outfile = "limit-" + p.first + ".tsv.gz";
         std::cerr << outfile << ": " << p.second << std::endl;
         const auto axes = make_vicinity(p.second, 5u, 0.02);
-        wtl::ozfstream fout(outfile);
+        wtl::zlib::ofstream fout(outfile);
         //TODO: if exists
         run_impl(fout, wtl::itertools::product(axes));
     }
@@ -146,7 +146,7 @@ std::string GridSearch::init_meta() {HERE;
     oss << "grid-" << STEPS.at(stage_) << ".tsv.gz";
     std::string outfile = oss.str();
     try {
-        wtl::izfstream ist(outfile);
+        wtl::zlib::ifstream ist(outfile);
         std::cerr << "Reading: " << outfile << std::endl;
         read_results(ist);
         if (skip_ == 0u) {
@@ -174,7 +174,7 @@ void GridSearch::read_results(std::istream& ist) {HERE;
 }
 
 void GridSearch::read_results(const std::string& infile) {
-    wtl::izfstream ist(infile);
+    wtl::zlib::ifstream ist(infile);
     read_results(ist);
 }
 

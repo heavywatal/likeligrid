@@ -7,7 +7,7 @@
 #include <wtl/debug.hpp>
 #include <wtl/chrono.hpp>
 #include <wtl/iostr.hpp>
-#include <wtl/zfstream.hpp>
+#include <wtl/zlib.hpp>
 #include <wtl/algorithm.hpp>
 #include <wtl/math.hpp>
 #include <wtl/exception.hpp>
@@ -19,7 +19,7 @@ namespace likeligrid {
 GenotypeModel::GenotypeModel(const std::string& infile, const size_t max_sites)
 : filename_(infile) {
     HERE;
-    wtl::izfstream ist(filename_);
+    wtl::zlib::ifstream ist(filename_);
     init(ist, max_sites);
 }
 

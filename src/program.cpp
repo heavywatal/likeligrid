@@ -13,7 +13,7 @@
 #include <wtl/iostr.hpp>
 #include <wtl/chrono.hpp>
 #include <wtl/getopt.hpp>
-#include <wtl/zfstream.hpp>
+#include <wtl/zlib.hpp>
 
 #include <boost/filesystem.hpp>
 
@@ -89,7 +89,7 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
         std::cerr << wtl::flags_into_string(vm) << std::endl;
     }
     if (vm["test"].as<bool>()) {
-        wtl::izfstream ist(INFILE);
+        wtl::zlib::ifstream ist(INFILE);
         GenotypeModel model(ist, MAX_SITES);
         model.benchmark(CONCURRENCY);
         throw wtl::ExitSuccess();
@@ -123,7 +123,7 @@ void Program::run() {HERE;
             GradientDescent searcher(INFILE, MAX_SITES, epistasis, PLEIOTROPY, CONCURRENCY);
             const auto outfile = fs::path(make_outdir(extract_prefix(INFILE))) / searcher.outfile();
             std::cerr << "outfile: " << outfile << std::endl;
-            wtl::ozfstream ost(outfile.string());
+            wtl::zlib::ofstream ost(outfile.string());
             ost.precision(std::cout.precision());
             searcher.run(ost);
         } else if (INFILE == "-") {

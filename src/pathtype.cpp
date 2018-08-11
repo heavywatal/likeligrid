@@ -6,7 +6,7 @@
 #include <wtl/debug.hpp>
 #include <wtl/exception.hpp>
 #include <wtl/iostr.hpp>
-#include <wtl/zfstream.hpp>
+#include <wtl/zlib.hpp>
 #include <wtl/itertools.hpp>
 #include <wtl/numeric.hpp>
 #include <wtl/math.hpp>
@@ -18,7 +18,7 @@
 namespace likeligrid {
 
 PathtypeModel::PathtypeModel(const std::string& infile, const size_t max_sites):
-    PathtypeModel(wtl::izfstream(infile), max_sites) {HERE;}
+    PathtypeModel(wtl::zlib::ifstream(infile), max_sites) {HERE;}
 
 PathtypeModel::PathtypeModel(std::istream&& ist, const size_t max_sites) {HERE;
     names_ = wtl::read_header(ist);
