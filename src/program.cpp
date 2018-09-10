@@ -28,6 +28,7 @@ inline po::options_description general_desc() {HERE;
     po::options_description description("General");
     description.add_options()
         ("help,h", po::bool_switch(), "print this help")
+        ("version", po::bool_switch(), "print version")
         ("verbose,v", po::bool_switch(), "verbose output")
         ("test", po::bool_switch());
     return description;
@@ -55,10 +56,7 @@ po::options_description Program::positional_desc() {HERE;
     auto description = general_desc();
     description.add(options_desc());
     // do not print positional arguments as options
-    std::cout << "commit " << GIT_COMMIT_HASH
-              << " [" << GIT_BRANCH << "]\n"
-              << "Date:  " << GIT_COMMIT_TIME << std::endl;    std::cout << "Usage: tek [options]\n" << std::endl;
-    std::cout << "Usage: likeligrid [options] infile\n" << std::endl;
+    std::cout << "Usage: " << PROJECT_NAME << " [options] infile\n\n";
     description.print(std::cout);
     throw wtl::ExitSuccess();
 }
@@ -81,6 +79,10 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
               options(description).
               positional(positional).run(), vm);
     if (vm["help"].as<bool>()) {help_and_exit();}
+    if (vm["version"].as<bool>()) {
+        std::cout << PROJECT_VERSION << "\n";
+        throw wtl::ExitSuccess();
+    }
     po::notify(vm);
     WTL_ASSERT(EPISTASIS_PAIR.size() == 2u);
 
