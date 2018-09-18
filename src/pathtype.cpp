@@ -17,12 +17,22 @@
 
 namespace likeligrid {
 
+template <class T> inline std::vector<std::valarray<T>>
+read_valarrays(std::istream& ist) {
+    std::vector<std::valarray<T>> matrix;
+    std::vector<T> buffer;
+    while (wtl::getline(ist, buffer)) {
+        matrix.emplace_back(buffer.data(), buffer.size());
+    }
+    return matrix;
+}
+
 PathtypeModel::PathtypeModel(const std::string& infile, const size_t max_sites):
     PathtypeModel(wtl::zlib::ifstream(infile), max_sites) {HERE;}
 
 PathtypeModel::PathtypeModel(std::istream&& ist, const size_t max_sites) {HERE;
-    names_ = wtl::read_header(ist);
-    auto pathtypes = wtl::read_valarrays<uint_fast32_t>(ist);
+    wtl::getline(ist, names_);
+    auto pathtypes = read_valarrays<uint_fast32_t>(ist);
     const auto raw_s_sample = wtl::row_sums(pathtypes);
     nsam_with_s_.assign(raw_s_sample.max() + 1u, 0u);
     for (const auto s: raw_s_sample) {
