@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.12)
 project(likeligrid
   VERSION 0.1.0
   LANGUAGES CXX)
@@ -32,20 +32,14 @@ endif()
 
 add_subdirectory(src)
 
-add_executable(${PROJECT_NAME}-exe main.cpp $<TARGET_OBJECTS:obj>)
-target_link_libraries(${PROJECT_NAME}-exe PRIVATE obj)
+add_executable(${PROJECT_NAME}-exe main.cpp)
+target_link_libraries(${PROJECT_NAME}-exe PRIVATE objlib)
 set_target_properties(${PROJECT_NAME}-exe PROPERTIES
   OUTPUT_NAME ${PROJECT_NAME}
 )
 install(TARGETS ${PROJECT_NAME}-exe
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
-
-add_library(${PROJECT_NAME} SHARED $<TARGET_OBJECTS:obj>)
-target_include_directories(${PROJECT_NAME} BEFORE
-  INTERFACE $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>
-)
-target_link_libraries(${PROJECT_NAME} PRIVATE obj)
 
 include(CTest)
 if(BUILD_TESTING)
