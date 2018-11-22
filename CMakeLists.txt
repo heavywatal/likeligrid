@@ -21,13 +21,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_compile_options(-march=native -Wall -Wextra -pedantic)
 
 set(Boost_NO_BOOST_CMAKE ON)
-find_package(Boost REQUIRED COMPONENTS program_options context filesystem system)
+find_package(Boost REQUIRED COMPONENTS program_options context)
 message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
 
 find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
 find_package(sfmt 0.7.1)
-find_package(wtl 0.7.6)
+find_package(wtl 0.8.1)
 
 add_subdirectory(src)
 

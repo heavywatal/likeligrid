@@ -14,14 +14,13 @@
 #include <wtl/chrono.hpp>
 #include <wtl/getopt.hpp>
 #include <wtl/zlib.hpp>
-
-#include <boost/filesystem.hpp>
+#include <wtl/filesystem.hpp>
 
 #include <regex>
 
 namespace likeligrid {
 
-namespace fs = boost::filesystem;
+namespace fs = wtl::filesystem;
 namespace po = boost::program_options;
 
 inline po::options_description general_desc() {HERE;
@@ -98,18 +97,19 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
     }
 }
 
-inline std::string extract_prefix(const std::string& spath) {
-    fs::path path(spath);
-    for (fs::path p=path.filename(); !p.extension().empty(); p=p.stem()) {
-        if (p.extension().string() == ".json") {
+inline std::string extract_prefix(const std::string& infile) {
+    fs::path inpath(infile);
+    for (fs::path p=inpath.filename(); !p.extension().empty(); p=p.stem()) {
+        if (p.extension() == ".json") {
             return p.stem().string();
         }
     }
     std::smatch mobj;
-    if (std::regex_search(path.parent_path().string(), mobj, std::regex("([\\w-]+)-s\\d"))) {
+    std::string dir = inpath.parent_path();
+    if (std::regex_search(dir, mobj, std::regex("([\\w-]+)-s\\d"))) {
         return mobj[1];
     }
-    throw std::runtime_error("Cannot extract prefix: " + spath);
+    throw std::runtime_error("Cannot extract prefix: " + infile);
 }
 
 void Program::run() {HERE;
@@ -123,9 +123,10 @@ void Program::run() {HERE;
                 return;
             }
             GradientDescent searcher(INFILE, MAX_SITES, epistasis, PLEIOTROPY, CONCURRENCY);
-            const auto outfile = fs::path(make_outdir(extract_prefix(INFILE))) / searcher.outfile();
+            const auto outdir = make_outdir(extract_prefix(INFILE));
+            const auto outfile = fs::path(outdir) / searcher.outfile();
             std::cerr << "outfile: " << outfile << std::endl;
-            wtl::zlib::ofstream ost(outfile.string());
+            wtl::zlib::ofstream ost(outfile.native());
             ost.precision(std::cout.precision());
             searcher.run(ost);
         } else if (INFILE == "-") {
