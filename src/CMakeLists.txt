@@ -18,5 +18,11 @@ add_library(objlib OBJECT ${srcfiles})
 target_include_directories(objlib INTERFACE
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
 )
-target_link_libraries(objlib PUBLIC wtl::wtl wtl::sfmt Threads::Threads ZLIB::ZLIB)
-target_link_libraries(objlib PUBLIC Boost::program_options Boost::context)
+target_link_libraries(objlib PUBLIC
+  wtl::wtl
+  wtl::sfmt
+  clippson::clippson
+  Threads::Threads
+  ZLIB::ZLIB
+  Boost::context
+)

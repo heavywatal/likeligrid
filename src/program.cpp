@@ -12,52 +12,37 @@
 #include <wtl/debug.hpp>
 #include <wtl/iostr.hpp>
 #include <wtl/chrono.hpp>
-#include <wtl/getopt.hpp>
 #include <wtl/zlib.hpp>
 #include <wtl/filesystem.hpp>
+#include <clippson/clippson.hpp>
 
 #include <regex>
 
 namespace likeligrid {
 
 namespace fs = wtl::filesystem;
-namespace po = boost::program_options;
 
-inline po::options_description general_desc() {HERE;
-    po::options_description description("General");
-    description.add_options()
-        ("help,h", po::bool_switch(), "print this help")
-        ("version", po::bool_switch(), "print version")
-        ("verbose,v", po::bool_switch(), "verbose output")
-        ("test", po::bool_switch());
-    return description;
+//! Global variables mapper of commane-line arguments
+nlohmann::json VM;
+
+//! Options description for general purpose
+inline clipp::group general_options(nlohmann::json* vm) {
+    return (
+      wtl::option(vm, {"h", "help"}, false, "print this help"),
+      wtl::option(vm, {"version"}, false, "print version"),
+      wtl::option(vm, {"v", "verbose"}, false, "verbose output"),
+      wtl::option(vm, {"test"}, false, "run tests")
+    ).doc("General:");
 }
 
-po::options_description Program::options_desc() {HERE;
-    po::options_description description("Program");
-    description.add_options()
-        ("parallel,j", po::value(&CONCURRENCY)->default_value(CONCURRENCY))
-        ("max-sites,s", po::value(&MAX_SITES)->default_value(MAX_SITES))
-        ("gradient,g", po::bool_switch(&GRADIENT_MODE))
-        ("epistasis,e", po::value(&EPISTASIS_PAIR)->default_value(EPISTASIS_PAIR)->multitoken())
-        ("pleiotropy,p", po::bool_switch(&PLEIOTROPY));
-    return description;
-}
-
-po::options_description Program::positional_desc() {HERE;
-    po::options_description description("Positional");
-    description.add_options()
-        ("infile", po::value(&INFILE)->default_value(INFILE));
-    return description;
-}
-
-[[noreturn]] void Program::help_and_exit() {HERE;
-    auto description = general_desc();
-    description.add(options_desc());
-    // do not print positional arguments as options
-    std::cout << "Usage: " << PROJECT_NAME << " [options] infile\n\n";
-    description.print(std::cout);
-    throw wtl::ExitSuccess();
+inline clipp::group program_options(nlohmann::json* vm, Program* prog) {
+    return (
+      wtl::option(vm, {"j", "parallel"}, &prog->CONCURRENCY),
+      wtl::option(vm, {"s", "max-sites"}, &prog->MAX_SITES),
+      wtl::option(vm, {"g", "gradient"}, &prog->GRADIENT_MODE),
+      wtl::option(vm, {"e", "epistasis"}, &prog->EPISTASIS_PAIR),
+      wtl::option(vm, {"p", "pleiotropy"}, &prog->PLEIOTROPY)
+    ).doc("Program:");
 }
 
 Program::Program(const std::vector<std::string>& arguments) {HERE;
@@ -68,28 +53,30 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
     std::cerr.precision(6);
     wtl::set_SIGINT_handler();
 
-    auto description = general_desc();
-    description.add(options_desc());
-    description.add(positional_desc());
-    po::positional_options_description positional;
-    positional.add("infile", 1);
-    po::variables_map vm;
-    po::store(po::command_line_parser({arguments.begin() + 1, arguments.end()}).
-              options(description).
-              positional(positional).run(), vm);
-    if (vm["help"].as<bool>()) {help_and_exit();}
-    if (vm["version"].as<bool>()) {
+    VM.clear();
+    nlohmann::json vm_local;
+    auto cli = (
+      general_options(&vm_local),
+      program_options(&VM, this),
+      wtl::value<std::string>(&VM, "infile", &INFILE)
+    );
+    wtl::parse(cli, arguments);
+    if (vm_local["help"]) {
+        auto fmt = wtl::doc_format();
+        std::cout << "Usage: " << PROJECT_NAME << " [options]\n\n";
+        std::cout << clipp::documentation(cli, fmt) << "\n";
+        throw wtl::ExitSuccess();
+    }
+    if (vm_local["version"]) {
         std::cout << PROJECT_VERSION << "\n";
         throw wtl::ExitSuccess();
     }
-    po::notify(vm);
     WTL_ASSERT(EPISTASIS_PAIR.size() == 2u);
-
-    if (vm["verbose"].as<bool>()) {
+    if (vm_local["verbose"]) {
         std::cerr << wtl::iso8601datetime() << std::endl;
-        std::cerr << wtl::flags_into_string(vm) << std::endl;
+        std::cerr << VM.dump(2) << std::endl;
     }
-    if (vm["test"].as<bool>()) {
+    if (vm_local["test"]) {
         wtl::zlib::ifstream ist(INFILE);
         GenotypeModel model(ist, MAX_SITES);
         model.benchmark(CONCURRENCY);

@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-namespace boost {namespace program_options {class options_description;}}
-
 namespace likeligrid {
 
 /*! @brief Represents single run
@@ -22,13 +20,7 @@ class Program {
     //! Top level function that should be called once from main()
     void run();
 
-    /////1/////////2/////////3/////////4/////////5/////////6/////////7/////////
-  private:
-    boost::program_options::options_description options_desc();
-    boost::program_options::options_description positional_desc();
-    [[noreturn]] void help_and_exit();
     std::string make_outdir(const std::string& prefix) const;
-
     unsigned int CONCURRENCY = 1u;
     size_t MAX_SITES = 3u;
     std::string INFILE = "-";
