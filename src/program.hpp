@@ -19,14 +19,6 @@ class Program {
 
     //! Top level function that should be called once from main()
     void run();
-
-    std::string make_outdir(const std::string& prefix) const;
-    unsigned int CONCURRENCY = 1u;
-    size_t MAX_SITES = 3u;
-    std::string INFILE = "-";
-    bool GRADIENT_MODE = false;
-    std::vector<size_t> EPISTASIS_PAIR = {0u, 0u};
-    bool PLEIOTROPY = false;
 };
 
 } // namespace likeligrid
