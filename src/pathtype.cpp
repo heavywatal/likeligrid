@@ -14,6 +14,7 @@
 #include <functional>
 #include <stdexcept>
 #include <cstdint>
+#include <bitset>
 
 namespace likeligrid {
 
