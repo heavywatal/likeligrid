@@ -32,7 +32,7 @@ find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
 find_package(clippson 0.8.0)
 find_package(sfmt 0.7.1)
-find_package(wtl 0.8.1)
+find_package(wtl 0.8.4)
 
 add_subdirectory(src)
 
