@@ -13,13 +13,13 @@ configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/version.hpp @ONLY
 )
 
-# Be patient until 3.13 is popularized
+cmake_policy(SET CMP0076 NEW)
 add_library(objlib OBJECT
-  ${CMAKE_CURRENT_SOURCE_DIR}/genotype.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/gradient_descent.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/gridsearch.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/pathtype.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/program.cpp
+  genotype.cpp
+  gradient_descent.cpp
+  gridsearch.cpp
+  pathtype.cpp
+  program.cpp
 )
 target_include_directories(objlib INTERFACE
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
