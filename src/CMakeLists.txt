@@ -7,6 +7,7 @@ execute_process(
 if(GIT_DESCRIBE)
   set(PROJECT_VERSION ${GIT_DESCRIBE})
 endif()
+message(STATUS "PROJECT_VERSION: ${PROJECT_VERSION}")
 
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/version.hpp.in
@@ -20,6 +21,11 @@ add_library(objlib OBJECT
   gridsearch.cpp
   pathtype.cpp
   program.cpp
+)
+target_compile_features(objlib PUBLIC cxx_std_14)
+set_target_properties(objlib PROPERTIES
+  CXX_STANDARD_REQUIRED ON
+  CXX_EXTENSIONS OFF
 )
 target_include_directories(objlib INTERFACE
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
