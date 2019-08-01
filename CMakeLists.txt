@@ -27,7 +27,7 @@ message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
 
 find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
-find_package(clippson 0.8.1)
+find_package(clippson 0.8.2)
 find_package(sfmt 0.7.2)
 find_package(wtl 0.8.4)
 
