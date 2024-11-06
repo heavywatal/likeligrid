@@ -5,7 +5,6 @@
 #include "genotype.hpp"
 #include "util.hpp"
 
-#include <sfmt.hpp>
 #include <wtl/exception.hpp>
 #include <wtl/debug.hpp>
 #include <wtl/iostr.hpp>
@@ -15,6 +14,7 @@
 #include <wtl/scope.hpp>
 
 #include <filesystem>
+#include <random>
 
 namespace likeligrid {
 
@@ -119,6 +119,7 @@ MapGrid::iterator GradientDescent::find_better(const MapGrid::iterator& prev_it)
 }
 
 std::vector<std::valarray<double>> GradientDescent::empty_neighbors_of(const std::valarray<double>& center) {
+    static std::mt19937_64 mt64(std::random_device{}());
     const auto axes = make_vicinity(center, 3, 0.01);
     auto iter = wtl::itertools::product(axes);
     std::vector<std::valarray<double>> empty_neighbors;
@@ -128,7 +129,7 @@ std::vector<std::valarray<double>> GradientDescent::empty_neighbors_of(const std
             empty_neighbors.push_back(x);
         }
     }
-    std::shuffle(std::begin(empty_neighbors), std::end(empty_neighbors), wtl::sfmt64());
+    std::shuffle(std::begin(empty_neighbors), std::end(empty_neighbors), mt64);
     return empty_neighbors;
 }
 

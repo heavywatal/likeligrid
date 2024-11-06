@@ -25,7 +25,6 @@ cmake_print_variables(Boost_INCLUDE_DIRS)
 find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
 find_package(clippson 0.8.8)
-find_package(sfmt 0.7.6)
 find_package(wtl 0.9.1)
 
 add_library(${PROJECT_NAME} STATIC)
@@ -41,7 +40,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 target_link_libraries(${PROJECT_NAME} PUBLIC
   wtl::wtl
-  wtl::sfmt
   Threads::Threads
   ZLIB::ZLIB
   PRIVATE clippson::clippson Boost::context
