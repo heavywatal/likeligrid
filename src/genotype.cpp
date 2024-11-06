@@ -5,7 +5,7 @@
 #include "util.hpp"
 
 #include <wtl/debug.hpp>
-#include <wtl/chrono.hpp>
+#include <wtl/resource.hpp>
 #include <wtl/iostr.hpp>
 #include <wtl/zlib.hpp>
 #include <wtl/algorithm.hpp>
@@ -29,7 +29,7 @@ void GenotypeModel::init(std::istream& ist, const size_t max_sites) {HERE;
     names_ = jso["pathway"].get<std::vector<std::string>>();
     num_pathways_ = names_.size();
     annot_.reserve(num_pathways_);
-    for (const std::string& s: jso["annotation"]) {
+    for (const std::string& s: jso.value("annotation", std::vector<std::string>{})) {
         annot_.emplace_back(s);
     }
     std::cerr << "annot_: " << annot_ << std::endl;
@@ -37,7 +37,7 @@ void GenotypeModel::init(std::istream& ist, const size_t max_sites) {HERE;
     const size_t nsam = jso["sample"].size();
     std::vector<bits_t> all_genotypes;
     all_genotypes.reserve(nsam);
-    for (const std::string& s: jso["sample"]) {
+    for (const std::string& s: jso.value("sample", std::vector<std::string>{})) {
         all_genotypes.emplace_back(s);
     }
 
@@ -173,7 +173,7 @@ void GenotypeModel::benchmark(const size_t n) {
     std::cerr << "width: " << num_genes_ << std::endl;
     std::cerr << "depth: " << max_sites_ << std::endl;
     std::cerr << "w ^ d: " << leaves * 1e-6 << " M" <<std::endl;
-    wtl::benchmark([&param,this]() {calc_loglik(param);}, "", n);
+    std::cerr << wtl::diff_rusage([&param,this]() {calc_loglik(param);}, n);
 }
 
 } // namespace likeligrid

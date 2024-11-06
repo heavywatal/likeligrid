@@ -13,11 +13,12 @@
 #include <wtl/itertools.hpp>
 #include <wtl/concurrent.hpp>
 #include <wtl/scope.hpp>
-#include <wtl/filesystem.hpp>
+
+#include <filesystem>
 
 namespace likeligrid {
 
-namespace fs = wtl::filesystem;
+namespace fs = std::filesystem;
 
 // std::unique_ptr needs to know GenotypeModel implementation
 GradientDescent::~GradientDescent() = default;
@@ -44,7 +45,7 @@ GradientDescent::GradientDescent(
     {HERE;
 
     std::string genotype_file = infile;
-    if (wtl::endswith(infile, ".tsv.gz")) {// previous result
+    if (wtl::ends_with(infile, ".tsv.gz")) {// previous result
         wtl::zlib::ifstream ist(infile);
         size_t prev_max_sites;
         std::tie(genotype_file, prev_max_sites, std::ignore, std::ignore) = read_metadata(ist);

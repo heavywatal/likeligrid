@@ -94,10 +94,10 @@ read_body(std::istream& ist) {
         std::istringstream iss(buffer);
         std::istream_iterator<double> it(iss);
         if (wtl::approx(*it, max_ll)) {
-            std::vector<double> chalenger(++it, std::istream_iterator<double>());
-            if (d2_from_neutral(chalenger) < d2_from_neutral(mle)) {
+            std::vector<double> challenger(++it, std::istream_iterator<double>());
+            if (d2_from_neutral(challenger) < d2_from_neutral(mle)) {
                 max_ll = *it;
-                mle.swap(chalenger);
+                mle.swap(challenger);
             }
         } else if (*it > max_ll) {
             max_ll = *it;

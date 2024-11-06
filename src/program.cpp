@@ -13,36 +13,36 @@
 #include <wtl/iostr.hpp>
 #include <wtl/chrono.hpp>
 #include <wtl/zlib.hpp>
-#include <wtl/filesystem.hpp>
 #include <clippson/clippson.hpp>
 
+#include <filesystem>
 #include <regex>
 
 namespace likeligrid {
 
-namespace fs = wtl::filesystem;
+namespace fs = std::filesystem;
 
-//! Global variables mapper of commane-line arguments
+//! Global variables mapper of command-line arguments
 nlohmann::json VM;
 
 //! Options description for general purpose
 inline clipp::group general_options(nlohmann::json* vm) {
     return (
-      wtl::option(vm, {"h", "help"}, false, "print this help"),
-      wtl::option(vm, {"version"}, false, "print version"),
-      wtl::option(vm, {"v", "verbose"}, false, "verbose output"),
-      wtl::option(vm, {"test"}, false, "run tests")
+      clippson::option(vm, {"h", "help"}, false, "print this help"),
+      clippson::option(vm, {"version"}, false, "print version"),
+      clippson::option(vm, {"v", "verbose"}, false, "verbose output"),
+      clippson::option(vm, {"test"}, false, "run tests")
     ).doc("General:");
 }
 
 inline clipp::group program_options(nlohmann::json* vm) {
     std::vector<size_t> EPISTASIS_PAIR = {0u, 0u};
     return (
-      wtl::option(vm, {"j", "parallel"}, 1u),
-      wtl::option(vm, {"s", "max-sites"}, 3u),
-      wtl::option(vm, {"g", "gradient"}, false),
-      wtl::option(vm, {"e", "epistasis"}, EPISTASIS_PAIR),
-      wtl::option(vm, {"p", "pleiotropy"}, false)
+      clippson::option(vm, {"j", "parallel"}, 1u),
+      clippson::option(vm, {"s", "max-sites"}, 3u),
+      clippson::option(vm, {"g", "gradient"}, false),
+      clippson::option(vm, {"e", "epistasis"}, EPISTASIS_PAIR),
+      clippson::option(vm, {"p", "pleiotropy"}, false)
     ).doc("Program:");
 }
 
@@ -59,11 +59,11 @@ Program::Program(const std::vector<std::string>& arguments) {HERE;
     auto cli = (
       general_options(&vm_local),
       program_options(&VM),
-      wtl::value<std::string>(&VM, "infile")
+      clippson::value<std::string>(&VM, "infile")
     );
-    wtl::parse(cli, arguments);
+    clippson::parse(cli, arguments);
     if (vm_local["help"]) {
-        auto fmt = wtl::doc_format();
+        auto fmt = clippson::doc_format();
         std::cout << "Usage: " << PROJECT_NAME << " [options] infile\n\n";
         std::cout << clipp::documentation(cli, fmt) << "\n";
         throw wtl::ExitSuccess();
