@@ -12,6 +12,7 @@
 #include <wtl/itertools.hpp>
 #include <wtl/concurrent.hpp>
 #include <wtl/scope.hpp>
+#include <wtl/signed.hpp>
 
 #include <filesystem>
 #include <random>
@@ -28,7 +29,7 @@ GradientDescent::GradientDescent(
     const size_t max_sites,
     const std::pair<size_t, size_t>& epistasis_pair,
     const bool pleiotropy,
-    const unsigned int concurrency)
+    const int concurrency)
     : model_(std::make_unique<GenotypeModel>(ist, max_sites)),
       concurrency_(concurrency)
     {HERE;
@@ -40,7 +41,7 @@ GradientDescent::GradientDescent(
     const size_t max_sites,
     const std::pair<size_t, size_t>& epistasis_pair,
     const bool pleiotropy,
-    const unsigned int concurrency)
+    const int concurrency)
     : concurrency_(concurrency)
     {HERE;
 
@@ -95,12 +96,12 @@ MapGrid::iterator GradientDescent::find_better(const MapGrid::iterator& prev_it)
         return std::make_pair(theta, model.calc_loglik(theta));
     };
     std::vector<std::future<std::pair<std::valarray<double>, double>>> futures;
-    futures.reserve(concurrency_);
+    wtl::reserve(futures, concurrency_);
     auto better_it = prev_it;
     const auto candidates = empty_neighbors_of(prev_it->first);
     for (const auto& theta: candidates) {
         futures.push_back(pool.submit(task, *model_, theta));
-        if ((futures.size() == concurrency_) || (&theta == &candidates.back())) {
+        if ((wtl::ssize(futures) == concurrency_) || (&theta == &candidates.back())) {
             for (auto& ftr: futures) {
                 auto result_it = history_.insert(ftr.get()).first;
                 std::cerr << "." << std::flush;

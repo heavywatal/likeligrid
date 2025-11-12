@@ -26,7 +26,7 @@ class GenotypeModel {
     bool set_epistasis(const std::pair<size_t, size_t>& pair, bool pleiotropy=false);
 
     double calc_loglik(const std::valarray<double>& theta);
-    void benchmark(size_t);
+    void benchmark(int);
 
     // getter
     const std::string& filename() const {return filename_;}
@@ -107,7 +107,7 @@ class GenotypeModel {
     std::valarray<double> ln_denoms_;
     std::pair<size_t, size_t> epistasis_pair_;
     bool epistasis_ = false;
-    size_t epistasis_idx_ = -1u;
+    size_t epistasis_idx_ = std::numeric_limits<size_t>::max();
     size_t pleiotropy_idx_ = epistasis_idx_;
 };
 

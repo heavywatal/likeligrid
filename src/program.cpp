@@ -38,7 +38,7 @@ inline clipp::group general_options(nlohmann::json* vm) {
 inline clipp::group program_options(nlohmann::json* vm) {
     std::vector<size_t> EPISTASIS_PAIR = {0u, 0u};
     return (
-      clippson::option(vm, {"j", "parallel"}, 1u),
+      clippson::option(vm, {"j", "parallel"}, 1),
       clippson::option(vm, {"s", "max-sites"}, 3u),
       clippson::option(vm, {"g", "gradient"}, false),
       clippson::option(vm, {"e", "epistasis"}, EPISTASIS_PAIR),
@@ -117,7 +117,7 @@ inline std::string make_outdir(const std::string& prefix) {
 }
 
 void Program::run() {HERE;
-    const unsigned concurrency = VM.at("parallel");
+    const int concurrency = VM.at("parallel");
     const unsigned max_sites = VM.at("max-sites");
     const bool pleiotropy = VM.at("pleiotropy");
     const std::string infile = VM.at("--")[0u];

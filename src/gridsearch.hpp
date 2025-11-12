@@ -24,7 +24,7 @@ class GridSearch {
         size_t max_sites,
         const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
         bool pleiotropy=false,
-        unsigned int concurrency=1u)
+        int concurrency=1)
         : model_(ist, max_sites),
           concurrency_(concurrency) {
         init(epistasis_pair, pleiotropy);
@@ -33,14 +33,14 @@ class GridSearch {
         size_t max_sites,
         const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
         bool pleiotropy=false,
-        unsigned int concurrency=1u)
+        int concurrency=1)
         : GridSearch(ist, max_sites, epistasis_pair, pleiotropy, concurrency){}
     GridSearch(
         const std::string& infile,
         size_t max_sites,
         const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
         bool pleiotropy=false,
-        unsigned int concurrency=1u)
+        int concurrency=1)
         : model_(infile, max_sites),
           concurrency_(concurrency) {
         init(epistasis_pair, pleiotropy);
@@ -67,7 +67,7 @@ class GridSearch {
     std::valarray<double> mle_params_;
     size_t skip_ = 0u;
     size_t stage_ = 0u;
-    const unsigned int concurrency_;
+    const int concurrency_;
 };
 
 } // namespace likeligrid

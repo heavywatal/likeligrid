@@ -6,6 +6,7 @@
 #define LIKELIGRID_UTIL_HPP_
 
 #include <wtl/iostr.hpp>
+#include <wtl/string.hpp>
 #include <wtl/numeric.hpp>
 #include <wtl/exception.hpp>
 

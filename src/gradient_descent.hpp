@@ -33,13 +33,13 @@ class GradientDescent {
         size_t max_sites,
         const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
         bool pleiotropy=false,
-        unsigned int concurrency=1u);
+        int concurrency=1);
     GradientDescent(
         const std::string& infile,
         size_t max_sites,
         const std::pair<size_t, size_t>& epistasis_pair={0u,0u},
         bool pleiotropy=false,
-        unsigned int concurrency=1u);
+        int concurrency=1);
     ~GradientDescent();
 
     void run(std::ostream&);
@@ -62,7 +62,7 @@ class GradientDescent {
     MapGrid history_;
     std::string outfile_;
 
-    const unsigned int concurrency_;
+    const int concurrency_;
 };
 
 } // namespace likeligrid

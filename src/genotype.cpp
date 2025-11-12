@@ -166,7 +166,7 @@ void GenotypeModel::mutate(const bits_t& genotype, const bits_t& pathtype, const
     }
 }
 
-void GenotypeModel::benchmark(const size_t n) {
+void GenotypeModel::benchmark(const int n) {
     const std::valarray<double> param(0.9, num_pathways_);
     double leaves = wtl::pow(static_cast<double>(num_genes_), static_cast<unsigned int>(max_sites_));
     std::cerr << "# parameters: " << num_pathways_ << std::endl;
