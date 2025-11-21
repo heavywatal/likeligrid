@@ -9,8 +9,10 @@ include(FetchContent)
 include(GNUInstallDirs)
 cmake_print_variables(CMAKE_INSTALL_PREFIX)
 
+add_compile_definitions("_LIBCPP_REMOVE_TRANSITIVE_INCLUDES")
 add_compile_options(
-  -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wshadow
+  -Wall -Wextra -Wpedantic
+  -Wconversion -Wsign-conversion -Wshadow
   $<IF:$<BOOL:$<CONFIG>>,,-Werror>
   $<IF:$<BOOL:$<CONFIG>>,,-O2>
   $<IF:$<BOOL:$<CONFIG>>,,-g>
@@ -31,16 +33,16 @@ endmacro()
 
 FetchContent_Declare(clippson
   GIT_REPOSITORY https://github.com/heavywatal/clippson.git
-  GIT_TAG fb915f6f3b00e4854ab159aea38f620c4934da5c
+  GIT_TAG df72e9dc1ceac38a46db452e8102e807301784c5
   EXCLUDE_FROM_ALL
-  FIND_PACKAGE_ARGS 0.8.11
+  FIND_PACKAGE_ARGS 0.8.12
 )
 
 FetchContent_Declare(wtl
   GIT_REPOSITORY https://github.com/heavywatal/cxxwtl.git
-  GIT_TAG fdaa1420abdb25a54ae7262aeaddf622c21a5935
+  GIT_TAG f66a31048c0d934c29882082099988d9423b6bf3
   EXCLUDE_FROM_ALL
-  FIND_PACKAGE_ARGS 0.11.0
+  FIND_PACKAGE_ARGS 0.11.2 COMPONENTS zlib threads
 )
 
 Pkg_MakeAvailable(clippson wtl)
