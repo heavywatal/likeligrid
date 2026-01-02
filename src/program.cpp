@@ -3,7 +3,6 @@
 */
 #include "version.hpp"
 #include "program.hpp"
-#include "pathtype.hpp"
 #include "genotype.hpp"
 #include "gridsearch.hpp"
 #include "gradient_descent.hpp"

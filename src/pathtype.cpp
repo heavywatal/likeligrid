@@ -11,8 +11,6 @@
 #include <wtl/numeric.hpp>
 #include <wtl/math.hpp>
 
-#include <functional>
-#include <stdexcept>
 #include <cstdint>
 #include <bitset>
 

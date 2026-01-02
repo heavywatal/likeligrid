@@ -8,7 +8,6 @@
 #include "genotype.hpp"
 
 #include <string>
-#include <vector>
 #include <valarray>
 
 namespace wtl {namespace itertools {

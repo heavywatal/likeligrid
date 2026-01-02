@@ -2,7 +2,6 @@
     @brief Implementation of GenotypeModel class
 */
 #include "genotype.hpp"
-#include "util.hpp"
 
 #include <wtl/debug.hpp>
 #include <wtl/resource.hpp>

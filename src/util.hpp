@@ -14,7 +14,6 @@
 #include <vector>
 #include <valarray>
 #include <array>
-#include <map>
 #include <iterator>
 
 namespace likeligrid {
