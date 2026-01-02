@@ -16,8 +16,18 @@ jobs:
         os: [macOS-latest, ubuntu-latest]
     steps:
       - uses: actions/checkout@v6
-      - name: cmake
-        run: cmake -S . -B build -DCMAKE_INSTALL_PREFIX="${HOME}/local"
+      - name: Install boost on macOS
+        if: runner.os == 'macOS'
+        run: |
+          brew install boost
+        shell: bash
+      - name: Install boost on Ubuntu
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libboost-all-dev
+        shell: bash
+      - run: cmake -S . -B build -DCMAKE_INSTALL_PREFIX="${HOME}/local"
       - run: cmake --build build -j 2
       - run: cmake --install build
       - run: ctest --test-dir build -V
