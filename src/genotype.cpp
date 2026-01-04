@@ -104,7 +104,7 @@ double GenotypeModel::calc_loglik(const std::valarray<double>& theta) {
     // std::cerr << "lnD: " << ln_denoms_ << std::endl;
     // -inf, 0, D2, D3, ...
     for (size_t s=2u; s<=max_sites_; ++s) {
-        loglik -= nsam_with_s_[s] * ln_denoms_[s];
+        loglik -= static_cast<double>(nsam_with_s_[s]) * ln_denoms_[s];
     }
     return loglik;
 }

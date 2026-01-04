@@ -82,7 +82,7 @@ double PathtypeModel::calc_loglik(const std::valarray<double>& th_path) const {
     double loglik = (a_pathway_ * std::log(th_path)).sum();
     // D = 1.0 when s < 2
     for (size_t s=2u; s<=max_sites; ++s) {
-        loglik -= nsam_with_s_[s] * std::log(calc_denom(w_pathway_, th_path, s));
+        loglik -= static_cast<double>(nsam_with_s_[s]) * std::log(calc_denom(w_pathway_, th_path, s));
     }
     return loglik += lnp_const_;
 }

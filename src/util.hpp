@@ -42,7 +42,7 @@ inline size_t guess_stage(const double step) {
 }
 
 inline double radius(const size_t stage) {
-    return (BREAKS.at(stage) - 1u) * STEPS.at(stage) * 0.5;
+    return static_cast<double>(BREAKS.at(stage) - 1u) * STEPS.at(stage) * 0.5;
 }
 
 inline std::tuple<std::string, size_t, size_t, double>
