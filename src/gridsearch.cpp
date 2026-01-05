@@ -131,7 +131,9 @@ void GridSearch::run_impl(std::ostream& ost, wtl::itertools::Generator<std::vala
             ost << buffer.str();
             buffer.str("");
             buffer.clear();
-            for (size_t n= static_cast<size_t>(20.0 * i / gen.max_count()); stars<n; ++stars) {
+            const auto prop = static_cast<double>(i) / static_cast<double>(gen.max_count());
+            const auto n = static_cast<size_t>(20.0 * prop);
+            for (; stars<n; ++stars) {
                 std::cerr << "*";
             }
         }
