@@ -1,6 +1,5 @@
 /build/
 /docs/*.png
-/src/version.hpp
 *.gz
 *.png
 *.pdf

@@ -11,8 +11,8 @@ endif()
 cmake_print_variables(PROJECT_VERSION)
 
 configure_file(
-  version.hpp.in
-  version.hpp @ONLY
+  version.cpp.in
+  version.cpp @ONLY
 )
 
 target_sources(${PROJECT_NAME} PRIVATE
@@ -21,4 +21,5 @@ target_sources(${PROJECT_NAME} PRIVATE
   gridsearch.cpp
   pathtype.cpp
   program.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
 )
